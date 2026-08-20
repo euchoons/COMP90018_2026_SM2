@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nightwatch</string>
+    <string name="channel_alerts">Safety alerts</string>
+    <string name="channel_monitoring">Safe walk monitoring</string>
+    <style name="Theme.Nightwatch" parent="android:Theme.Material.NoActionBar"/>
+</resources>

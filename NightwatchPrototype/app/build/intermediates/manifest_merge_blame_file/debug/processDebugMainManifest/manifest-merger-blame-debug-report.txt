@@ -1,0 +1,211 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="au.edu.unimelb.nightwatch"
+4    android:versionCode="1"
+5    android:versionName="0.1" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- Location: route tracking + the position sent to emergency contacts -->
+12    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+12-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:5:5-79
+12-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:5:22-76
+13    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+13-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:6:5-81
+13-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:6:22-78
+14
+15    <!-- Microphone: on-device distress-sound detection. Audio is never recorded or uploaded. -->
+16    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+16-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:9:5-71
+16-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:9:22-68
+17
+18    <!-- Keep sensing alive while the screen is off during a walk -->
+19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+19-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:12:5-77
+19-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:12:22-74
+20    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+20-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:13:5-86
+20-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:13:22-83
+21    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+21-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:14:5-88
+21-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:14:22-85
+22    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+22-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:15:5-77
+22-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:15:22-74
+23
+24    <!-- Cloud sync of the alert + live location link -->
+25    <uses-permission android:name="android.permission.INTERNET" />
+25-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:18:5-67
+25-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:18:22-64
+26
+27    <uses-feature
+27-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:20:5-98
+28        android:name="android.hardware.sensor.accelerometer"
+28-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:20:19-71
+29        android:required="true" />
+29-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:20:72-95
+30    <uses-feature
+30-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:21:5-95
+31        android:name="android.hardware.sensor.gyroscope"
+31-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:21:19-67
+32        android:required="false" />
+32-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:21:68-92
+33    <uses-feature
+33-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:22:5-91
+34        android:name="android.hardware.sensor.light"
+34-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:22:19-63
+35        android:required="false" />
+35-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:22:64-88
+36
+37    <permission
+37-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+38        android:name="au.edu.unimelb.nightwatch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+38-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+39        android:protectionLevel="signature" />
+39-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+40
+41    <uses-permission android:name="au.edu.unimelb.nightwatch.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+41-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+41-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+42
+43    <application
+43-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:24:5-46:19
+44        android:name="au.edu.unimelb.nightwatch.NightwatchApp"
+44-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:25:9-38
+45        android:allowBackup="false"
+45-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:26:9-36
+46        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+46-->[androidx.core:core:1.13.1] C:\Users\User\.gradle\caches\9.3.0\transforms\bf89162ae3a323bacc1f2afbf831c8e8\workspace\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+47        android:debuggable="true"
+48        android:extractNativeLibs="false"
+49        android:label="@string/app_name"
+49-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:27:9-41
+50        android:supportsRtl="true"
+50-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:28:9-35
+51        android:testOnly="true"
+52        android:theme="@style/Theme.Nightwatch" >
+52-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:29:9-48
+53        <activity
+53-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:31:9-40:20
+54            android:name="au.edu.unimelb.nightwatch.MainActivity"
+54-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:32:13-41
+55            android:exported="true"
+55-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:33:13-36
+56            android:launchMode="singleTop"
+56-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:34:13-43
+57            android:theme="@style/Theme.Nightwatch" >
+57-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:35:13-52
+58            <intent-filter>
+58-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:36:13-39:29
+59                <action android:name="android.intent.action.MAIN" />
+59-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:37:17-69
+59-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:37:25-66
+60
+61                <category android:name="android.intent.category.LAUNCHER" />
+61-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:38:17-77
+61-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:38:27-74
+62            </intent-filter>
+63        </activity>
+64
+65        <service
+65-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:42:9-45:67
+66            android:name="au.edu.unimelb.nightwatch.service.SafeWalkService"
+66-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:43:13-52
+67            android:exported="false"
+67-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:44:13-37
+68            android:foregroundServiceType="location|microphone" />
+68-->C:\Users\User\Documents\University\Y7S2\COMP90018\NightwatchPrototype\app\src\main\AndroidManifest.xml:45:13-64
+69
+70        <activity
+70-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\User\.gradle\caches\9.3.0\transforms\4fee56e9d9a76cdfe22f3700cfa3b393\workspace\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:9-173
+71            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+71-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\User\.gradle\caches\9.3.0\transforms\4fee56e9d9a76cdfe22f3700cfa3b393\workspace\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:19-85
+72            android:exported="false"
+72-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\User\.gradle\caches\9.3.0\transforms\4fee56e9d9a76cdfe22f3700cfa3b393\workspace\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:146-170
+73            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+73-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\User\.gradle\caches\9.3.0\transforms\4fee56e9d9a76cdfe22f3700cfa3b393\workspace\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:86-145
+74
+75        <meta-data
+75-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\User\.gradle\caches\9.3.0\transforms\6cd39fef3be0fb93ef0b38658d676768\workspace\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:9-122
+76            android:name="com.google.android.gms.version"
+76-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\User\.gradle\caches\9.3.0\transforms\6cd39fef3be0fb93ef0b38658d676768\workspace\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:20-65
+77            android:value="@integer/google_play_services_version" />
+77-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\User\.gradle\caches\9.3.0\transforms\6cd39fef3be0fb93ef0b38658d676768\workspace\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:66-119
+78
+79        <activity
+79-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\User\.gradle\caches\9.3.0\transforms\e7c1c5e4c441c5bbc064de16a2b2f636\workspace\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+80            android:name="androidx.compose.ui.tooling.PreviewActivity"
+80-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\User\.gradle\caches\9.3.0\transforms\e7c1c5e4c441c5bbc064de16a2b2f636\workspace\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+81            android:exported="true" />
+81-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\User\.gradle\caches\9.3.0\transforms\e7c1c5e4c441c5bbc064de16a2b2f636\workspace\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+82
+83        <provider
+83-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:24:9-32:20
+84            android:name="androidx.startup.InitializationProvider"
+84-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:25:13-67
+85            android:authorities="au.edu.unimelb.nightwatch.androidx-startup"
+85-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:26:13-68
+86            android:exported="false" >
+86-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:27:13-37
+87            <meta-data
+87-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:29:13-31:52
+88                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+88-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:30:17-78
+89                android:value="androidx.startup" />
+89-->[androidx.lifecycle:lifecycle-process:2.8.2] C:\Users\User\.gradle\caches\9.3.0\transforms\09b1d9053b4f35af5ac6771b9708b254\workspace\transformed\lifecycle-process-2.8.2\AndroidManifest.xml:31:17-49
+90            <meta-data
+90-->[androidx.emoji2:emoji2:1.3.0] C:\Users\User\.gradle\caches\9.3.0\transforms\ce8979f83f245ab6adf93ff3a26bcc44\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+91                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+91-->[androidx.emoji2:emoji2:1.3.0] C:\Users\User\.gradle\caches\9.3.0\transforms\ce8979f83f245ab6adf93ff3a26bcc44\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+92                android:value="androidx.startup" />
+92-->[androidx.emoji2:emoji2:1.3.0] C:\Users\User\.gradle\caches\9.3.0\transforms\ce8979f83f245ab6adf93ff3a26bcc44\workspace\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+93            <meta-data
+93-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+94                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+94-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+95                android:value="androidx.startup" />
+95-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+96        </provider>
+97
+98        <receiver
+98-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+99            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+99-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+100            android:directBootAware="false"
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+101            android:enabled="true"
+101-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+102            android:exported="true"
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+103            android:permission="android.permission.DUMP" >
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+104            <intent-filter>
+104-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+105                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+106            </intent-filter>
+107            <intent-filter>
+107-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+108                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+109            </intent-filter>
+110            <intent-filter>
+110-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+111                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+112            </intent-filter>
+113            <intent-filter>
+113-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+114                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\User\.gradle\caches\9.3.0\transforms\52a3dfb2d9b829c4bcfa22c5b10065f7\workspace\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+115            </intent-filter>
+116        </receiver>
+117    </application>
+118
+119</manifest>

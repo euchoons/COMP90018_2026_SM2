@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Nightwatch</string>
+    <string name="channel_monitoring">Safe walk monitoring</string>
+    <string name="channel_alerts">Safety alerts</string>
+</resources>

@@ -1,0 +1,6 @@
+R_DEF: Internal format may change without notice
+local
+string app_name
+string channel_alerts
+string channel_monitoring
+style Theme.Nightwatch
