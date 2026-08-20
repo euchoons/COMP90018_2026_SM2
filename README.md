@@ -56,4 +56,5 @@ graph LR
 * 👤 **Tom**
 * 👤 **Mason**
 * 👤 **Mingyang**
-* 👤 **Seb Asleif**
+* 👤 **Seb
+* 👤 **Asleif**
