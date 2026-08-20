@@ -1,5 +1,6 @@
 # COMP90018_2026_SM2
 Please read
+
 🪵 Workload Documentation Rules
 Issue Tracking: Map every project requirement to a GitHub Issue.
 Assignees: Assign yourself to an Issue before you start working on it. Never work on unassigned tasks.
