@@ -63,7 +63,7 @@ data class SensorSnapshot(
     val headingDegrees: Float? = null,
     val availability: SensorAvailability = SensorAvailability(),
 ) {
-    val isStable: Boolean get() = stability >= 0.78
+    val isStable: Boolean get() = stability >= 0.6
 
     val lightAssessment: String
         get() = when (lightLux) {

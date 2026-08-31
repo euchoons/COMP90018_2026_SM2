@@ -72,9 +72,9 @@ class SensorMonitor(context: Context) : SensorEventListener {
         }
 
         updateHeading()
-        val target = exp(-(accelerationDeviation * 1.55 + angularVelocity * 1.25))
+        val target = exp(-(accelerationDeviation * 0.9 + angularVelocity * 0.6))
             .coerceIn(0.0, 1.0)
-        smoothedStability = (0.82 * smoothedStability + 0.18 * target).coerceIn(0.0, 1.0)
+        smoothedStability = (0.7 * smoothedStability + 0.3 * target).coerceIn(0.0, 1.0)
         publish()
     }
 
