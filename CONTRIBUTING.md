@@ -1,4 +1,4 @@
-# Contributing to BioScout
+# Contributing to FloraGuide
 
 This project is assessed both as a group system and through individual code ownership. The repository workflow therefore has two goals: keep the app stable and preserve clear evidence of who designed, implemented, tested and reviewed each part.
 

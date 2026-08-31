@@ -15,7 +15,7 @@ The baseline architecture is designed to:
 
 ```mermaid
 flowchart LR
-    UI[Compose screens] --> VM[BioScoutViewModel]
+    UI[Compose screens] --> VM[FloraGuideViewModel]
     VM --> Rank[RankSpeciesCandidatesUseCase]
     VM --> IC[ImageClassifier]
     VM --> SCR[SpeciesContextRepository]
@@ -33,9 +33,9 @@ Dependencies point inward toward domain types and interfaces. The domain model a
 
 ## Entry point and UI state
 
-`MainActivity.kt` creates `BioScoutViewModel` through `AppContainer` and renders `BioScoutApp`.
+`MainActivity.kt` creates `FloraGuideViewModel` through `AppContainer` and renders `FloraGuideApp`.
 
-`BioScoutViewModel` owns one immutable `BioScoutUiState`, including:
+`FloraGuideViewModel` owns one immutable `FloraGuideUiState`, including:
 
 - current screen;
 - sensor snapshot and location status;
@@ -87,7 +87,7 @@ A future `TfliteImageClassifier` should implement the same interface, perform bi
 
 ### `ui`
 
-`BioScoutApp` provides navigation and screen selection. Screen composables contain display logic and user interactions. Shared components provide status chips, evidence bars, habitat selection and photo thumbnails.
+`FloraGuideApp` provides navigation and screen selection. Screen composables contain display logic and user interactions. Shared components provide status chips, evidence bars, habitat selection and photo thumbnails.
 
 ## Runtime flow
 

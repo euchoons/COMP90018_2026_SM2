@@ -16,7 +16,7 @@ If the build fails, record the Android Studio version, Gradle JDK, SDK installat
 
 ### 5–10 minutes: run the guided demo
 
-Open BioScout and choose **Run the 60-second guided demo**. Observe this sequence:
+Open FloraGuide and choose **Run the 60-second guided demo**. Observe this sequence:
 
 1. an image-only candidate list appears;
 2. deterministic location/season/habitat context is applied;
@@ -45,8 +45,8 @@ A teammate working on sensors must test real device variation rather than rely o
 Follow this path:
 
 1. `MainActivity.kt` starts the Compose application.
-2. `BioScoutApp.kt` selects the screen from `BioScoutUiState`.
-3. `BioScoutViewModel.kt` coordinates capture, classification, context lookup, reranking and persistence.
+2. `FloraGuideApp.kt` selects the screen from `FloraGuideUiState`.
+3. `FloraGuideViewModel.kt` coordinates capture, classification, context lookup, reranking and persistence.
 4. `DemoImageClassifier.kt` returns a deterministic Top-K list.
 5. `AlaSpeciesContextRepository.kt` obtains live, partial or fallback nearby counts through `AlaOccurrenceClient.kt`.
 6. `RankSpeciesCandidatesUseCase.kt` combines image, location, season and habitat evidence.
@@ -84,7 +84,7 @@ Choose a workstream only after the group agrees on the final species scope and t
 
 ## Questions every member should be able to answer
 
-- What user problem does BioScout solve?
+- What user problem does FloraGuide solve?
 - What is the current visual-model limitation?
 - Why do we generate more than three image candidates?
 - How can location, season and habitat change the order?

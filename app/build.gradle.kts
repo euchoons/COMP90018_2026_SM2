@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "au.edu.unimelb.bioscout"
+    namespace = "au.edu.unimelb.floraguide"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "au.edu.unimelb.bioscout"
+        applicationId = "au.edu.unimelb.floraguide"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

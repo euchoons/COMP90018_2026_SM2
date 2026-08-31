@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BioScout"
+rootProject.name = "FloraGuide"
 include(":app")

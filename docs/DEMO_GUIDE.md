@@ -42,7 +42,7 @@ Image-only recognition is ambiguous. Mobile context can narrow the candidate set
 
 ### System
 
-BioScout uses camera, motion, light, heading, location, date, microhabitat and ALA records. It first responds with local candidates, then reranks when network context arrives.
+FloraGuide uses camera, motion, light, heading, location, date, microhabitat and ALA records. It first responds with local candidates, then reranks when network context arrives.
 
 ### Technical depth
 

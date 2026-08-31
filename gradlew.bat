@@ -5,7 +5,7 @@ SET WRAPPER_JAR=%APP_HOME%gradle\wrapper\gradle-wrapper.jar
 SET WRAPPER_URL=https://github.com/gradle/gradle/raw/refs/tags/v8.13.0/gradle/wrapper/gradle-wrapper.jar
 
 IF NOT EXIST "%WRAPPER_JAR%" (
-  ECHO BioScout: downloading the Gradle 8.13 wrapper bootstrap JAR...
+  ECHO FloraGuide: downloading the Gradle 8.13 wrapper bootstrap JAR...
   powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -UseBasicParsing '%WRAPPER_URL%' -OutFile '%WRAPPER_JAR%'"
   IF ERRORLEVEL 1 EXIT /B 1
 )

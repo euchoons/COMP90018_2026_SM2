@@ -26,15 +26,15 @@
         android:required="false" />
 
     <application
-        android:name=".BioScoutApplication"
+        android:name=".FloraGuideApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/ic_launcher"
-        android:label="BioScout"
+        android:label="FloraGuide"
         android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BioScout"
+        android:theme="@style/Theme.FloraGuide"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"

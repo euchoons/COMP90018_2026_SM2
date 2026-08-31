@@ -56,7 +56,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 5. Implementation — Quality — 10 points
 
-**How.** BioScout will retain a layered Kotlin/Compose architecture with framework-independent domain logic, repository interfaces for the classifier/context/store, a single immutable UI state and constructor-injected dependencies. The team will centralise dependency versions, enforce formatting, review pull requests and add focused unit/integration tests for algorithms, network parsing, caching, persistence and error paths. Large bitmap, network and sensor work will remain outside composables and the main thread.
+**How.** FloraGuide will retain a layered Kotlin/Compose architecture with framework-independent domain logic, repository interfaces for the classifier/context/store, a single immutable UI state and constructor-injected dependencies. The team will centralise dependency versions, enforce formatting, review pull requests and add focused unit/integration tests for algorithms, network parsing, caching, persistence and error paths. Large bitmap, network and sensor work will remain outside composables and the main thread.
 
 **Why.** These boundaries make responsibilities readable, reduce coupling and allow a real TensorFlow Lite model or Firebase store to replace prototype implementations without rewriting the user flow. Tests and explicit states make behaviour self-explanatory and maintainable.
 
@@ -80,7 +80,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 7. Implementation — Connectivity — 12 points
 
-**How.** BioScout will use the Atlas of Living Australia read API to retrieve nearby occurrence counts for image candidates and a team-controlled cloud backend, proposed as Firebase, to store confirmed observation metadata and photos. Candidate requests will run concurrently with timeouts. A Room cache will reduce repeated lookups and expose freshness. The UI will distinguish live, partial, cached and offline sources, support retry and queue cloud observations when the network is unavailable. The project will not promise direct writes to ALA unless authentication is separately verified.
+**How.** FloraGuide will use the Atlas of Living Australia read API to retrieve nearby occurrence counts for image candidates and a team-controlled cloud backend, proposed as Firebase, to store confirmed observation metadata and photos. Candidate requests will run concurrently with timeouts. A Room cache will reduce repeated lookups and expose freshness. The UI will distinguish live, partial, cached and offline sources, support retry and queue cloud observations when the network is unavailable. The project will not promise direct writes to ALA unless authentication is separately verified.
 
 **Why.** Internet data materially changes the species ranking, while cloud storage enables observations to persist and support the selected map or mission. Explicit caching, partial responses, retry and offline behaviour address the variable connectivity expected in mobile systems.
 
@@ -130,7 +130,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 11. User Interface — Guidelines — 6 points
 
-**How.** BioScout will follow Android and Material patterns for runtime permissions, navigation, back behaviour, loading, retry, empty states, touch targets and system bars. Camera and location permissions will be requested in context with a rationale and a usable denied path. The team will externalise strings, provide content descriptions, test large font scaling and TalkBack, and maintain readable contrast.
+**How.** FloraGuide will follow Android and Material patterns for runtime permissions, navigation, back behaviour, loading, retry, empty states, touch targets and system bars. Camera and location permissions will be requested in context with a rationale and a usable denied path. The team will externalise strings, provide content descriptions, test large font scaling and TalkBack, and maintain readable contrast.
 
 **Why.** Platform-consistent behaviour reduces surprise and makes complex sensor/network states understandable. Accessibility and permission recovery are essential for a usable mobile application, not optional polish.
 
@@ -170,7 +170,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 **Why.** These responses make context awareness observable and give the user feedback and control over implicit sensing. The UI does not merely display a final static result.
 
-**Feasibility.** Most reactive states already exist in `BioScoutUiState`. Remaining work includes real model progress, cache/cloud state and measured throttling of high-frequency sensor updates. The single-state architecture reduces inconsistent screen states.
+**Feasibility.** Most reactive states already exist in `FloraGuideUiState`. Remaining work includes real model progress, cache/cloud state and measured throttling of high-frequency sensor updates. The single-state architecture reduces inconsistent screen states.
 
 **Planned evidence.** Video showing motion-to-stability changes, light/location updates, image-only-to-fused transition, habitat reranking, network retry and upload queue state.
 
@@ -180,7 +180,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 15. Innovation — Novelty — 3 points
 
-**How.** BioScout will position its novelty as an explainable, campus-scale context-fusion workflow rather than claiming that photo identification or location weighting is new. The system combines sensor-guided capture, nearby occurrence history, date and explicit microhabitat; shows image-only versus fused rankings; exposes cue contributions; and keeps the user responsible for confirmation.
+**How.** FloraGuide will position its novelty as an explainable, campus-scale context-fusion workflow rather than claiming that photo identification or location weighting is new. The system combines sensor-guided capture, nearby occurrence history, date and explicit microhabitat; shows image-only versus fused rankings; exposes cue contributions; and keeps the user responsible for confirmation.
 
 **Why.** The value comes from making heterogeneous mobile context visible and interactive. Microhabitat and evidence-level explanation distinguish the proposal from a simple wrapper around a classification API.
 
@@ -216,7 +216,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 18. Innovation — Cross-Disciplinary — 3 points
 
-**How.** BioScout applies ecology and biodiversity concepts—species occurrence, seasonality, habitat compatibility, taxonomy and sensitive-location concerns—through GIS queries, computer vision and human-computer interaction. The team will obtain feedback from a knowledgeable source where possible and document the limitations of heuristic priors.
+**How.** FloraGuide applies ecology and biodiversity concepts—species occurrence, seasonality, habitat compatibility, taxonomy and sensitive-location concerns—through GIS queries, computer vision and human-computer interaction. The team will obtain feedback from a knowledgeable source where possible and document the limitations of heuristic priors.
 
 **Why.** Ecological ideas are used to change the algorithm and interface, not added as theme. Citizen-science practices also shape user confirmation, provenance and responsible location handling.
 
@@ -228,7 +228,7 @@ This file covers all 19 Assignment 2 criteria in order. It is deliberately more 
 
 ### 19. Innovation — Impact — 3 points
 
-**How.** BioScout aims to make campus biodiversity exploration more understandable, help non-experts learn common species and support structured observation activities. The personal field guide and selected map or mission can encourage repeated outdoor engagement. The design will include uncertainty, correction and privacy controls to reduce harm from misidentification or precise location sharing.
+**How.** FloraGuide aims to make campus biodiversity exploration more understandable, help non-experts learn common species and support structured observation activities. The personal field guide and selected map or mission can encourage repeated outdoor engagement. The design will include uncertainty, correction and privacy controls to reduce harm from misidentification or precise location sharing.
 
 **Why.** The application improves an existing task—learning and recording biodiversity—by combining immediate mobile guidance with an explanation of ecological context. The potential impact is educational and community-oriented rather than merely entertaining.
 

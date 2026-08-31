@@ -26,7 +26,7 @@ git status
 Review the complete staged-file list before committing. The initial commit should contain source code, the Gradle wrapper, tests and team documentation only.
 
 ```bash
-git commit -m "chore: establish BioScout team baseline"
+git commit -m "chore: establish FloraGuide team baseline"
 ```
 
 ## 3. Connect the private remote
@@ -45,7 +45,7 @@ If the remote already has commits, do not force-push over them without group agr
 After at least one other member has cloned, built and reviewed the baseline:
 
 ```bash
-git tag -a proposal-baseline-v0.1 -m "Verified BioScout proposal baseline"
+git tag -a proposal-baseline-v0.1 -m "Verified FloraGuide proposal baseline"
 git push origin proposal-baseline-v0.1
 ```
 

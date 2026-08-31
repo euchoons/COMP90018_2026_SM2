@@ -5,7 +5,7 @@ WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 WRAPPER_URL="https://github.com/gradle/gradle/raw/refs/tags/v8.13.0/gradle/wrapper/gradle-wrapper.jar"
 
 if [ ! -f "$WRAPPER_JAR" ]; then
-  echo "BioScout: downloading the Gradle 8.13 wrapper bootstrap JAR..." >&2
+  echo "FloraGuide: downloading the Gradle 8.13 wrapper bootstrap JAR..." >&2
   mkdir -p "$(dirname "$WRAPPER_JAR")"
   if command -v curl >/dev/null 2>&1; then
     curl --fail --location --silent --show-error "$WRAPPER_URL" --output "$WRAPPER_JAR"

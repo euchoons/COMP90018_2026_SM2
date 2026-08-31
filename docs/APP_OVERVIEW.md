@@ -2,13 +2,13 @@
 
 ## One-sentence concept
 
-BioScout is a campus biodiversity observation app that provides an explainable species shortlist by combining camera-derived candidates with location, season, nearby occurrence history and the user's observed microhabitat.
+FloraGuide is a campus biodiversity observation app that provides an explainable species shortlist by combining camera-derived candidates with location, season, nearby occurrence history and the user's observed microhabitat.
 
 ## Problem
 
 Image-only species identification can be ambiguous when multiple plants look similar, a photo is poorly framed, or the model has limited training data. A mobile device already has access to additional context that can reduce this ambiguity: where the observation was made, when it was made, what habitat surrounds it and whether the photo was captured under usable conditions.
 
-BioScout turns these separate cues into one understandable workflow rather than presenting the output of a black-box image service as a definitive answer.
+FloraGuide turns these separate cues into one understandable workflow rather than presenting the output of a black-box image service as a definitive answer.
 
 ## Target users
 
@@ -97,4 +97,4 @@ A final evaluation should report:
 
 ## Safety, privacy and trust
 
-BioScout can make incorrect suggestions. The UI should show multiple candidates, support unknown or genus-level results and avoid authoritative language. Exact coordinates should not be exposed by default, especially for sensitive species. Photos and cloud observations require clear user consent, deletion controls and documented retention rules.
+FloraGuide can make incorrect suggestions. The UI should show multiple candidates, support unknown or genus-level results and avoid authoritative language. Exact coordinates should not be exposed by default, especially for sensitive species. Photos and cloud observations require clear user consent, deletion controls and documented retention rules.
