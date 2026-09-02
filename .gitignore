@@ -1,0 +1,33 @@
+# Android Studio and local machine state
+.idea/
+*.iml
+local.properties
+.gradle/
+.kotlin/
+
+# Build outputs
+build/
+**/build/
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Operating-system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*~
+
+# Local evidence and recordings
+/docs/evidence/*
+!/docs/evidence/.gitkeep
