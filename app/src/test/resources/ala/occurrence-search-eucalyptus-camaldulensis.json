@@ -1,0 +1,15 @@
+{
+  "pageSize": 0,
+  "startIndex": 0,
+  "totalRecords": 532,
+  "sort": "score",
+  "dir": "asc",
+  "status": "OK",
+  "occurrences": [],
+  "facetResults": [],
+  "query": "?q=scientificName%3A%22Eucalyptus%20camaldulensis%22&lat=-37.7963&lon=144.9614&radius=8.0",
+  "urlParameters": "?q=scientificName%3A%22Eucalyptus%20camaldulensis%22&lat=-37.7963&lon=144.9614&radius=8.0",
+  "queryTitle": "Scientific name:\"Eucalyptus camaldulensis\" - within 8 km of point(-37.796, 144.961)",
+  "activeFacetMap": {},
+  "activeFacetObj": {}
+}
