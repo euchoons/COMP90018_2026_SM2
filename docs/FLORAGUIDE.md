@@ -57,20 +57,15 @@ Open the repository root in Android Studio, allow Gradle sync to complete, selec
 
 Do not commit `local.properties`, `.idea`, `.gradle`, `.kotlin`, `app/build`, APKs or local recordings. The repository `.gitignore` excludes them.
 
-## First repository push
-
-Before uploading, follow [`docs/FIRST_PUSH.md`](docs/FIRST_PUSH.md). It includes a staged-file review, private-remote setup, member Git identities and a rule to tag the baseline only after another teammate has cloned and verified it.
-
 ## Understand the app
 
 The fastest path for a new team member is:
 
-1. Read [`docs/TEAM_ONBOARDING.md`](docs/TEAM_ONBOARDING.md).
-2. Run the guided demo from the Home screen.
-3. Read [`docs/APP_OVERVIEW.md`](docs/APP_OVERVIEW.md) for the product scope and innovation claim.
-4. Follow one observation through [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-5. Check what is real, provisional and still planned in [`docs/PROJECT_STATUS_AND_ROADMAP.md`](docs/PROJECT_STATUS_AND_ROADMAP.md).
-6. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before taking ownership of a workstream.
+1. Run the guided demo from the Home screen.
+2. Read [`docs/APP_OVERVIEW.md`](docs/APP_OVERVIEW.md) for the product scope and innovation claim.
+3. Follow one observation through [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+4. Check what is real, provisional and still planned in [`docs/PROJECT_STATUS_AND_ROADMAP.md`](docs/PROJECT_STATUS_AND_ROADMAP.md).
+5. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before taking ownership of a workstream.
 
 ## Core user flow
 
@@ -104,15 +99,12 @@ The domain model and ranking use case do not import Android APIs. The classifier
 
 ## Assignment 1 workspace
 
-Assignment 1 requires complete, traceable planning against every Assignment 2 rubric criterion, a one-page itemised contribution plan, group/member details and acknowledgement of AI use. The working files are under [`docs/assignment-1/`](docs/assignment-1/README.md):
+Assignment 1 requires traceable planning against the Assignment 2 rubric, an itemised contribution plan, group/member details and acknowledgement of AI use. The remaining working files are under [`docs/assignment-1/`](assignment-1/):
 
-- `README.md` — official requirements, page strategy and team workflow;
-- `REPORT_OUTLINE.md` — suggested final report structure;
-- `RUBRIC_PLAN.md` — English planning draft for all 19 Assignment 2 criteria;
-- `CONTRIBUTION_PLAN_TEMPLATE.md` — one-page, concrete and balanced contribution template;
+- `FloraGuide Android Mobile App Project Plan Assessment 1.docx` — the submitted project plan;
 - `AI_USE_LOG.md` — tool-use log and acknowledgement draft.
 
-These files are planning material. The group must review every claim, assign owners, replace placeholders and ensure the final PDF reflects the work the team genuinely intends to complete.
+Record any material AI use in `AI_USE_LOG.md` as the work happens, not at submission time.
 
 ## Useful technical commands
 
