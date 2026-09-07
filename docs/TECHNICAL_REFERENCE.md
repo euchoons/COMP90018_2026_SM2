@@ -19,6 +19,36 @@ The version catalogue currently pins:
 
 Versions are centralised in `gradle/libs.versions.toml`. Update them through a reviewed dependency change rather than editing versions throughout the project.
 
+## Pl@ntNet identification request
+
+Image recognition is a cloud call to the Pl@ntNet v2 API:
+
+```text
+POST https://my-api.plantnet.org/v2/identify/all
+    ?api-key=<key>&nb-results=8&lang=en
+multipart/form-data:
+    organs=auto
+    images=<captured JPEG>
+```
+
+Only `results[].score` and `results[].species.scientificNameWithoutAuthor` (plus the optional
+`commonNames`) are consumed. Scores are per-species confidences and do **not** sum to 1;
+normalisation is the ranking use case's job.
+
+`nb-results=8` bounds the downstream ALA fan-out, because one occurrence request is issued per
+candidate. A free key allows 500 identifications a day; `remainingIdentificationRequests` is
+logged after every call so the team can see the budget before a demo.
+
+The key is read from `plantnet.api.key` in the git-ignored `local.properties` and exposed through
+`BuildConfig`. It is therefore present inside the APK: acceptable for coursework, not secret
+storage. Without a key the app builds and runs on the labelled demo adapter instead.
+
+Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.
+
+```bash
+./tools/verify-plantnet.sh path/to/plant.jpg
+```
+
 ## ALA occurrence request
 
 The baseline client performs a read-only count query:

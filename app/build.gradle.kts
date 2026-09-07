@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -18,6 +19,18 @@ android {
         versionName = "0.1.0-baseline"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The key lives in git-ignored local.properties. An absent key is not a build failure:
+        // AppContainer then keeps the clearly labelled demo adapter.
+        // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
+        // prototype but is not secret storage; move it behind a proxy if this is ever published.
+        val plantNetApiKey = Properties().apply {
+            rootProject.file("local.properties")
+                .takeIf { it.exists() }
+                ?.inputStream()
+                ?.use { stream -> load(stream) }
+        }.getProperty("plantnet.api.key", "")
+        buildConfigField("String", "PLANTNET_API_KEY", "\"$plantNetApiKey\"")
     }
 
     buildTypes {

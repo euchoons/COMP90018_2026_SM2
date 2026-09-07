@@ -9,6 +9,7 @@ import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
+import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
@@ -37,6 +38,8 @@ data class FloraGuideUiState(
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
     val photoPath: String? = null,
     val imagePredictions: List<ImagePrediction> = emptyList(),
+    val imageSource: ImageSource? = null,
+    val imageElapsedMillis: Long? = null,
     val imageOnlyRanking: List<RankedCandidate> = emptyList(),
     val fusedRanking: List<RankedCandidate> = emptyList(),
     val nearbyContext: NearbyContext? = null,
@@ -102,6 +105,8 @@ class FloraGuideViewModel(
                 message = null,
                 photoPath = null,
                 imagePredictions = emptyList(),
+                imageSource = null,
+                imageElapsedMillis = null,
                 imageOnlyRanking = emptyList(),
                 fusedRanking = emptyList(),
                 nearbyContext = null,
@@ -234,6 +239,8 @@ class FloraGuideViewModel(
                     screen = AppScreen.RESULTS,
                     photoPath = photoPath,
                     imagePredictions = emptyList(),
+                    imageSource = null,
+                    imageElapsedMillis = null,
                     imageOnlyRanking = emptyList(),
                     fusedRanking = emptyList(),
                     nearbyContext = null,
@@ -247,11 +254,14 @@ class FloraGuideViewModel(
             }
 
             try {
-                val predictions = container.imageClassifier.classify(photoPath)
+                val classification = container.imageClassifier.classify(photoPath)
+                val predictions = classification.predictions
                 val imageOnly = container.rankCandidates.imageOnly(predictions)
                 _uiState.update {
                     it.copy(
                         imagePredictions = predictions,
+                        imageSource = classification.source,
+                        imageElapsedMillis = classification.elapsedMillis,
                         imageOnlyRanking = imageOnly,
                         selectedSpeciesId = imageOnly.firstOrNull()?.species?.id,
                         isClassifying = false,

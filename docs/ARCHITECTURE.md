@@ -23,7 +23,9 @@ flowchart LR
     VM --> Sensors[SensorMonitor]
     VM --> Location[LocationTracker]
 
-    IC --> Demo[DemoImageClassifier]
+    IC --> PlantNet[PlantNetImageClassifier]
+    PlantNet --> PNHTTP[PlantNetClient]
+    PlantNet --> Demo[DemoImageClassifier]
     SCR --> ALA[AlaSpeciesContextRepository]
     ALA --> HTTP[AlaOccurrenceClient]
     OR --> Local[PreferencesObservationRepository]
@@ -57,7 +59,7 @@ Framework-independent types for species, habitat, image predictions, locations, 
 
 Three replacement seams:
 
-- `ImageClassifier` — returns a Top-K candidate list;
+- `ImageClassifier` — returns a Top-K candidate list tagged with its `ImageSource`;
 - `SpeciesContextRepository` — returns nearby occurrence counts and source telemetry;
 - `ObservationRepository` — loads and saves confirmed observations.
 
@@ -67,9 +69,19 @@ Contains image-only normalisation and the context-fusion algorithm. It is a pure
 
 ### `data/classifier`
 
-`DemoImageClassifier` returns deterministic scores with a small photo-path-derived variation. This demonstrates asynchronous state and reranking but does not inspect pixels.
+`DemoImageClassifier` returns deterministic scores with a small photo-path-derived variation. This demonstrates asynchronous state and reranking but does not inspect pixels. It backs the guided demo and any build without an API key.
 
-A future `TfliteImageClassifier` should implement the same interface, perform bitmap preprocessing, run an on-device model and return 10–20 mapped candidates.
+A future `TfliteImageClassifier` implements the same interface, performs bitmap preprocessing, runs an on-device model and returns mapped candidates. Cloud and on-device adapters are intended to coexist behind `ImageClassifier`.
+
+### `data/plantnet`
+
+`PlantNetClient` uploads the captured JPEG to the Pl@ntNet v2 API as a streamed multipart request, enforces timeouts, parses candidates strictly and records telemetry. The API key is a query parameter and is never logged.
+
+`PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. Pl@ntNet covers the world flora, so there is no fixed catalogue and therefore no label-to-ALA mapping table: `AlaOccurrenceClient` already queries by scientific name.
+
+Season and habitat affinities are deliberately left empty for these species. `seasonalPrior` and `habitatPrior` then return the same constant for every candidate, which adds a constant to every raw score and cancels in the softmax. Ranking is decided by the image score and nearby ALA records rather than by invented ecology. A photo captured during integration demonstrates the effect: Pl@ntNet ranked the tropical *Corymbia bella* first (0.173) ahead of *Eucalyptus camaldulensis* (0.125), and the campus ALA counts (0 versus 532 within 8 km) restore the correct order.
+
+When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so the guided demo stays offline and repeatable.
 
 ### `data/ala`
 
@@ -173,7 +185,8 @@ This design supports a responsive interface, but final claims require measured i
 | Magnetometer | Heading metadata | Explicit unavailable state. |
 | Location | GPS/network location | Campus demo location with visible label. |
 | ALA | Live candidate counts | Partial merge, persistent warning, retry or deterministic fallback. |
-| Image model | Future TFLite model | Clearly labelled deterministic demo adapter. |
+| Pl@ntNet | Cloud Top-8 candidates | Errors surface verbatim (no match, quota reached, key rejected); guided demo remains available. |
+| Image model | Future on-device TFLite model | Clearly labelled deterministic demo adapter. |
 | Cloud store | Future Firebase implementation | Local observation repository. |
 
 Fallbacks must remain visible. The app should never silently present demo data as live data.
@@ -189,6 +202,8 @@ Current JVM tests cover:
 - image/location/season/habitat reranking;
 - softmax normalisation;
 - smoothing when nearby counts are missing;
+- recorded Pl@ntNet response parsing, malformed schemas and multipart request construction;
+- Pl@ntNet species mapping, guided-demo delegation and ALA-driven reranking of a real capture;
 - recorded ALA response parsing and malformed schemas;
 - count-only query construction and HTTP failures;
 - guided fallback, complete live data, partial data and cancellation.
@@ -205,7 +220,7 @@ Final evaluation also requires physical-device and end-to-end tests that cannot 
 
 ### TensorFlow Lite
 
-Implement `TfliteImageClassifier`, add image preprocessing and map every model label to a stable internal species and ALA taxon identifier. Preserve a Top-K list and add unknown/genus-level handling.
+Implement `TfliteImageClassifier` alongside the Pl@ntNet adapter, add image preprocessing and map every model label to a stable internal species and ALA taxon identifier. Preserve a Top-K list, tag results with a new `ImageSource`, and add unknown/genus-level handling. Selecting between cloud and on-device is a single decision in `AppContainer`; the ViewModel and UI already display whichever source produced the candidates.
 
 ### Firebase or equivalent cloud backend
 

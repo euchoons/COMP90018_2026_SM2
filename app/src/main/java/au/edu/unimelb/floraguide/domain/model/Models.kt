@@ -44,6 +44,18 @@ data class ImagePrediction(
     val rank: Int,
 )
 
+/** Where a candidate list came from. Fallbacks must stay visible in the UI. */
+enum class ImageSource(val label: String) {
+    PLANTNET_LIVE("Pl@ntNet cloud model"),
+    DEMO_ADAPTER("Prototype image adapter"),
+}
+
+data class ImageClassification(
+    val predictions: List<ImagePrediction>,
+    val source: ImageSource,
+    val elapsedMillis: Long? = null,
+)
+
 data class GeoPoint(
     val latitude: Double,
     val longitude: Double,
