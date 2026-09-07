@@ -11,6 +11,8 @@ import au.edu.unimelb.floraguide.domain.repository.SpeciesContextRepository
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
 import au.edu.unimelb.floraguide.platform.LocationTracker
 import au.edu.unimelb.floraguide.platform.SensorMonitor
+import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
+
 
 class AppContainer(context: Context) {
     val imageClassifier: ImageClassifier = DemoImageClassifier()
@@ -18,6 +20,7 @@ class AppContainer(context: Context) {
         AlaSpeciesContextRepository(AlaOccurrenceClient())
     val observationRepository: ObservationRepository =
         PreferencesObservationRepository(context)
+    val photoStorage = FirebasePhotoStorage()
     val rankCandidates = RankSpeciesCandidatesUseCase()
     val sensorMonitor = SensorMonitor(context)
     val locationTracker = LocationTracker(context)

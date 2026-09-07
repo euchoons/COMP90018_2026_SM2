@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "946598149027",
+    "project_id": "floraguide-fe2a0",
+    "storage_bucket": "floraguide-fe2a0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:946598149027:android:590ce6178c1ba4ced2b816",
+        "android_client_info": {
+          "package_name": "au.edu.unimelb.floraguide"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD70hR3aByK6FSv1Jz0UkoIU6sbTmzamVs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
