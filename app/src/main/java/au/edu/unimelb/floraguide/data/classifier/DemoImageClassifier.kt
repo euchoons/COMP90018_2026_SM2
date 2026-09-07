@@ -1,7 +1,9 @@
 package au.edu.unimelb.floraguide.data.classifier
 
 import au.edu.unimelb.floraguide.data.catalog.DemoSpeciesCatalog
+import au.edu.unimelb.floraguide.domain.model.ImageClassification
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
+import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.repository.ImageClassifier
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -11,7 +13,7 @@ import kotlin.math.abs
  * demonstrate the complete architecture before training/integrating TensorFlow Lite.
  */
 class DemoImageClassifier : ImageClassifier {
-    override suspend fun classify(photoPath: String?): List<ImagePrediction> {
+    override suspend fun classify(photoPath: String?): ImageClassification {
         delay(420) // Makes the asynchronous UI state visible without feeling slow.
 
         val baseScores = listOf(0.41, 0.31, 0.13, 0.07, 0.035, 0.025, 0.012, 0.008)
@@ -23,7 +25,7 @@ class DemoImageClassifier : ImageClassifier {
         }
         val normaliser = adjusted.sum()
 
-        return DemoSpeciesCatalog.all
+        val predictions = DemoSpeciesCatalog.all
             .zip(adjusted)
             .sortedByDescending { (_, score) -> score }
             .mapIndexed { index, (species, score) ->
@@ -33,5 +35,7 @@ class DemoImageClassifier : ImageClassifier {
                     rank = index + 1,
                 )
             }
+
+        return ImageClassification(predictions = predictions, source = ImageSource.DEMO_ADAPTER)
     }
 }

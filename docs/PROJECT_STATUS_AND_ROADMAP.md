@@ -11,7 +11,7 @@ This document is the baseline source of truth for scope. Update it whenever the 
 | Motion sensing | Implemented in source | Accelerometer/gyroscope stability fusion with a heuristic threshold. |
 | Light and heading | Implemented in source | Optional ambient-light and magnetometer feedback with fallback states. |
 | Location | Implemented in source | GPS/network location and a visibly labelled campus demo fallback. |
-| Image recognition | Prototype only | Deterministic Top-K adapter; no pixel-based species recognition. |
+| Image recognition | Implemented in source (cloud) | Pl@ntNet v2 cloud identification of the captured JPEG, Top-8 candidates. Requires network and an API key; the guided demo and any keyless build stay on the labelled demo adapter. No on-device model yet. |
 | ALA connectivity | Implemented in source | Read-only count requests, concurrent lookups, telemetry and fallback; live behaviour must be rechecked by the team. |
 | Fusion algorithm | Implemented and unit-tested | Log-linear reranking with smoothing and relative scores. |
 | Observation storage | Local prototype | App-private photos and preferences; no shared cloud data. |
@@ -24,7 +24,9 @@ This document is the baseline source of truth for scope. Update it whenever the 
 The baseline must not be described as:
 
 - a reliable plant-identification system;
-- a trained or validated AI model;
+- a trained or validated AI model of our own;
+- an offline or on-device identification capability;
+- a measured accuracy figure for Pl@ntNet on our target species;
 - a calibrated confidence estimator;
 - a Firebase or multi-user application;
 - a direct ALA observation-upload client;
@@ -68,7 +70,8 @@ These spikes should happen before the group promises the final implementation in
 
 ### Milestone 2 — core integration
 
-- replace `DemoImageClassifier` with the real model adapter;
+- add the on-device TensorFlow Lite adapter alongside the Pl@ntNet cloud adapter and let the
+  user or the network state choose between them (both implement `ImageClassifier`);
 - add unknown/genus fallback;
 - add Room context caching;
 - implement cloud-backed observation storage and retry;
@@ -96,6 +99,8 @@ These spikes should happen before the group promises the final implementation in
 | Risk | Consequence | Mitigation and decision gate |
 |---|---|---|
 | Real model performs poorly outdoors | Core identification story is weak. | Restrict species set, collect representative photos, show Top 3/unknown and evaluate early. |
+| Pl@ntNet free quota is 500 identifications a day | Live demo fails mid-presentation. | `remainingIdentificationRequests` is logged on every call; the guided demo runs offline; a quota error tells the user to switch to it. |
+| Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | On-device TFLite adapter is planned behind the same interface; measure both and state the trade-off. |
 | Model labels do not match ALA taxonomy | Nearby counts are missing or misleading. | Create a versioned mapping table using accepted identifiers and test representative synonyms. |
 | ALA latency or availability varies | Reranking is slow or unavailable. | Show image-only first, use timeouts, cache results, retain partial/offline states and measure latency. |
 | Sensor availability differs by phone | Features fail on some devices. | Runtime checks, manual fallbacks and testing on multiple physical devices. |

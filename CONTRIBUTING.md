@@ -5,10 +5,13 @@ This project is assessed both as a group system and through individual code owne
 ## Before starting work
 
 1. Read the root `README.md`, `docs/APP_OVERVIEW.md`, `docs/ARCHITECTURE.md` and `docs/PROJECT_STATUS_AND_ROADMAP.md`.
-2. Run `./tools/check.sh` on your machine.
-3. Run the guided demo and, where relevant, test on a physical phone.
-4. Select an issue or workstream with a concrete acceptance condition.
-5. Confirm that the work is consistent with the agreed Assignment 1 scope.
+2. Add your own Pl@ntNet API key to `local.properties` as `plantnet.api.key=<key>`. Free keys
+   (500 identifications a day) come from https://my.plantnet.org. The file is git-ignored and
+   the key must never be committed; without one the app runs on the labelled demo adapter.
+3. Run `./tools/check.sh` on your machine.
+4. Run the guided demo and, where relevant, test on a physical phone.
+5. Select an issue or workstream with a concrete acceptance condition.
+6. Confirm that the work is consistent with the agreed Assignment 1 scope.
 
 ## Branches and commits
 
