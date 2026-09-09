@@ -1,0 +1,289 @@
+{
+  "query": {
+    "project": "all",
+    "images": [
+      "64ff80658a1a77c1fdad486a3f80914d"
+    ],
+    "organs": [
+      "auto"
+    ],
+    "includeRelatedImages": false,
+    "noReject": false,
+    "type": null
+  },
+  "predictedOrgans": [
+    {
+      "image": "64ff80658a1a77c1fdad486a3f80914d",
+      "filename": "plant.jpg",
+      "organ": "habit",
+      "score": 0.64779
+    }
+  ],
+  "language": "en",
+  "preferedReferential": "k-world-flora",
+  "bestMatch": "Corymbia bella K.D.Hill & L.A.S.Johnson",
+  "results": [
+    {
+      "score": 0.17292,
+      "species": {
+        "scientificNameWithoutAuthor": "Corymbia bella",
+        "scientificNameAuthorship": "K.D.Hill & L.A.S.Johnson",
+        "genus": {
+          "scientificNameWithoutAuthor": "Corymbia",
+          "scientificNameAuthorship": "",
+          "scientificName": "Corymbia"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [],
+        "scientificName": "Corymbia bella K.D.Hill & L.A.S.Johnson"
+      },
+      "gbif": {
+        "id": "5418441"
+      },
+      "powo": {
+        "id": "986344-1"
+      },
+      "iucn": {
+        "id": "133376426",
+        "category": "LC"
+      }
+    },
+    {
+      "score": 0.12478,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus camaldulensis",
+        "scientificNameAuthorship": "Dehnh.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "River redgum",
+          "Red gum",
+          "Murray red gum"
+        ],
+        "scientificName": "Eucalyptus camaldulensis Dehnh."
+      },
+      "gbif": {
+        "id": "3176197"
+      },
+      "powo": {
+        "id": "592777-1"
+      },
+      "iucn": {
+        "id": "61909812",
+        "category": "NT"
+      }
+    },
+    {
+      "score": 0.06193,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus raveretiana",
+        "scientificNameAuthorship": "F.Muell.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Black ironbox",
+          "Coastal Coolibah",
+          "Ironwood Box"
+        ],
+        "scientificName": "Eucalyptus raveretiana F.Muell."
+      },
+      "gbif": {
+        "id": "3176592"
+      },
+      "powo": {
+        "id": "593301-1"
+      },
+      "iucn": {
+        "id": "133379522",
+        "category": "NT"
+      }
+    },
+    {
+      "score": 0.05863,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca leucadendra",
+        "scientificNameAuthorship": "(L.) L.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Weeping paperbark",
+          "Swamp teatree",
+          "Big white paperbark"
+        ],
+        "scientificName": "Melaleuca leucadendra (L.) L."
+      },
+      "gbif": {
+        "id": "5415976"
+      },
+      "powo": {
+        "id": "598002-1"
+      },
+      "iucn": {
+        "id": "61917032",
+        "category": "DD"
+      }
+    },
+    {
+      "score": 0.05192,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus globulus",
+        "scientificNameAuthorship": "Labill.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Southern blue gum",
+          "Tasmanian bluegum",
+          "Tasmanian blue gum"
+        ],
+        "scientificName": "Eucalyptus globulus Labill."
+      },
+      "gbif": {
+        "id": "3176787"
+      },
+      "powo": {
+        "id": "592965-1"
+      },
+      "iucn": {
+        "id": "61912929",
+        "category": "LC"
+      }
+    },
+    {
+      "score": 0.05014,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus tereticornis",
+        "scientificNameAuthorship": "Sm.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Forest redgum",
+          "Forest red gum",
+          "Blue gum"
+        ],
+        "scientificName": "Eucalyptus tereticornis Sm."
+      },
+      "gbif": {
+        "id": "3176719"
+      },
+      "powo": {
+        "id": "593412-1"
+      },
+      "iucn": {
+        "id": "61916689",
+        "category": "LC"
+      }
+    },
+    {
+      "score": 0.04663,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus blakelyi",
+        "scientificNameAuthorship": "Maiden",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Blakely's red gum",
+          "Blakely's gum",
+          "Forest red gum"
+        ],
+        "scientificName": "Eucalyptus blakelyi Maiden"
+      },
+      "gbif": {
+        "id": "3176932"
+      },
+      "powo": {
+        "id": "592735-1"
+      },
+      "iucn": {
+        "id": "133378161",
+        "category": "VU"
+      }
+    },
+    {
+      "score": 0.03965,
+      "species": {
+        "scientificNameWithoutAuthor": "Eucalyptus rubida",
+        "scientificNameAuthorship": "H.Deane & Maiden",
+        "genus": {
+          "scientificNameWithoutAuthor": "Eucalyptus",
+          "scientificNameAuthorship": "",
+          "scientificName": "Eucalyptus"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Candlebark",
+          "Ribbon gum",
+          "White gum"
+        ],
+        "scientificName": "Eucalyptus rubida H.Deane & Maiden"
+      },
+      "gbif": {
+        "id": "3177306"
+      },
+      "powo": {
+        "id": "593324-1"
+      },
+      "iucn": {
+        "id": "133372734",
+        "category": "NT"
+      }
+    }
+  ],
+  "version": "2026-03-20 (7.5)",
+  "remainingIdentificationRequests": 499
+}

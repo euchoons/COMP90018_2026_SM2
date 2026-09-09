@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
@@ -100,7 +101,17 @@ fun ResultsScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    StatusPill(label = "Prototype image adapter", positive = false)
+                    StatusPill(
+                        label = buildString {
+                            append(state.imageSource?.label ?: "Identifying")
+                            state.imageElapsedMillis?.let { elapsed ->
+                                append(" · ")
+                                append(elapsed)
+                                append(" ms")
+                            }
+                        },
+                        positive = state.imageSource == ImageSource.PLANTNET_LIVE,
+                    )
                     StatusPill(
                         label = if (state.usingDemoLocation) "Demo location" else "Live location",
                         positive = !state.usingDemoLocation,
