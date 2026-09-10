@@ -234,7 +234,7 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
     val progress = (uniqueSpecies / 3f).coerceIn(0f, 1f)
     Card(
         onClick = onOpenCollection,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(
