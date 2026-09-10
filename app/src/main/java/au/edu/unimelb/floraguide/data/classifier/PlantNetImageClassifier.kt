@@ -1,7 +1,9 @@
 package au.edu.unimelb.floraguide.data.classifier
 
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.ImageClassification
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
+import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.Species
 import au.edu.unimelb.floraguide.domain.repository.ImageClassifier
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +26,9 @@ class PlantNetImageClassifier(
 
     override suspend fun classify(
         photoPath: String?
-    ): List<ImagePrediction> = withContext(Dispatchers.IO) {
+    ): ImageClassification = withContext(Dispatchers.IO) {
+
+        val startTime = System.nanoTime()
 
         val path = photoPath
             ?.takeIf { it.isNotBlank() }
@@ -74,8 +78,12 @@ class PlantNetImageClassifier(
         try {
             connection.requestMethod = "POST"
             connection.doOutput = true
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
+
+            connection.connectTimeout =
+                CONNECT_TIMEOUT_MS
+
+            connection.readTimeout =
+                READ_TIMEOUT_MS
 
             connection.setRequestProperty(
                 "Accept",
@@ -91,7 +99,9 @@ class PlantNetImageClassifier(
 
             connection.outputStream.use { output ->
 
-                output.writeText("--$boundary\r\n")
+                output.writeText(
+                    "--$boundary\r\n"
+                )
 
                 output.writeText(
                     "Content-Disposition: form-data; " +
@@ -108,11 +118,16 @@ class PlantNetImageClassifier(
                 }
 
                 output.writeText("\r\n")
-                output.writeText("--$boundary--\r\n")
+
+                output.writeText(
+                    "--$boundary--\r\n"
+                )
+
                 output.flush()
             }
 
-            val statusCode = connection.responseCode
+            val statusCode =
+                connection.responseCode
 
             val responseStream =
                 if (statusCode in 200..299) {
@@ -124,7 +139,9 @@ class PlantNetImageClassifier(
             val responseBody =
                 responseStream
                     ?.bufferedReader(Charsets.UTF_8)
-                    ?.use { it.readText() }
+                    ?.use {
+                        it.readText()
+                    }
                     .orEmpty()
 
             if (statusCode !in 200..299) {
@@ -136,7 +153,19 @@ class PlantNetImageClassifier(
                 )
             }
 
-            parsePredictions(responseBody)
+            val predictions =
+                parsePredictions(responseBody)
+
+            val elapsedMillis =
+                (System.nanoTime() - startTime) /
+                    1_000_000
+
+            ImageClassification(
+                predictions = predictions,
+                source = ImageSource.PLANTNET_LIVE,
+                elapsedMillis = elapsedMillis
+            )
+
         } finally {
             connection.disconnect()
         }
@@ -146,18 +175,23 @@ class PlantNetImageClassifier(
         responseBody: String
     ): List<ImagePrediction> {
 
-        val root = JSONObject(responseBody)
+        val root =
+            JSONObject(responseBody)
 
-        val results = root.optJSONArray("results")
-            ?: throw IOException(
-                "PlantNet returned no results."
-            )
+        val results =
+            root.optJSONArray("results")
+                ?: throw IOException(
+                    "PlantNet returned no results."
+                )
 
         val predictions =
             mutableListOf<ImagePrediction>()
 
         val numberOfResults =
-            minOf(results.length(), maxResults)
+            minOf(
+                results.length(),
+                maxResults
+            )
 
         for (index in 0 until numberOfResults) {
 
@@ -188,33 +222,46 @@ class PlantNetImageClassifier(
 
             val score =
                 result
-                    .optDouble("score", 0.0)
-                    .coerceIn(0.0, 1.0)
-
-            val species = Species(
-                id = createSpeciesId(scientificName),
-                commonName = commonName,
-                scientificName = scientificName,
-
-                // PlantNet identification does not provide
-                // seasonal information, so keep this prior neutral.
-                preferredMonths = (1..12).toSet(),
-
-                // Keep habitat prior neutral until richer
-                // species metadata is available.
-                habitatAffinity =
-                    Habitat.entries.associateWith {
+                    .optDouble(
+                        "score",
+                        0.0
+                    )
+                    .coerceIn(
+                        0.0,
                         1.0
-                    },
+                    )
 
-                demoNearbyCount = 0,
-            )
+            val species =
+                Species(
+                    id = createSpeciesId(
+                        scientificName
+                    ),
 
-            predictions += ImagePrediction(
-                species = species,
-                score = score,
-                rank = predictions.size + 1,
-            )
+                    commonName =
+                        commonName,
+
+                    scientificName =
+                        scientificName,
+
+                    preferredMonths =
+                        (1..12).toSet(),
+
+                    habitatAffinity =
+                        Habitat.entries
+                            .associateWith {
+                                1.0
+                            },
+
+                    demoNearbyCount = 0
+                )
+
+            predictions +=
+                ImagePrediction(
+                    species = species,
+                    score = score,
+                    rank =
+                        predictions.size + 1
+                )
         }
 
         if (predictions.isEmpty()) {
@@ -228,16 +275,23 @@ class PlantNetImageClassifier(
 
     private fun getFirstCommonName(
         speciesJson: JSONObject,
-        fallback: String,
+        fallback: String
     ): String {
 
         val commonNames =
-            speciesJson.optJSONArray("commonNames")
+            speciesJson
+                .optJSONArray("commonNames")
                 ?: return fallback
 
-        for (index in 0 until commonNames.length()) {
+        for (
+        index in 0
+            until commonNames.length()
+        ) {
+
             val name =
-                commonNames.optString(index).trim()
+                commonNames
+                    .optString(index)
+                    .trim()
 
             if (name.isNotBlank()) {
                 return name
@@ -262,24 +316,35 @@ class PlantNetImageClassifier(
 
     private fun createErrorMessage(
         statusCode: Int,
-        responseBody: String,
+        responseBody: String
     ): String {
 
-        val apiMessage = runCatching {
+        val apiMessage =
+            runCatching {
 
-            val json = JSONObject(responseBody)
+                val json =
+                    JSONObject(responseBody)
 
-            json.optString("message")
-                .ifBlank {
-                    json.optString("error")
-                }
+                json
+                    .optString("message")
+                    .ifBlank {
+                        json.optString(
+                            "error"
+                        )
+                    }
 
-        }.getOrDefault("")
+            }.getOrDefault("")
 
-        return if (apiMessage.isNotBlank()) {
+        return if (
+            apiMessage.isNotBlank()
+        ) {
+
             "PlantNet request failed " +
-                "(HTTP $statusCode): $apiMessage"
+                "(HTTP $statusCode): " +
+                apiMessage
+
         } else {
+
             "PlantNet request failed " +
                 "(HTTP $statusCode)."
         }
@@ -288,12 +353,16 @@ class PlantNetImageClassifier(
     private fun OutputStream.writeText(
         text: String
     ) {
+
         write(
-            text.toByteArray(Charsets.UTF_8)
+            text.toByteArray(
+                Charsets.UTF_8
+            )
         )
     }
 
     companion object {
+
         private const val BASE_URL =
             "https://my-api.plantnet.org/v2/identify"
 
