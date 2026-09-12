@@ -8,18 +8,6 @@ plugins {
 
     id("com.google.gms.google-services")
 }
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-
-    if (file.exists()) {
-        file.inputStream().use { load(it) }
-    }
-}
-
-val plantNetApiKey =
-    localProperties.getProperty("PLANTNET_API_KEY", "")
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
 
 android {
     namespace = "au.edu.unimelb.floraguide"
@@ -33,11 +21,7 @@ android {
         versionName = "0.1.0-baseline"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField(
-            "String",
-            "PLANTNET_API_KEY",
-            "\"$plantNetApiKey\""
-        )
+
         // The key lives in git-ignored local.properties. An absent key is not a build failure:
         // AppContainer then keeps the clearly labelled demo adapter.
         // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
