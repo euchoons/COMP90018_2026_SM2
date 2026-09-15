@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.InformationCard
@@ -75,7 +77,7 @@ fun HomeScreen(
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Column(
                     modifier = Modifier.padding(18.dp),
@@ -90,12 +92,13 @@ fun HomeScreen(
                             Text(
                                 text = "Live sensing readiness",
                                 style = MaterialTheme.typography.titleMedium,
+
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 text = "Updates continuously from this phone",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
                         }
                         Icon(
@@ -137,15 +140,16 @@ private fun HeroCard(
                 brush = Brush.linearGradient(
                     listOf(Color(0xFF0E5A2A), Color(0xFF167A65)),
                 ),
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(10.dp),
             )
             .padding(24.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
             Surface(
                 color = Color.White.copy(alpha = 0.16f),
                 contentColor = Color.White,
                 shape = CircleShape,
+                modifier = Modifier.padding(bottom = 42.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -153,7 +157,7 @@ private fun HeroCard(
                     horizontalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     Icon(Icons.Default.Park, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("Campus biodiversity prototype", style = MaterialTheme.typography.labelLarge)
+                    Text("Biodiversity", style = MaterialTheme.typography.labelLarge)
                 }
             }
             Text(
@@ -161,25 +165,37 @@ private fun HeroCard(
                 style = MaterialTheme.typography.displaySmall,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
                 text = "Photograph a campus plant, then let place, season and microhabitat challenge the camera model.",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.90f),
+                modifier = Modifier.padding(bottom = 42.dp),
             )
-            Button(
-                onClick = onStartScan,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-                Text("  Start a live observation")
-            }
-            FilledTonalButton(
-                onClick = onGuidedDemo,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Text("  Run the 60-second guided demo")
+                Button(
+                    onClick = onStartScan,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null)
+                    Text("  Start")
+                }
+                FilledTonalButton(
+                    onClick = onGuidedDemo,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Text("  Demo")
+                }
             }
         }
     }
@@ -189,7 +205,7 @@ private fun HeroCard(
 private fun ContextPipeline() {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -215,7 +231,7 @@ private fun PipelineNode(icon: ImageVector, label: String, modifier: Modifier = 
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.primaryContainer,
+            color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             shape = CircleShape,
         ) {
@@ -235,7 +251,7 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
     Card(
         onClick = onOpenCollection,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -256,14 +272,14 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
                         text = "Document 3 campus species",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
                 Text(
                     text = "$uniqueSpecies / 3",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             LinearProgressIndicator(

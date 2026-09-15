@@ -1,23 +1,31 @@
 package au.edu.unimelb.floraguide.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.ui.screens.CollectionScreen
@@ -66,6 +74,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onGuidedDemo = viewModel::runGuidedDemo,
                 onOpenCollection = viewModel::goToCollection,
                 modifier = Modifier.padding(padding),
+
             )
 
             AppScreen.SCAN -> ScanScreen(
@@ -105,24 +114,52 @@ private fun FloraGuideNavigationBar(
     onScan: () -> Unit,
     onCollection: () -> Unit,
 ) {
-    NavigationBar {
-        NavigationBarItem(
+    NavigationBar (
+        containerColor = MaterialTheme.colorScheme.primaryContainer
+    ){
+        FloraGuideNavigationItem(
             selected = selected == AppScreen.HOME,
             onClick = onHome,
-            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("Home") },
+            icon = Icons.Default.Home,
+            label = "Home",
+
         )
-        NavigationBarItem(
+        FloraGuideNavigationItem(
             selected = selected == AppScreen.SCAN,
             onClick = onScan,
-            icon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
-            label = { Text("Observe") },
+            icon = Icons.Default.CameraAlt,
+            label = "Observe",
         )
-        NavigationBarItem(
+        FloraGuideNavigationItem(
             selected = selected == AppScreen.COLLECTION,
             onClick = onCollection,
-            icon = { Icon(Icons.Default.CollectionsBookmark, contentDescription = null) },
-            label = { Text("Field guide") },
+            icon = Icons.Default.CollectionsBookmark,
+            label = "Field guide",
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RowScope.FloraGuideNavigationItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+) {
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        NavigationBarItem(
+            selected = selected,
+            onClick = onClick,
+            icon = { Icon(icon, contentDescription = null) },
+            label = { Text(label) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                indicatorColor = Color.Transparent,
+                unselectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                unselectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
         )
     }
 }
