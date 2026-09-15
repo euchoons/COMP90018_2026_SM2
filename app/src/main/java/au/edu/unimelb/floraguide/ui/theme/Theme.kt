@@ -44,7 +44,7 @@ private val DarkColours = darkColorScheme(
 fun FloraGuideTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColours else LightColours,
-        typography = MaterialTheme.typography,
+        typography = AppTypography,
         content = content,
     )
 }
