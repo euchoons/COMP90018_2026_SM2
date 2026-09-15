@@ -1,5 +1,6 @@
 package au.edu.unimelb.floraguide.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val CONTEXT_RADIUS_KM = 8
+private const val LOG_TAG = "FloraGuide-ViewModel"
 
 /** One immutable state object makes loading, fallback and before/after ranking states explicit. */
 data class FloraGuideUiState(
@@ -161,43 +163,35 @@ class FloraGuideViewModel(
     }
 
     fun analyzeCapturedPhoto(photoPath: String?) {
+        // Keep the existing local photo analysis flow.
+        startAnalysis(
+            photoPath = photoPath,
+            preferLiveData = true,
+            analysisDate = LocalDate.now(),
+        )
 
-    // Keep the existing local photo analysis flow.
-    startAnalysis(
-        photoPath = photoPath,
-        preferLiveData = true,
-        analysisDate = LocalDate.now(),
-    )
-
-    if (photoPath == null) {
-        return
-    }
-
-    // Upload a copy of the captured photo to Firebase Storage.
-    container.photoStorage.uploadPhoto(
-        localPath = photoPath,
-
-        onSuccess = { storagePath ->
-
-            _uiState.update { currentState ->
-                currentState.copy(
-                    message = "Photo uploaded successfully: $storagePath"
-                )
-            }
-        },
-
-        onFailure = { error ->
-
-            _uiState.update { currentState ->
-                currentState.copy(
-                    message = "Photo upload failed: ${
-                        error.message ?: "Unknown error"
-                    }"
-                )
-            }
+        if (photoPath == null) {
+            return
         }
-    )
-}
+
+        // Upload a copy of the captured photo to Firebase Storage.
+        container.photoStorage.uploadPhoto(
+            localPath = photoPath,
+            onSuccess = { storagePath ->
+                // Deliberately not surfaced: `message` carries analysis errors and the ALA
+                // partial/offline warnings, and a success notice here overwrote them. A raw
+                // storage path is debug output, not something a user can act on either.
+                Log.i(LOG_TAG, "photo uploaded storagePath=$storagePath")
+            },
+            onFailure = { error ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        message = "Photo upload failed: ${error.message ?: "Unknown error"}",
+                    )
+                }
+            },
+        )
+    }
 
     fun runGuidedDemo() {
         container.locationTracker.stop()
