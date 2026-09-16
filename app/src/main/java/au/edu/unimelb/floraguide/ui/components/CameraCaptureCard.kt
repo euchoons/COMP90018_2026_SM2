@@ -1,10 +1,16 @@
 package au.edu.unimelb.floraguide.ui.components
 
 import android.content.Context
+import android.util.Size
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -95,6 +101,7 @@ fun CameraCaptureCard(
                     }
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setResolutionSelector(CAPTURE_RESOLUTION)
                         .build()
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
@@ -121,6 +128,21 @@ fun CameraCaptureCard(
             imageCapture = null
             cameraReady = false
         }
+    }
+
+    // With auto-rotate locked the display stays portrait while the phone is held sideways, so the
+    // JPEG orientation follows the physical orientation rather than the display rotation.
+    DisposableEffect(imageCapture) {
+        val capture = imageCapture ?: return@DisposableEffect onDispose { }
+        val listener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                capture.targetRotation = surfaceRotationFor(orientation)
+            }
+        }
+        // Without an accelerometer the display rotation chosen at bind time is kept.
+        if (listener.canDetectOrientation()) listener.enable()
+        onDispose { listener.disable() }
     }
 
     Box(
@@ -178,7 +200,6 @@ fun CameraCaptureCard(
                 onClick = {
                     val capture = imageCapture ?: return@Button
                     isSaving = true
-                    capture.targetRotation = previewView.display?.rotation ?: capture.targetRotation
                     capturePhoto(
                         context = context,
                         imageCapture = capture,
@@ -229,6 +250,30 @@ private fun CameraOverlayPill(text: String, positive: Boolean) {
             style = MaterialTheme.typography.labelSmall,
         )
     }
+}
+
+/**
+ * Caps captures near 1920x1440 (4:3, ~2.8 MP) instead of the full sensor, which is 12–50 MP on
+ * current phones. Every capture is uploaded to Pl@ntNet and Firebase, and the Pl@ntNet round
+ * trip was measured with a 1123x1600 photo, so this keeps upload size down without dropping
+ * below a resolution known to work. Rationale: docs/CAMERA_AND_SENSOR_VALIDATION.md.
+ */
+private val CAPTURE_RESOLUTION = ResolutionSelector.Builder()
+    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+    .setResolutionStrategy(
+        ResolutionStrategy(
+            Size(1920, 1440),
+            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+        ),
+    )
+    .build()
+
+/** Maps [OrientationEventListener] degrees to a Surface rotation, as in the CameraX guide. */
+private fun surfaceRotationFor(orientationDegrees: Int): Int = when (orientationDegrees) {
+    in 45 until 135 -> Surface.ROTATION_270
+    in 135 until 225 -> Surface.ROTATION_180
+    in 225 until 315 -> Surface.ROTATION_90
+    else -> Surface.ROTATION_0
 }
 
 private fun capturePhoto(
