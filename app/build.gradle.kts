@@ -19,7 +19,9 @@ val localProperties = Properties().apply {
 }
 
 val plantNetApiKey =
-    localProperties.getProperty("PLANTNET_API_KEY", "")
+    (localProperties.getProperty("PLANTNET_API_KEY")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: localProperties.getProperty("plantnet.api.key")?.trim()?.takeIf { it.isNotEmpty() }
+        ?: System.getenv("PLANTNET_API_KEY")?.trim().orEmpty())
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
 
@@ -172,4 +174,6 @@ dependencies {
     implementation(
         "com.google.firebase:firebase-storage"
     )
+    implementation("com.google.firebase:firebase-auth")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 }

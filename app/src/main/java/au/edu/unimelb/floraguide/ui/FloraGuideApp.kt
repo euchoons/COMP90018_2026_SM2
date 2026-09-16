@@ -85,6 +85,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onHabitatSelected = viewModel::setHabitat,
                 onSelectSpecies = viewModel::selectSpecies,
                 onRetryContext = viewModel::retryContextLookup,
+                onRetryIdentification = viewModel::retryIdentification,
                 onConfirm = viewModel::confirmSelectedObservation,
                 modifier = Modifier.padding(padding),
             )
