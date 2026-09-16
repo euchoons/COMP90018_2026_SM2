@@ -67,32 +67,48 @@ fun CameraCaptureCard(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var cameraReady by remember { mutableStateOf(false) }
+    var cameraFailed by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, previewView) {
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
+        // The provider future can complete after the user has already left the Scan screen.
+        // Binding at that point would reopen the camera for a preview nobody can see.
+        var disposed = false
         val executor = ContextCompat.getMainExecutor(context)
         future.addListener(
             {
+                if (disposed) return@addListener
                 runCatching {
-                    provider = future.get()
+                    val cameraProvider = future.get()
+                    provider = cameraProvider
+                    // Tablets and Chromebooks may only have a front camera.
+                    val selector = when {
+                        cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ->
+                            CameraSelector.DEFAULT_BACK_CAMERA
+                        cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        else -> error("No camera is available on this device.")
+                    }
                     val preview = Preview.Builder().build().also {
                         it.surfaceProvider = previewView.surfaceProvider
                     }
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .build()
-                    provider?.unbindAll()
-                    provider?.bindToLifecycle(
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
                         lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        selector,
                         preview,
                         capture,
                     )
                     imageCapture = capture
                     cameraReady = true
+                    cameraFailed = false
                 }.onFailure { error ->
                     cameraReady = false
+                    cameraFailed = true
                     onError(error.message ?: "Camera could not start.")
                 }
             },
@@ -100,8 +116,10 @@ fun CameraCaptureCard(
         )
 
         onDispose {
+            disposed = true
             provider?.unbindAll()
             imageCapture = null
+            cameraReady = false
         }
     }
 
@@ -148,7 +166,11 @@ fun CameraCaptureCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = if (cameraReady) captureHint else "Starting CameraX…",
+                text = when {
+                    cameraReady -> captureHint
+                    cameraFailed -> "Camera unavailable — the guided demo on Home still works"
+                    else -> "Starting CameraX…"
+                },
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White,
             )
