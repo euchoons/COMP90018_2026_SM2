@@ -9,6 +9,7 @@ Add an entry when an AI tool materially affects submitted ideas, prose, code, te
 | Date | Tool and model/version shown | Task or representative prompt | Output retained or files affected | Human changes and independent verification | Team member |
 |---|---|---|---|---|---|
 | `[Date]` | `OpenAI ChatGPT — [model shown]` | `Generate a maintainable Kotlin/Compose prototype for an explainable context-aware species-identification app.` | Initial architecture, UI/data scaffolding, tests and documentation. | Team reviewed source, removed generated/local files, ran builds/tests, verified APIs and rewrote scope/claims. | `[Name]` |
+| 2026-09-16 | Anthropic Claude Code — Claude Opus 5 (`claude-opus-5`) | `Validate the existing CameraX lifecycle, capture, rotation, resize and permission paths, and verify the Firebase photo upload.` | Camera fixes in `CameraCaptureCard.kt`, `ScanScreen.kt`, `CommonComponents.kt`; `ThumbnailSampleSizeTest.kt`; `docs/CAMERA_VALIDATION.md`. | Unit tests, lint and debug build pass. Physical-device checklist in `CAMERA_VALIDATION.md` still to be run and reviewed by Mason. | Mason |
 | `[Date]` | `[Tool]` | `[Use]` | `[Affected output]` | `[Review/test]` | `[Name]` |
 
 The sample first row must be corrected to match the actual model, dates, prompts and retained files. Add other tools such as code completion, Grammarly, translation or image generation when used materially.
