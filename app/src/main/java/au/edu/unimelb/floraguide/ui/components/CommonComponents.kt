@@ -244,8 +244,17 @@ fun PhotoThumbnail(
     }
 }
 
+// Thumbnails are drawn at 90–104 dp, which is at most ~420 px on an xxxhdpi screen.
+private const val THUMBNAIL_MIN_SIDE_PX = 400
+
 private fun decodePhotoThumbnail(path: String): Bitmap? {
-    val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    // A fixed sample size of 4 still decodes a 50 MP photo to a ~12 MB bitmap.
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = thumbnailSampleSize(minOf(bounds.outWidth, bounds.outHeight))
+    }
     val decoded = BitmapFactory.decodeFile(path, options) ?: return null
     val orientation = runCatching {
         ExifInterface(path).getAttributeInt(
@@ -277,6 +286,13 @@ private fun decodePhotoThumbnail(path: String): Bitmap? {
     }.onSuccess { transformed ->
         if (transformed !== decoded) decoded.recycle()
     }.getOrElse { decoded }
+}
+
+/** Largest power of two that keeps the shorter side at or above [THUMBNAIL_MIN_SIDE_PX]. */
+internal fun thumbnailSampleSize(shorterSidePx: Int): Int {
+    var sampleSize = 1
+    while (shorterSidePx / (sampleSize * 2) >= THUMBNAIL_MIN_SIDE_PX) sampleSize *= 2
+    return sampleSize
 }
 
 @Composable
