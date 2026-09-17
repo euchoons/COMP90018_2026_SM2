@@ -43,7 +43,6 @@ import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
-import au.edu.unimelb.floraguide.ui.components.CloudIdentificationCard
 import au.edu.unimelb.floraguide.ui.components.EvidenceBar
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
@@ -62,7 +61,6 @@ fun ResultsScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onSelectSpecies: (String) -> Unit,
     onRetryContext: () -> Unit,
-    onRetryIdentification: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,6 +138,7 @@ fun ResultsScreen(
         }
 
         item {
+<<<<<<< HEAD
             CloudIdentificationCard(
                 state = state,
                 onRetry = onRetryIdentification,
@@ -151,13 +150,20 @@ fun ResultsScreen(
                 state = state,
                 onRetryContext = onRetryContext,
             )
+=======
+            AnalysisProgressCard(state = state, onRetryContext = onRetryContext)
+>>>>>>> parent of f129d0c (update new API code and settings)
         }
 
         if (state.isClassifying) {
             item {
                 LoadingCard(
                     title = "Generating image candidates",
+<<<<<<< HEAD
                     body = "Analysing the captured photo and requesting plant identification candidates.",
+=======
+                    body = "The architecture expects Top-K candidates so context can rescue a species outside the original Top 3.",
+>>>>>>> parent of f129d0c (update new API code and settings)
                 )
             }
         }
@@ -251,9 +257,13 @@ fun ResultsScreen(
         item {
             InformationCard(
                 title = "Interpretation guardrail",
+<<<<<<< HEAD
                 body = "The Pl@ntNet card shows raw API scores. " +
                     "Context-aware scores below are relative to the candidate set, " +
                     "not calibrated probabilities. Treat all identifications as suggestions.",
+=======
+                body = "Displayed values are relative ranking scores over this candidate set, not calibrated confidence percentages. An unknown/genus-level option should be added when a real model is integrated.",
+>>>>>>> parent of f129d0c (update new API code and settings)
             )
         }
     }
@@ -277,6 +287,7 @@ private fun AnalysisProgressCard(
             AnalysisStep(
                 number = "1",
                 title = "Image Top-K",
+<<<<<<< HEAD
                 detail = when {
                     !state.isClassifying &&
                         state.imagePredictions.isEmpty() &&
@@ -294,6 +305,10 @@ private fun AnalysisProgressCard(
                 },
                 complete = !state.isClassifying &&
                     state.imagePredictions.isNotEmpty(),
+=======
+                detail = if (state.isClassifying) "Running locally…" else "Candidate set ready",
+                complete = !state.isClassifying && state.imagePredictions.isNotEmpty(),
+>>>>>>> parent of f129d0c (update new API code and settings)
                 loading = state.isClassifying,
             )
 
@@ -734,6 +749,7 @@ private fun EvidenceCard(
             )
 
             Text(
+<<<<<<< HEAD
                 text = if (state.imageSource == ImageSource.PLANTNET_LIVE) {
                     "Season and habitat priors are neutral for live species " +
                         "without validated ecology data."
@@ -741,6 +757,9 @@ private fun EvidenceCard(
                     "Try changing the habitat below; the demo ordering updates " +
                         "without another network request."
                 },
+=======
+                text = "Try changing the habitat below; the final ordering updates without another network request.",
+>>>>>>> parent of f129d0c (update new API code and settings)
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,

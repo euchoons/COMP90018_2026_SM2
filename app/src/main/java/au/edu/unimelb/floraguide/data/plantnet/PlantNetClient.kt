@@ -51,7 +51,7 @@ class PlantNetClient(
     override fun identify(photoFile: File): PlantNetIdentification {
         if (apiKey.isBlank()) {
             throw PlantNetRequestException(
-                message = "No Pl@ntNet API key is configured. Add PLANTNET_API_KEY to local.properties and rebuild the app.",
+                message = "No Pl@ntNet API key is configured. Add plantnet.api.key to local.properties.",
                 httpStatus = null,
                 elapsedMillis = 0L,
             )
@@ -72,7 +72,7 @@ class PlantNetClient(
                 "auto\r\n" +
                 "--$boundary\r\n" +
                 "Content-Disposition: form-data; name=\"images\"; filename=\"${photoFile.name}\"\r\n" +
-                "Content-Type: ${if (photoFile.extension.equals("png", ignoreCase = true)) "image/png" else "image/jpeg"}\r\n\r\n"
+                "Content-Type: image/jpeg\r\n\r\n"
             ).toByteArray(Charsets.UTF_8)
         val suffix = "\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8)
 
@@ -107,11 +107,8 @@ class PlantNetClient(
                 throw PlantNetRequestException(
                     message = when (status) {
                         404 -> "Pl@ntNet could not match this photo. Try a closer shot of leaves, flowers or bark."
-                        429 -> "Pl@ntNet rate limit or quota reached. Retry later or check the API dashboard."
-                        401, 403 -> "Pl@ntNet rejected the API key or account access."
-                        400 -> "Pl@ntNet rejected the request. Check the image format and parameters."
-                        413 -> "The image is too large for Pl@ntNet."
-                        415 -> "Pl@ntNet does not support this image format."
+                        429 -> "Pl@ntNet daily request quota reached. Use the guided demo until it resets."
+                        401, 403 -> "Pl@ntNet rejected the API key."
                         else -> "Pl@ntNet returned HTTP $status"
                     },
                     httpStatus = status,
@@ -145,9 +142,10 @@ class PlantNetClient(
                     "outcome=failed error=${error.javaClass.simpleName}",
             )
             throw PlantNetRequestException(
-                message = "Pl@ntNet network request failed (${error.javaClass.simpleName}). Check the network and retry.",
+                message = "Pl@ntNet request failed: ${error.message ?: error.javaClass.simpleName}",
                 httpStatus = status,
                 elapsedMillis = elapsedMillis,
+                cause = error,
             )
         } finally {
             connection?.disconnect()
@@ -178,7 +176,7 @@ internal fun parsePlantNetResults(body: String, maxResults: Int): List<PlantNetR
         val score = entry.opt("score") as? Number
             ?: throw PlantNetResponseException("Pl@ntNet result $index had no numeric score")
         val scoreValue = score.toDouble()
-        if (!scoreValue.isFinite() || scoreValue !in 0.0..1.0) {
+        if (!scoreValue.isFinite() || scoreValue < 0.0) {
             throw PlantNetResponseException("Pl@ntNet result $index had an out-of-range score")
         }
 
