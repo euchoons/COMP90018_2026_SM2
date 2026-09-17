@@ -175,22 +175,27 @@ class FloraGuideViewModel(
         }
 
         // Upload a copy of the captured photo to Firebase Storage.
-        container.photoStorage.uploadPhoto(
-            localPath = photoPath,
-            onSuccess = { storagePath ->
-                // Deliberately not surfaced: `message` carries analysis errors and the ALA
-                // partial/offline warnings, and a success notice here overwrote them. A raw
-                // storage path is debug output, not something a user can act on either.
-                Log.i(LOG_TAG, "photo uploaded storagePath=$storagePath")
-            },
-            onFailure = { error ->
+        viewModelScope.launch {
+            try {
+                val storedPhoto = container.photoStorage.uploadPhoto(photoPath)
+
+                // Do not show a success snackbar because it could overwrite
+                // more useful analysis or context messages.
+                Log.i(LOG_TAG, "Photo uploaded successfully: $storedPhoto")
+
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+
+            } catch (error: Exception) {
+                Log.e(LOG_TAG, "Photo upload failed", error)
+
                 _uiState.update { currentState ->
                     currentState.copy(
                         message = "Photo upload failed: ${error.message ?: "Unknown error"}",
                     )
                 }
-            },
-        )
+            }
+        }
     }
 
     fun runGuidedDemo() {
@@ -209,7 +214,23 @@ class FloraGuideViewModel(
             analysisDate = GUIDED_DEMO_DATE,
         )
     }
+    fun retryIdentification() {
+        val current = _uiState.value
+        val photoPath = current.photoPath
 
+        if (photoPath == null) {
+            _uiState.update {
+                it.copy(message = "No captured photo is available to retry.")
+            }
+            return
+        }
+
+        startAnalysis(
+            photoPath = photoPath,
+            preferLiveData = current.analysisPrefersLiveData,
+            analysisDate = current.analysisDate,
+        )
+    }
     fun retryContextLookup() {
         val current = _uiState.value
         if (current.imagePredictions.isEmpty()) return
