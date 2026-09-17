@@ -1,11 +1,10 @@
 package au.edu.unimelb.floraguide.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import au.edu.unimelb.floraguide.di.AppContainer
-import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
-import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
@@ -29,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val CONTEXT_RADIUS_KM = 8
+private const val LOG_TAG = "FloraGuide-ViewModel"
 
 /** One immutable state object makes loading, fallback and before/after ranking states explicit. */
 data class FloraGuideUiState(
@@ -39,9 +39,6 @@ data class FloraGuideUiState(
     val locationStatus: String = "University of Melbourne demo location",
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
     val photoPath: String? = null,
-    val storedPhoto: StoredPhoto? = null,
-    val identificationStage: IdentificationStage? = null,
-    val analysisError: String? = null,
     val imagePredictions: List<ImagePrediction> = emptyList(),
     val imageSource: ImageSource? = null,
     val imageElapsedMillis: Long? = null,
@@ -109,9 +106,6 @@ class FloraGuideViewModel(
                 screen = AppScreen.SCAN,
                 message = null,
                 photoPath = null,
-                storedPhoto = null,
-                identificationStage = null,
-                analysisError = null,
                 imagePredictions = emptyList(),
                 imageSource = null,
                 imageElapsedMillis = null,
@@ -169,21 +163,33 @@ class FloraGuideViewModel(
     }
 
     fun analyzeCapturedPhoto(photoPath: String?) {
-        if (photoPath.isNullOrBlank()) {
-            showMessage("Capture a photo before starting identification.")
+        // Keep the existing local photo analysis flow.
+        startAnalysis(
+            photoPath = photoPath,
+            preferLiveData = true,
+            analysisDate = LocalDate.now(),
+        )
+
+        if (photoPath == null) {
             return
         }
-        startAnalysis(photoPath, preferLiveData = true, analysisDate = LocalDate.now())
-    }
 
-    fun retryIdentification() {
-        val current = _uiState.value
-        if (current.isClassifying || current.photoPath == null) return
-        startAnalysis(
-            photoPath = current.photoPath,
-            preferLiveData = true,
-            analysisDate = current.analysisDate,
-            previouslyUploaded = current.storedPhoto,
+        // Upload a copy of the captured photo to Firebase Storage.
+        container.photoStorage.uploadPhoto(
+            localPath = photoPath,
+            onSuccess = { storagePath ->
+                // Deliberately not surfaced: `message` carries analysis errors and the ALA
+                // partial/offline warnings, and a success notice here overwrote them. A raw
+                // storage path is debug output, not something a user can act on either.
+                Log.i(LOG_TAG, "photo uploaded storagePath=$storagePath")
+            },
+            onFailure = { error ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        message = "Photo upload failed: ${error.message ?: "Unknown error"}",
+                    )
+                }
+            },
         )
     }
 
@@ -228,9 +234,6 @@ class FloraGuideViewModel(
             coarseLocation = current.location.coarsened(),
             habitat = current.selectedHabitat,
             photoPath = current.photoPath,
-            cloudPhotoUri = current.storedPhoto?.gsUri,
-            imageScore = current.imagePredictions.firstOrNull { it.species.id == selected.species.id }?.score,
-            imageSource = current.imageSource,
             headingDegrees = current.sensorSnapshot.headingDegrees,
             relativeScore = selected.relativeScore,
             contextSource = contextSource,
@@ -253,7 +256,6 @@ class FloraGuideViewModel(
         photoPath: String?,
         preferLiveData: Boolean,
         analysisDate: LocalDate,
-        previouslyUploaded: StoredPhoto? = null,
     ) {
         analysisJob?.cancel()
         analysisJob = viewModelScope.launch {
@@ -261,9 +263,6 @@ class FloraGuideViewModel(
                 it.copy(
                     screen = AppScreen.RESULTS,
                     photoPath = photoPath,
-                    storedPhoto = previouslyUploaded,
-                    identificationStage = null,
-                    analysisError = null,
                     imagePredictions = emptyList(),
                     imageSource = null,
                     imageElapsedMillis = null,
@@ -280,32 +279,12 @@ class FloraGuideViewModel(
             }
 
             try {
-                val classification = if (preferLiveData) {
-                    check(container.isPlantNetConfigured) {
-                        "Set PLANTNET_API_KEY in the root local.properties, then rebuild the app."
-                    }
-                    val localPath = requireNotNull(photoPath) { "No captured photo was provided." }
-                    container.identifyStoredPhoto(
-                        localPath = localPath,
-                        previouslyUploaded = previouslyUploaded,
-                        onUploaded = { stored ->
-                            _uiState.update { it.copy(storedPhoto = stored) }
-                        },
-                        onStage = { stage ->
-                            _uiState.update { it.copy(identificationStage = stage) }
-                        },
-                    )
-                } else {
-                    // Only an explicit guided-demo action may use demo predictions.
-                    container.imageClassifier.classify(null)
-                }
+                val classification = container.imageClassifier.classify(photoPath)
                 val predictions = classification.predictions
                 val imageOnly = container.rankCandidates.imageOnly(predictions)
                 _uiState.update {
                     it.copy(
                         imagePredictions = predictions,
-                        identificationStage = null,
-                        analysisError = null,
                         imageSource = classification.source,
                         imageElapsedMillis = classification.elapsedMillis,
                         imageOnlyRanking = imageOnly,
@@ -323,8 +302,6 @@ class FloraGuideViewModel(
                         isClassifying = false,
                         isContextLoading = false,
                         message = error.message ?: "Analysis failed.",
-                        analysisError = error.message ?: "Analysis failed.",
-                        identificationStage = null,
                     )
                 }
             }
