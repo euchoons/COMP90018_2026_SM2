@@ -118,8 +118,8 @@ fun HomeScreen(
 
         item {
             InformationCard(
-                title = "Prototype boundary",
-                body = "CameraX, device sensors, GPS, ALA lookup, reranking and local observations are wired end to end. The image classifier is an explicitly labelled deterministic adapter, ready to be replaced by TensorFlow Lite.",
+                title = "Cloud identification boundary",
+                body = "Live scans store photos in Firebase and send the stored image to Pl@ntNet. Raw image scores and ALA rerankings are displayed separately. Only the explicit guided demo uses deterministic predictions.",
             )
         }
     }

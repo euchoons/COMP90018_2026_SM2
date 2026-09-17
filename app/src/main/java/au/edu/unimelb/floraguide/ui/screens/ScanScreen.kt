@@ -140,7 +140,7 @@ fun ScanScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "Change this after analysis to see the ranking react immediately.",
+                    text = "Demo rankings use habitat priors. Live species without validated habitat data use neutral priors.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -212,8 +212,8 @@ fun ScanScreen(
 
         item {
             InformationCard(
-                title = "Model status: prototype adapter",
-                body = "The capture is real, but the prototype image candidate scores are deterministic. This prevents an unvalidated model from being presented as reliable AI while preserving the complete integration surface.",
+                title = "Cloud photo identification",
+                body = "Taking a photo uploads it to your private Firebase Storage area and sends the stored image to Pl@ntNet for identification. The explicit guided demo stays offline.",
             )
         }
     }

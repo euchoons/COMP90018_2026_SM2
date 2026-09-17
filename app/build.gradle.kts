@@ -9,23 +9,6 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-<<<<<<< HEAD
-=======
-// Read PlantNet API key from local.properties
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-
-    if (file.exists()) {
-        file.inputStream().use { load(it) }
-    }
-}
-
-val plantNetApiKey =
-    localProperties.getProperty("PLANTNET_API_KEY", "")
-        .replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-
->>>>>>> parent of f129d0c (update new API code and settings)
 android {
     namespace = "au.edu.unimelb.floraguide"
     compileSdk = 36
@@ -114,68 +97,7 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
 
-<<<<<<< HEAD
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-auth")
 
-=======
-    implementation(
-        libs.androidx.compose.ui.tooling.preview
-    )
-
-    implementation(
-        libs.androidx.compose.material3
-    )
-
-    implementation(
-        libs.androidx.compose.material.icons.extended
-    )
-
-    implementation(
-        libs.androidx.camera.core
-    )
-
-    implementation(
-        libs.androidx.camera.camera2
-    )
-
-    implementation(
-        libs.androidx.camera.lifecycle
-    )
-
-    implementation(
-        libs.androidx.camera.view
-    )
-
-    implementation(
-        libs.androidx.exifinterface
-    )
-
-    implementation(
-        libs.kotlinx.coroutines.android
-    )
-
-    testImplementation(
-        libs.junit
-    )
-
-    testImplementation(
-        libs.json
-    )
-
-    debugImplementation(
-        libs.androidx.compose.ui.tooling
-    )
-
-    // Firebase
-    implementation(
-        platform(
-            "com.google.firebase:firebase-bom:34.18.0"
-        )
-    )
-
-    implementation(
-        "com.google.firebase:firebase-storage"
-    )
->>>>>>> parent of f129d0c (update new API code and settings)
 }
