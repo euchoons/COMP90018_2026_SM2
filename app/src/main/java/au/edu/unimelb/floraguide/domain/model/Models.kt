@@ -129,9 +129,6 @@ data class Observation(
     val headingDegrees: Float?,
     val relativeScore: Double,
     val contextSource: ContextDataSource,
-    val cloudPhotoUri: String? = null,
-    val imageScore: Double? = null,
-    val imageSource: ImageSource? = null,
 )
 
 enum class AppScreen {
