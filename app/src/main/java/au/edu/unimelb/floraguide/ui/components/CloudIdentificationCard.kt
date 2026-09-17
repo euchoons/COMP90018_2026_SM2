@@ -16,95 +16,44 @@ import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import java.util.Locale
 
 @Composable
-fun CloudIdentificationCard(
-    state: FloraGuideUiState,
-    onRetry: () -> Unit,
-) {
-    val identificationFailed =
-        state.photoPath != null &&
-            !state.isClassifying &&
-            state.imagePredictions.isEmpty() &&
-            state.message != null
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            Text("Photo identification", style = MaterialTheme.typography.titleMedium)
             Text(
-                text = "Photo identification",
-                style = MaterialTheme.typography.titleMedium,
-            )
-
-            Text(
-                text = when {
-                    state.isClassifying ->
-                        "Identifying photo..."
-
-                    identificationFailed ->
-                        "Identification failed"
-
-                    state.imageSource == ImageSource.PLANTNET_LIVE ->
-                        "Live identification complete"
-
-                    state.imageSource == ImageSource.DEMO_ADAPTER ->
-                        "Offline guided demo - not a live identification"
-
-                    state.imagePredictions.isNotEmpty() ->
-                        "Identification complete"
-
-                    else ->
-                        "Waiting for a photo"
+                when {
+                    state.analysisError != null -> "Identification failed"
+                    state.identificationStage != null -> state.identificationStage.label
+                    state.imageSource == ImageSource.PLANTNET_LIVE -> "Identified from the Firebase-stored photo"
+                    state.imageSource == ImageSource.DEMO_ADAPTER -> "Offline guided demo - not a live identification"
+                    else -> "Waiting for a photo"
                 },
             )
-
-            if (identificationFailed) {
-                state.message?.let { error ->
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+            state.storedPhoto?.let {
+                Text("Firebase upload complete", style = MaterialTheme.typography.bodySmall)
+                Text(it.storagePath, style = MaterialTheme.typography.bodySmall)
+            }
+            state.analysisError?.let { error ->
+                Text(error, color = MaterialTheme.colorScheme.error)
+                if (state.storedPhoto != null) {
+                    Text("The cloud photo is retained. Retry will reuse it.")
                 }
-
-                FilledTonalButton(
-                    onClick = onRetry,
-                ) {
-                    Text("Retry identification")
+                if (state.photoPath != null && !state.isClassifying) {
+                    FilledTonalButton(onClick = onRetry) { Text("Retry identification") }
                 }
             }
-
             if (state.imageSource == ImageSource.PLANTNET_LIVE) {
+                Text("Pl@ntNet original Top 3", style = MaterialTheme.typography.titleSmall)
+                state.imagePredictions.sortedByDescending { it.score }.take(3).forEach { prediction ->
+                    Text("${prediction.rank}. ${prediction.species.commonName}")
+                    Text(prediction.species.scientificName, style = MaterialTheme.typography.bodySmall)
+                    Text(String.format(Locale.US, "Raw model score: %.4f", prediction.score))
+                }
                 Text(
-                    text = "Pl@ntNet original Top 3",
-                    style = MaterialTheme.typography.titleSmall,
-                )
-
-                state.imagePredictions
-                    .sortedByDescending { it.score }
-                    .take(3)
-                    .forEach { prediction ->
-                        Text(
-                            text = "${prediction.rank}. ${prediction.species.commonName}",
-                        )
-
-                        Text(
-                            text = prediction.species.scientificName,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-
-                        Text(
-                            text = String.format(
-                                Locale.US,
-                                "Raw model score: %.4f",
-                                prediction.score,
-                            ),
-                        )
-                    }
-
-                Text(
-                    text = "These are the API scores. The context-aware ranking below uses a different, normalised score.",
+                    "These are the API scores. The context-aware ranking below uses a different, normalised score.",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

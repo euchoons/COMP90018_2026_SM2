@@ -78,12 +78,8 @@ fun ResultsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 IconButton(onClick = onBackToScan) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back to camera",
-                    )
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to camera")
                 }
-
                 SectionHeading(
                     title = "Context-aware result",
                     subtitle = "Image-first, then reranked with environmental evidence.",
@@ -103,7 +99,6 @@ fun ResultsScreen(
                     modifier = Modifier.size(104.dp),
                     contentDescription = "Captured observation",
                 )
-
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -111,7 +106,6 @@ fun ResultsScreen(
                     StatusPill(
                         label = buildString {
                             append(state.imageSource?.label ?: "Identifying")
-
                             state.imageElapsedMillis?.let { elapsed ->
                                 append(" · ")
                                 append(elapsed)
@@ -120,16 +114,10 @@ fun ResultsScreen(
                         },
                         positive = state.imageSource == ImageSource.PLANTNET_LIVE,
                     )
-
                     StatusPill(
-                        label = if (state.usingDemoLocation) {
-                            "Demo location"
-                        } else {
-                            "Live location"
-                        },
+                        label = if (state.usingDemoLocation) "Demo location" else "Live location",
                         positive = !state.usingDemoLocation,
                     )
-
                     Text(
                         text = state.selectedHabitat.label,
                         style = MaterialTheme.typography.bodySmall,
@@ -140,24 +128,18 @@ fun ResultsScreen(
         }
 
         item {
-            CloudIdentificationCard(
-                state = state,
-                onRetry = onRetryIdentification,
-            )
+            CloudIdentificationCard(state = state, onRetry = onRetryIdentification)
         }
 
         item {
-            AnalysisProgressCard(
-                state = state,
-                onRetryContext = onRetryContext,
-            )
+            AnalysisProgressCard(state = state, onRetryContext = onRetryContext)
         }
 
         if (state.isClassifying) {
             item {
                 LoadingCard(
-                    title = "Generating image candidates",
-                    body = "Analysing the captured photo and requesting plant identification candidates.",
+                    title = state.identificationStage?.label ?: "Generating image candidates",
+                    body = "Live scans upload to Firebase, read back the stored image, then request Pl@ntNet candidates.",
                 )
             }
         }
@@ -175,11 +157,7 @@ fun ResultsScreen(
         if (state.displayedRanking.isNotEmpty()) {
             item {
                 SectionHeading(
-                    title = if (state.fusedRanking.isEmpty()) {
-                        "Image-only candidates"
-                    } else {
-                        "Final Top 3"
-                    },
+                    title = if (state.fusedRanking.isEmpty()) "Image-only candidates" else "Final Top 3",
                     subtitle = if (state.fusedRanking.isEmpty()) {
                         "Context has not been applied yet."
                     } else {
@@ -188,22 +166,15 @@ fun ResultsScreen(
                 )
             }
 
-            items(
-                count = state.displayedRanking.take(3).size,
-                key = { index ->
-                    state.displayedRanking[index].species.id
-                },
-            ) { index ->
+            items(count = state.displayedRanking.take(3).size, key = { index ->
+                state.displayedRanking[index].species.id
+            }) { index ->
                 val candidate = state.displayedRanking[index]
-
                 CandidateCard(
                     candidate = candidate,
-                    selected = state.selectedCandidate?.species?.id ==
-                        candidate.species.id,
+                    selected = state.selectedCandidate?.species?.id == candidate.species.id,
                     contextApplied = state.fusedRanking.isNotEmpty(),
-                    onClick = {
-                        onSelectSpecies(candidate.species.id)
-                    },
+                    onClick = { onSelectSpecies(candidate.species.id) },
                 )
             }
         }
@@ -220,24 +191,15 @@ fun ResultsScreen(
 
         if (state.displayedRanking.isNotEmpty()) {
             item {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
                         onClick = onConfirm,
-                        enabled = !state.isClassifying &&
-                            !state.isContextLoading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
+                        enabled = !state.isClassifying && !state.isContextLoading,
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
                     ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                        )
+                        Icon(Icons.Default.Check, contentDescription = null)
                         Text("  Confirm and add to field guide")
                     }
-
                     FilledTonalButton(
                         onClick = onBackToScan,
                         modifier = Modifier.fillMaxWidth(),
@@ -251,23 +213,16 @@ fun ResultsScreen(
         item {
             InformationCard(
                 title = "Interpretation guardrail",
-                body = "The Pl@ntNet card shows raw API scores. " +
-                    "Context-aware scores below are relative to the candidate set, " +
-                    "not calibrated probabilities. Treat all identifications as suggestions.",
+                body = "The Pl@ntNet card shows raw API scores. Context-aware scores below are relative to the candidate set, not calibrated probabilities. Treat all identifications as suggestions.",
             )
         }
     }
 }
 
 @Composable
-private fun AnalysisProgressCard(
-    state: FloraGuideUiState,
-    onRetryContext: () -> Unit,
-) {
+private fun AnalysisProgressCard(state: FloraGuideUiState, onRetryContext: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(
@@ -278,58 +233,34 @@ private fun AnalysisProgressCard(
                 number = "1",
                 title = "Image Top-K",
                 detail = when {
-                    !state.isClassifying &&
-                        state.imagePredictions.isEmpty() &&
-                        state.message != null ->
-                        "Identification failed"
-
-                    state.isClassifying ->
-                        "Preparing identification"
-
-                    state.imagePredictions.isNotEmpty() ->
-                        "Candidate set ready"
-
-                    else ->
-                        "Waiting for a photo"
+                    state.analysisError != null -> "Identification failed; see the error above"
+                    state.isClassifying -> state.identificationStage?.label ?: "Preparing identification"
+                    state.imagePredictions.isNotEmpty() -> "Candidate set ready"
+                    else -> "Waiting for a photo"
                 },
-                complete = !state.isClassifying &&
-                    state.imagePredictions.isNotEmpty(),
+                complete = !state.isClassifying && state.imagePredictions.isNotEmpty(),
                 loading = state.isClassifying,
             )
-
             HorizontalDivider()
-
             AnalysisStep(
                 number = "2",
                 title = "Nearby occurrence context",
                 detail = when {
-                    state.isContextLoading ->
-                        "Querying nearby records…"
-
-                    state.nearbyContext != null ->
-                        state.nearbyContext.progressDetail()
-
-                    else ->
-                        "Waiting for image candidates"
+                    state.isContextLoading -> "Querying nearby records…"
+                    state.nearbyContext != null -> state.nearbyContext.progressDetail()
+                    else -> "Waiting for image candidates"
                 },
                 complete = state.nearbyContext != null,
                 loading = state.isContextLoading,
             )
-
             HorizontalDivider()
-
             AnalysisStep(
                 number = "3",
                 title = "Explainable fusion",
-                detail = if (state.fusedRanking.isNotEmpty()) {
-                    "Softmax-normalised reranking complete"
-                } else {
-                    "Pending context"
-                },
+                detail = if (state.fusedRanking.isNotEmpty()) "Softmax-normalised reranking complete" else "Pending context",
                 complete = state.fusedRanking.isNotEmpty(),
                 loading = false,
             )
-
             state.nearbyContext?.warning?.let { warning ->
                 Text(
                     text = warning,
@@ -337,22 +268,13 @@ private fun AnalysisProgressCard(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-
-            val canRetryLiveContext =
-                !state.isContextLoading &&
-                    state.imagePredictions.isNotEmpty() &&
-                    state.analysisPrefersLiveData &&
-                    state.nearbyContext?.source != ContextDataSource.ALA_LIVE
-
+            val canRetryLiveContext = !state.isContextLoading &&
+                state.imagePredictions.isNotEmpty() &&
+                state.analysisPrefersLiveData &&
+                state.nearbyContext?.source != ContextDataSource.ALA_LIVE
             if (canRetryLiveContext) {
-                FilledTonalButton(
-                    onClick = onRetryContext,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = null,
-                    )
+                FilledTonalButton(onClick = onRetryContext, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
                     Text("  Retry live context")
                 }
             }
@@ -376,55 +298,19 @@ private fun AnalysisStep(
         Surface(
             modifier = Modifier.size(36.dp),
             shape = CircleShape,
-            color = if (complete) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            contentColor = if (complete) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = if (complete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = if (complete) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 when {
-                    loading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    }
-
-                    complete -> {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    else -> {
-                        Text(
-                            text = number,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    loading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    complete -> Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                    else -> Text(number, fontWeight = FontWeight.Bold)
                 }
             }
         }
-
-        Column(
-            modifier = Modifier.weight(1f),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-            )
-
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
@@ -435,14 +321,9 @@ private fun AnalysisStep(
 }
 
 @Composable
-private fun LoadingCard(
-    title: String,
-    body: String,
-) {
+private fun LoadingCard(title: String, body: String) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         shape = RoundedCornerShape(20.dp),
     ) {
         Row(
@@ -450,24 +331,10 @@ private fun LoadingCard(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(30.dp),
-                strokeWidth = 3.dp,
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            CircularProgressIndicator(modifier = Modifier.size(30.dp), strokeWidth = 3.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(body, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -480,9 +347,7 @@ private fun RankingComparison(
     isContextLoading: Boolean,
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(
@@ -494,19 +359,13 @@ private fun RankingComparison(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Before / after",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-
+                Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Icon(
                     Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -516,20 +375,11 @@ private fun RankingComparison(
                     candidates = imageOnly,
                     modifier = Modifier.weight(1f),
                 )
-
                 RankingColumn(
-                    title = if (isContextLoading) {
-                        "Context loading"
-                    } else {
-                        "Fused"
-                    },
+                    title = if (isContextLoading) "Context loading" else "Fused",
                     candidates = fused,
                     modifier = Modifier.weight(1f),
-                    placeholder = if (isContextLoading) {
-                        "ALA / fallback\nthen rerank"
-                    } else {
-                        "Pending"
-                    },
+                    placeholder = if (isContextLoading) "ALA / fallback\nthen rerank" else "Pending",
                 )
             }
         }
@@ -545,19 +395,11 @@ private fun RankingColumn(
 ) {
     Column(
         modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                RoundedCornerShape(14.dp),
-            )
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-        )
-
+        Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         if (candidates.isEmpty()) {
             Text(
                 text = placeholder,
@@ -569,11 +411,7 @@ private fun RankingColumn(
                 Text(
                     text = "${index + 1}. ${candidate.species.commonName}",
                     style = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (index == 0) {
-                        FontWeight.Bold
-                    } else {
-                        FontWeight.Normal
-                    },
+                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 2,
                 )
             }
@@ -588,10 +426,7 @@ private fun CandidateCard(
     contextApplied: Boolean,
     onClick: () -> Unit,
 ) {
-    SelectableCard(
-        selected = selected,
-        onClick = onClick,
-    ) {
+    SelectableCard(selected = selected, onClick = onClick) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -603,38 +438,25 @@ private fun CandidateCard(
                 color = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "${candidate.finalRank}",
-                        fontWeight = FontWeight.Black,
-                    )
+                Box(contentAlignment = Alignment.Center) {
+                    Text("${candidate.finalRank}", fontWeight = FontWeight.Black)
                 }
             }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = candidate.species.commonName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-
                 Text(
                     text = candidate.species.scientificName,
                     style = MaterialTheme.typography.bodySmall,
                     fontStyle = FontStyle.Italic,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-
                 Text(
                     text = if (contextApplied) {
-                        "Image #${candidate.imageRank} → " +
-                            "fused #${candidate.finalRank} · " +
-                            "${candidate.nearbyRecordCount} nearby records"
+                        "Image #${candidate.imageRank} → fused #${candidate.finalRank} · ${candidate.nearbyRecordCount} nearby records"
                     } else {
                         "Image rank #${candidate.imageRank}"
                     },
@@ -642,10 +464,7 @@ private fun CandidateCard(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
-
-            RelativeScoreLabel(
-                score = candidate.relativeScore,
-            )
+            RelativeScoreLabel(score = candidate.relativeScore)
         }
     }
 }
@@ -656,15 +475,9 @@ private fun EvidenceCard(
     state: FloraGuideUiState,
     onHabitatSelected: (Habitat) -> Unit,
 ) {
-    val month = state.analysisDate.month.getDisplayName(
-        TextStyle.FULL,
-        Locale.ENGLISH,
-    )
-
+    val month = state.analysisDate.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(
@@ -676,80 +489,53 @@ private fun EvidenceCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        text = "Why this species?",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Why this species?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(
                         text = candidate.species.commonName,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-
-                Icon(
-                    Icons.Default.Science,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                Icon(Icons.Default.Science, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
-
             EvidenceBar(
                 label = "Image evidence",
                 value = candidate.evidence.imagePrior,
                 detail = "camera rank #${candidate.imageRank}",
             )
-
             EvidenceBar(
                 label = "Location prior",
                 value = candidate.evidence.locationPrior,
-                detail = "${candidate.nearbyRecordCount} records / " +
-                    "${state.nearbyContext?.radiusKm ?: 8} km",
+                detail = "${candidate.nearbyRecordCount} records / ${state.nearbyContext?.radiusKm ?: 8} km",
             )
-
             EvidenceBar(
                 label = "Seasonal prior",
                 value = candidate.evidence.seasonalPrior,
                 detail = month,
             )
-
             EvidenceBar(
                 label = "Microhabitat prior",
                 value = candidate.evidence.habitatPrior,
                 detail = state.selectedHabitat.shortLabel,
             )
-
             HorizontalDivider()
-
             Text(
-                text = "score(s) = α log(image) + β log(location) + " +
-                    "γ log(season) + δ log(habitat), followed by softmax",
+                text = "score(s) = α log(image) + β log(location) + γ log(season) + δ log(habitat), followed by softmax",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-
             Text(
                 text = if (state.imageSource == ImageSource.PLANTNET_LIVE) {
-                    "Season and habitat priors are neutral for live species " +
-                        "without validated ecology data."
+                    "Season and habitat priors are neutral for live species without validated ecology data."
                 } else {
-                    "Try changing the habitat below; the demo ordering updates " +
-                        "without another network request."
+                    "Try changing the habitat below; the demo ordering updates without another network request."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
-
-            HabitatSelector(
-                selected = state.selectedHabitat,
-                onSelected = onHabitatSelected,
-            )
+            HabitatSelector(selected = state.selectedHabitat, onSelected = onHabitatSelected)
         }
     }
 }
@@ -759,7 +545,6 @@ private fun NearbyContext.progressDetail(): String = buildString {
     append(" · ")
     append(radiusKm)
     append(" km")
-
     if (requestCount == 0) {
         append(" · network skipped")
     } else {
@@ -768,20 +553,14 @@ private fun NearbyContext.progressDetail(): String = buildString {
         append("/")
         append(requestCount)
         append(" live")
-
         lookupElapsedMillis?.let { elapsed ->
             append(" · ")
             append(elapsed)
             append(" ms")
         }
-
         if (httpStatusCodes.isNotEmpty()) {
             append(" · HTTP ")
-            append(
-                httpStatusCodes
-                    .sorted()
-                    .joinToString("/"),
-            )
+            append(httpStatusCodes.sorted().joinToString("/"))
         }
     }
 }
