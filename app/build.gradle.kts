@@ -22,17 +22,24 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The key lives in git-ignored local.properties. An absent key is not a build failure:
-        // AppContainer then keeps the clearly labelled demo adapter.
+        // The key lives in git-ignored local.properties as PLANTNET_API_KEY (plantnet.api.key is
+        // still read), or in a PLANTNET_API_KEY environment variable. An absent key is not a build
+        // failure: live scans then report the missing key, and the guided demo still runs offline.
         // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
         // prototype but is not secret storage; move it behind a proxy if this is ever published.
-        val plantNetApiKey = Properties().apply {
+        val localProperties = Properties().apply {
             rootProject.file("local.properties")
                 .takeIf { it.exists() }
                 ?.inputStream()
                 ?.use { stream -> load(stream) }
-        }.getProperty("plantnet.api.key", "")
-        buildConfigField("String", "PLANTNET_API_KEY", "\"$plantNetApiKey\"")
+        }
+        val plantNetApiKey = listOf(
+            localProperties.getProperty("PLANTNET_API_KEY"),
+            localProperties.getProperty("plantnet.api.key"),
+            System.getenv("PLANTNET_API_KEY"),
+        ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        val escapedKey = plantNetApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "PLANTNET_API_KEY", "\"$escapedKey\"")
     }
 
     buildTypes {
@@ -95,4 +102,6 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.storage)
+    implementation(libs.firebase.auth)
+    implementation(libs.kotlinx.coroutines.play.services)
 }

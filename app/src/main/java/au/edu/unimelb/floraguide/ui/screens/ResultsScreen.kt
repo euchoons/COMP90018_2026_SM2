@@ -43,6 +43,7 @@ import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
+import au.edu.unimelb.floraguide.ui.components.CloudIdentificationCard
 import au.edu.unimelb.floraguide.ui.components.EvidenceBar
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
@@ -61,6 +62,7 @@ fun ResultsScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onSelectSpecies: (String) -> Unit,
     onRetryContext: () -> Unit,
+    onRetryIdentification: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -126,14 +128,18 @@ fun ResultsScreen(
         }
 
         item {
+            CloudIdentificationCard(state = state, onRetry = onRetryIdentification)
+        }
+
+        item {
             AnalysisProgressCard(state = state, onRetryContext = onRetryContext)
         }
 
         if (state.isClassifying) {
             item {
                 LoadingCard(
-                    title = "Generating image candidates",
-                    body = "The architecture expects Top-K candidates so context can rescue a species outside the original Top 3.",
+                    title = state.identificationStage?.label ?: "Generating image candidates",
+                    body = "Live scans upload to Firebase, read back the stored image, then request Pl@ntNet candidates.",
                 )
             }
         }
@@ -207,7 +213,7 @@ fun ResultsScreen(
         item {
             InformationCard(
                 title = "Interpretation guardrail",
-                body = "Displayed values are relative ranking scores over this candidate set, not calibrated confidence percentages. An unknown/genus-level option should be added when a real model is integrated.",
+                body = "The Pl@ntNet card shows raw API scores. Context-aware scores below are relative to the candidate set, not calibrated probabilities. Treat all identifications as suggestions.",
             )
         }
     }
@@ -226,7 +232,12 @@ private fun AnalysisProgressCard(state: FloraGuideUiState, onRetryContext: () ->
             AnalysisStep(
                 number = "1",
                 title = "Image Top-K",
-                detail = if (state.isClassifying) "Running locally…" else "Candidate set ready",
+                detail = when {
+                    state.analysisError != null -> "Identification failed; see the error above"
+                    state.isClassifying -> state.identificationStage?.label ?: "Preparing identification"
+                    state.imagePredictions.isNotEmpty() -> "Candidate set ready"
+                    else -> "Waiting for a photo"
+                },
                 complete = !state.isClassifying && state.imagePredictions.isNotEmpty(),
                 loading = state.isClassifying,
             )
@@ -515,7 +526,11 @@ private fun EvidenceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Try changing the habitat below; the final ordering updates without another network request.",
+                text = if (state.imageSource == ImageSource.PLANTNET_LIVE) {
+                    "Season and habitat priors are neutral for live species without validated ecology data."
+                } else {
+                    "Try changing the habitat below; the demo ordering updates without another network request."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
