@@ -6,8 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 
-    id("com.google.gms.google-services")
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -23,17 +22,24 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // The key lives in git-ignored local.properties. An absent key is not a build failure:
-        // AppContainer then keeps the clearly labelled demo adapter.
+        // The key lives in git-ignored local.properties as PLANTNET_API_KEY (plantnet.api.key is
+        // still read), or in a PLANTNET_API_KEY environment variable. An absent key is not a build
+        // failure: live scans then report the missing key, and the guided demo still runs offline.
         // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
         // prototype but is not secret storage; move it behind a proxy if this is ever published.
-        val plantNetApiKey = Properties().apply {
+        val localProperties = Properties().apply {
             rootProject.file("local.properties")
                 .takeIf { it.exists() }
                 ?.inputStream()
                 ?.use { stream -> load(stream) }
-        }.getProperty("plantnet.api.key", "")
-        buildConfigField("String", "PLANTNET_API_KEY", "\"$plantNetApiKey\"")
+        }
+        val plantNetApiKey = listOf(
+            localProperties.getProperty("PLANTNET_API_KEY"),
+            localProperties.getProperty("plantnet.api.key"),
+            System.getenv("PLANTNET_API_KEY"),
+        ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        val escapedKey = plantNetApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "PLANTNET_API_KEY", "\"$escapedKey\"")
     }
 
     buildTypes {
@@ -90,27 +96,12 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-    implementation(libs.androidx.work.runtime.ktx)
-
     testImplementation(libs.junit)
-    testImplementation(libs.androidx.test.core.ktx)
-    testImplementation(libs.androidx.test.ext.junit.ktx)
     testImplementation(libs.json)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
-    implementation("com.google.firebase:firebase-storage")
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-
-    // In app/build.gradle.kts dependencies block
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    testImplementation("androidx.room:room-testing:2.6.1")
-    testImplementation("androidx.work:work-testing:2.9.0")
-    testImplementation("org.robolectric:robolectric:4.11.1")
-    testImplementation(libs.mockk)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.auth)
+    implementation(libs.kotlinx.coroutines.play.services)
 }
