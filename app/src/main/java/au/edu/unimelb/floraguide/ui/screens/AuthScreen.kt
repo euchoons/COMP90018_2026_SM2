@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -20,10 +21,10 @@ fun AuthScreen(
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isRegistering by remember { mutableStateOf(false) }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var displayName by remember { mutableStateOf("") }
+    var isRegistering by rememberSaveable { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var displayName by srememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -98,7 +99,7 @@ fun AuthScreen(
                         if (isRegistering) {
                             OutlinedTextField(
                                 value = displayName,
-                                onValueChange = { displayName = it },
+                                onValueChange = { displayName = it }, // <-- Change from { displayName = it } if it wasn't assigning correctly or was empty
                                 label = { Text("Display Name") },
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -106,14 +107,14 @@ fun AuthScreen(
 
                         OutlinedTextField(
                             value = email,
-                            onValueChange = { email = it },
+                            onValueChange = { email = it }, // <-- This ensures the typed characters update the state
                             label = { Text("Email Address") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         OutlinedTextField(
                             value = password,
-                            onValueChange = { password = it },
+                            onValueChange = { password = it }, // <-- This ensures the typed characters update the state
                             label = { Text("Password") },
                             visualTransformation = PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
