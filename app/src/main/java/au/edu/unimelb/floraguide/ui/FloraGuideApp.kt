@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -20,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
+import au.edu.unimelb.floraguide.domain.repository.AuthState
+import au.edu.unimelb.floraguide.ui.screens.AuthScreen
 import au.edu.unimelb.floraguide.ui.screens.CollectionScreen
 import au.edu.unimelb.floraguide.ui.screens.HomeScreen
 import au.edu.unimelb.floraguide.ui.screens.ResultsScreen
@@ -28,7 +31,19 @@ import au.edu.unimelb.floraguide.ui.screens.ScanScreen
 @Composable
 fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    if (authState !is AuthState.Authenticated) {
+        AuthScreen(
+            authState = authState,
+            onSignIn = viewModel::signIn,
+            onRegister = viewModel::register,
+            onAnonymousSignIn = viewModel::signInAnonymously,
+            onSignOut = viewModel::signOut,
+        )
+        return
+    }
 
     LaunchedEffect(state.message) {
         state.message?.let { message ->
@@ -40,7 +55,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     BackHandler(enabled = state.screen != AppScreen.HOME) {
         when (state.screen) {
             AppScreen.RESULTS -> viewModel.goToScan()
-            AppScreen.SCAN, AppScreen.COLLECTION -> viewModel.goHome()
+            AppScreen.SCAN, AppScreen.COLLECTION, AppScreen.ACCOUNT -> viewModel.goHome()
             AppScreen.HOME -> Unit
         }
     }
@@ -55,6 +70,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                     onHome = viewModel::goHome,
                     onScan = viewModel::goToScan,
                     onCollection = viewModel::goToCollection,
+                    onAccount = viewModel::goToAccount,
                 )
             }
         },
@@ -95,6 +111,15 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onStartScan = viewModel::goToScan,
                 modifier = Modifier.padding(padding),
             )
+
+            AppScreen.ACCOUNT -> AuthScreen(
+                authState = authState,
+                onSignIn = viewModel::signIn,
+                onRegister = viewModel::register,
+                onAnonymousSignIn = viewModel::signInAnonymously,
+                onSignOut = viewModel::signOut,
+                modifier = Modifier.padding(padding),
+            )
         }
     }
 }
@@ -105,6 +130,7 @@ private fun FloraGuideNavigationBar(
     onHome: () -> Unit,
     onScan: () -> Unit,
     onCollection: () -> Unit,
+    onAccount: () -> Unit,
 ) {
     NavigationBar {
         NavigationBarItem(
@@ -124,6 +150,12 @@ private fun FloraGuideNavigationBar(
             onClick = onCollection,
             icon = { Icon(Icons.Default.CollectionsBookmark, contentDescription = null) },
             label = { Text("Field guide") },
+        )
+        NavigationBarItem(
+            selected = selected == AppScreen.ACCOUNT,
+            onClick = onAccount,
+            icon = { Icon(Icons.Default.Person, contentDescription = null) },
+            label = { Text("Account") },
         )
     }
 }

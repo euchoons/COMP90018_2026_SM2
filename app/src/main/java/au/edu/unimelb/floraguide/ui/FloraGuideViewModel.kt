@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import au.edu.unimelb.floraguide.di.AppContainer
+import au.edu.unimelb.floraguide.domain.repository.AuthState
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
 import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
 import au.edu.unimelb.floraguide.domain.model.AppScreen
@@ -71,17 +72,86 @@ class FloraGuideViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
     private var analysisJob: Job? = null
-    private val _uiState = MutableStateFlow(
-        FloraGuideUiState(observations = container.observationRepository.loadAll()),
-    )
+    private val _uiState = MutableStateFlow(FloraGuideUiState())
     val uiState: StateFlow<FloraGuideUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            val obs = container.observationRepository.loadAll()
+            _uiState.update { it.copy(observations = obs) }
+        }
         container.sensorMonitor.start { snapshot ->
             _uiState.update { it.copy(sensorSnapshot = snapshot) }
         }
     }
 
+    val authState: StateFlow<AuthState> = container.authRepository.authState
+
+    fun signIn(email: String, pass: String) {
+        viewModelScope.launch { container.authRepository.signInWithEmail(email, pass) }
+    }
+
+    fun register(email: String, pass: String, name: String) {
+        viewModelScope.launch { container.authRepository.registerWithEmail(email, pass, name) }
+    }
+
+    fun signInAnonymously() {
+        viewModelScope.launch { container.authRepository.signInAnonymously() }
+    }
+
+    fun signOut() {
+        viewModelScope.launch { container.authRepository.signOut() }
+    }
+
+    private suspend fun fetchAndFuse(
+        predictions: List<ImagePrediction>,
+        preferLiveData: Boolean,
+    ) {
+        _uiState.update { it.copy(isContextLoading = true, message = null) }
+        val current = _uiState.value
+        try {
+            // Map species through ALA Taxonomy Resolver to map candidate names & synonyms to accepted ALA identifiers
+            val mappedCandidates = predictions.map { pred ->
+                val match = container.taxonomyClient.resolveTaxonomy(pred.species.scientificName)
+                pred.species.copy(
+                    scientificName = match.acceptedScientificName,
+                    id = match.acceptedGuid ?: pred.species.id
+                )
+            }
+
+            val nearby = container.speciesContextRepository.nearbyOccurrenceCounts(
+                candidates = mappedCandidates,
+                location = current.location,
+                radiusKm = CONTEXT_RADIUS_KM,
+                preferLiveData = preferLiveData,
+            )
+            val latest = _uiState.value
+            val fused = container.rankCandidates(
+                predictions = predictions,
+                nearbyCounts = nearby.countsBySpeciesId,
+                habitat = latest.selectedHabitat,
+                date = latest.analysisDate,
+            )
+            _uiState.update {
+                it.copy(
+                    fusedRanking = fused,
+                    nearbyContext = nearby,
+                    selectedSpeciesId = fused.firstOrNull()?.species?.id,
+                    isContextLoading = false,
+                    message = nearby.warning,
+                )
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            _uiState.update {
+                it.copy(
+                    isContextLoading = false,
+                    message = error.message ?: "Context lookup failed.",
+                )
+            }
+        }
+    }
     fun goHome() {
         analysisJob?.cancel()
         _uiState.update {
@@ -94,12 +164,26 @@ class FloraGuideViewModel(
         }
     }
 
-    fun goToCollection() = _uiState.update {
-        it.copy(
-            screen = AppScreen.COLLECTION,
-            observations = container.observationRepository.loadAll(),
-            message = null,
-        )
+    fun goToCollection() {
+        viewModelScope.launch {
+            val obs = container.observationRepository.loadAll()
+            _uiState.update {
+                it.copy(
+                    screen = AppScreen.COLLECTION,
+                    observations = obs,
+                    message = null,
+                )
+            }
+        }
+    }
+
+    fun goToAccount() {
+        _uiState.update {
+            it.copy(
+                screen = AppScreen.ACCOUNT,
+                message = null,
+            )
+        }
     }
 
     fun goToScan() {
@@ -235,13 +319,16 @@ class FloraGuideViewModel(
             relativeScore = selected.relativeScore,
             contextSource = contextSource,
         )
-        container.observationRepository.save(observation)
-        _uiState.update {
-            it.copy(
-                observations = container.observationRepository.loadAll(),
-                screen = AppScreen.COLLECTION,
-                message = "Observation saved with a coarsened location.",
-            )
+        viewModelScope.launch {
+            container.observationRepository.save(observation)
+            val obs = container.observationRepository.loadAll()
+            _uiState.update {
+                it.copy(
+                    observations = obs,
+                    screen = AppScreen.COLLECTION,
+                    message = "Observation saved with a coarsened location.",
+                )
+            }
         }
     }
 
@@ -327,47 +414,6 @@ class FloraGuideViewModel(
                         identificationStage = null,
                     )
                 }
-            }
-        }
-    }
-
-    private suspend fun fetchAndFuse(
-        predictions: List<ImagePrediction>,
-        preferLiveData: Boolean,
-    ) {
-        _uiState.update { it.copy(isContextLoading = true, message = null) }
-        val current = _uiState.value
-        try {
-            val nearby = container.speciesContextRepository.nearbyOccurrenceCounts(
-                candidates = predictions.map { it.species },
-                location = current.location,
-                radiusKm = CONTEXT_RADIUS_KM,
-                preferLiveData = preferLiveData,
-            )
-            val latest = _uiState.value
-            val fused = container.rankCandidates(
-                predictions = predictions,
-                nearbyCounts = nearby.countsBySpeciesId,
-                habitat = latest.selectedHabitat,
-                date = latest.analysisDate,
-            )
-            _uiState.update {
-                it.copy(
-                    fusedRanking = fused,
-                    nearbyContext = nearby,
-                    selectedSpeciesId = fused.firstOrNull()?.species?.id,
-                    isContextLoading = false,
-                    message = nearby.warning,
-                )
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Exception) {
-            _uiState.update {
-                it.copy(
-                    isContextLoading = false,
-                    message = error.message ?: "Context lookup failed.",
-                )
             }
         }
     }

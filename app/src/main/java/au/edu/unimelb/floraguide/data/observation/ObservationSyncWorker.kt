@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import au.edu.unimelb.floraguide.FloraGuideApplication
 import au.edu.unimelb.floraguide.data.local.ObservationDao
 import au.edu.unimelb.floraguide.data.local.SyncState
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +22,12 @@ open class ObservationSyncWorker(
     storage: FirebaseStorage? = null,
     auth: FirebaseAuth? = null
 ) : CoroutineWorker(appContext, workerParams) {
+
+    constructor(appContext: Context, workerParams: WorkerParameters) : this(
+        appContext,
+        workerParams,
+        (appContext.applicationContext as FloraGuideApplication).container.database.observationDao()
+    )
 
     private val actualFirestore: FirebaseFirestore by lazy { firestore ?: FirebaseFirestore.getInstance() }
     private val actualStorage: FirebaseStorage by lazy { storage ?: FirebaseStorage.getInstance() }

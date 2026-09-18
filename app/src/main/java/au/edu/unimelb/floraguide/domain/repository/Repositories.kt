@@ -24,6 +24,6 @@ interface SpeciesContextRepository {
 }
 
 interface ObservationRepository {
-    fun loadAll(): List<Observation>
-    fun save(observation: Observation)
+    suspend fun loadAll(): List<Observation>
+    suspend fun save(observation: Observation)
 }
