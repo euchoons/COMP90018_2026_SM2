@@ -45,3 +45,11 @@ Device checks use an isolated Android emulator data disk with Wi-Fi/mobile data 
 Deleting an observation removes its synced metadata, not its underlying Storage image blob. Blob retention/garbage collection and multi-device conflict reconciliation remain separate features.
 
 Repository policy still requires another teammate's explicit PR approval before merge. Adding the CI workflow does not enable a required status check in branch protection; that requires repository administration.
+
+## PR #12 UI integration
+
+The integration retains PR #12 and PR #23 commit ancestry, all four navigation destinations, Account actions and the offline route. Native ripple and a visible selected indicator remain enabled. The unrelated Java toolchain-resolver plugin was not retained.
+
+Both contrast tests failed against the PR #12 palette before the fix. `ThemeContrastTest` checks actual compositing for status pills and 0.55-alpha ranking panels in both themes, including background/surface variants; `copy(alpha)` replaces the previous alpha. Text now meets the test's 4.5:1 minimum and input outlines meet 3:1. Large-text navigation uses short visible labels while preserving complete accessibility names, covered by `NavigationLabelsTest`.
+
+Final local verification: **71 debug tests and 71 release tests passed, no skips; lint 0 errors / 19 dependency-update warnings; assembleDebug passed.** The offline emulator smoke test covered entry, guided-demo ranking with network skipped, save, confirmation before delete, and immediate collection updates. Small-screen checks used a 320×568 dp viewport and system font scale 2.0; login actions remain scrollable, the hero actions wrap, and navigation labels stay compact.

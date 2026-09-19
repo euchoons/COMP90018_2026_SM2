@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -129,6 +131,7 @@ fun HomeScreen(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun HeroCard(
     onStartScan: () -> Unit,
     onGuidedDemo: () -> Unit,
@@ -146,7 +149,7 @@ private fun HeroCard(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
             Surface(
-                color = Color.White.copy(alpha = 0.16f),
+                color = Color.Black.copy(alpha = 0.12f),
                 contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier.padding(bottom = 42.dp)
@@ -161,7 +164,7 @@ private fun HeroCard(
                 }
             }
             Text(
-                text = "FloraGuide",
+                text = "Flora\u200BGuide",
                 style = MaterialTheme.typography.displaySmall,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
@@ -173,21 +176,19 @@ private fun HeroCard(
                 color = Color.White.copy(alpha = 0.90f),
                 modifier = Modifier.padding(bottom = 42.dp),
             )
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Button(
                     onClick = onStartScan,
-                    modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Default.CameraAlt, contentDescription = null)
                     Text("  Start")
                 }
                 FilledTonalButton(
                     onClick = onGuidedDemo,
-                    modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,

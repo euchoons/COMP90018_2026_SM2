@@ -74,10 +74,10 @@ fun AuthScreen(
                 if (upgrading) "Anonymous cloud guest" else user.displayName ?: user.email ?: "Signed in",
                 style = MaterialTheme.typography.titleMedium,
             )
-            OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Text("Import local guest observations")
             }
-            OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud sync") }
+            OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Retry cloud sync") }
             if (upgrading) {
                 Text("Create an account below to keep this guest's observations under the same account.")
             } else {
@@ -116,18 +116,19 @@ fun AuthScreen(
             },
             enabled = email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank()),
             modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
         ) {
             Text(if (upgrading) "Upgrade guest account" else if (registering) "Create account" else "Sign in")
         }
         if (!upgrading) {
-            TextButton(onClick = { isRegistering = !isRegistering }, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = { isRegistering = !isRegistering }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Text(if (isRegistering) "Already have an account? Sign in" else "Need an account? Register")
             }
-            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Text("Continue as cloud guest (internet required)")
             }
             if (authState != AuthState.OfflineGuest) {
-                OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                     Text("Continue offline · guided demo")
                 }
             }

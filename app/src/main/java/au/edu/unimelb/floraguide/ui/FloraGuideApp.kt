@@ -17,12 +17,17 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
@@ -40,17 +45,19 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     if (authState !is AuthState.Authenticated && authState != AuthState.OfflineGuest) {
-        AuthScreen(
-            authState = authState,
-            onSignIn = viewModel::signIn,
-            onRegister = viewModel::register,
-            onAnonymousSignIn = viewModel::signInAnonymously,
-            onContinueOffline = viewModel::continueOffline,
-            onImportLocal = viewModel::importLocalObservations,
-            onRetrySync = viewModel::retrySync,
-            onSignOut = viewModel::signOut,
-            modifier = Modifier.safeDrawingPadding(),
-        )
+        Surface {
+            AuthScreen(
+                authState = authState,
+                onSignIn = viewModel::signIn,
+                onRegister = viewModel::register,
+                onAnonymousSignIn = viewModel::signInAnonymously,
+                onContinueOffline = viewModel::continueOffline,
+                onImportLocal = viewModel::importLocalObservations,
+                onRetrySync = viewModel::retrySync,
+                onSignOut = viewModel::signOut,
+                modifier = Modifier.safeDrawingPadding(),
+            )
+        }
         return
     }
 
@@ -164,7 +171,12 @@ private fun RowScope.FloraGuideNavigationItem(
         selected = selected,
         onClick = onClick,
         icon = { Icon(icon, contentDescription = null) },
-        label = { Text(label) },
+        label = {
+            Text(
+                text = navigationLabel(label, LocalDensity.current.fontScale),
+                modifier = Modifier.clearAndSetSemantics { text = AnnotatedString(label) },
+            )
+        },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -173,4 +185,11 @@ private fun RowScope.FloraGuideNavigationItem(
             unselectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     )
+}
+
+internal fun navigationLabel(label: String, fontScale: Float): String = if (fontScale < 1.5f) label else when (label) {
+    "Observe" -> "Scan"
+    "Field guide" -> "Guide"
+    "Account" -> "Me"
+    else -> label
 }
