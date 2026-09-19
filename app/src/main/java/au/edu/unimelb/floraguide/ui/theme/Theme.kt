@@ -7,43 +7,44 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val LightColours = lightColorScheme(
-    primary = Color(0xFF166534),
+internal val LightColours = lightColorScheme(
+    primary = Color(0xFF242424),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFD7F4DE),
-    onPrimaryContainer = Color(0xFF062E16),
-    secondary = Color(0xFF1F6F78),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFCDEEF1),
-    onSecondaryContainer = Color(0xFF062F34),
-    tertiary = Color(0xFF835500),
-    tertiaryContainer = Color(0xFFFFDDA8),
-    background = Color(0xFFF7FAF7),
-    surface = Color(0xFFFCFDF9),
-    surfaceVariant = Color(0xFFE4EAE3),
-    outline = Color(0xFF737A73),
-    error = Color(0xFFBA1A1A),
+    primaryContainer = Color(0xFFF5F5F5),
+    onPrimaryContainer = Color(0xFF242424),
+    secondary = Color.White,
+    onSecondary = Color(0xFF242424),
+    secondaryContainer = Color(0x80E2E2E2),
+    onSecondaryContainer = Color(0xFF303030),
+    background = Color(0xFFE2E2E2),
+    surface = Color(0xFFF5F5F5),
+    surfaceVariant = Color(0x4026B887),
+    onSurfaceVariant = Color(0xFF0D513C),
+    outline = Color(0xFF767676),
+    error = Color(0xFFB0003A),
 )
 
-private val DarkColours = darkColorScheme(
-    primary = Color(0xFF9BDAA7),
-    onPrimary = Color(0xFF00391A),
-    primaryContainer = Color(0xFF005227),
-    onPrimaryContainer = Color(0xFFB7F7C1),
-    secondary = Color(0xFF91D3DB),
-    onSecondary = Color(0xFF00363C),
-    secondaryContainer = Color(0xFF174E55),
-    onSecondaryContainer = Color(0xFFADEFF7),
-    background = Color(0xFF101410),
-    surface = Color(0xFF101410),
-    surfaceVariant = Color(0xFF414942),
+internal val DarkColours = darkColorScheme(
+    primary = Color(0xFFD4D4D4),
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF242424),
+    onPrimaryContainer = Color(0xFFD4D4D4),
+    secondary = Color.Black,
+    onSecondary = Color(0xFFAAAAAA),
+    secondaryContainer = Color(0xFF242424),
+    onSecondaryContainer = Color(0xFFAAAAAA),
+    background = Color(0xFF0C0C0C),
+    surface = Color(0xFF242424),
+    surfaceVariant = Color(0x4026B887),
+    onSurfaceVariant = Color(0xFFB5FFDF),
+    outline = Color(0xFF8C8C8C),
 )
 
 @Composable
 fun FloraGuideTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColours else LightColours,
-        typography = MaterialTheme.typography,
+        typography = AppTypography,
         content = content,
     )
 }

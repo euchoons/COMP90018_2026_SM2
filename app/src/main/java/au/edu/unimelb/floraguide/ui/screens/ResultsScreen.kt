@@ -223,7 +223,7 @@ fun ResultsScreen(
 private fun AnalysisProgressCard(state: FloraGuideUiState, onRetryContext: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(17.dp),
@@ -324,7 +324,7 @@ private fun AnalysisStep(
 private fun LoadingCard(title: String, body: String) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -348,7 +348,7 @@ private fun RankingComparison(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(17.dp),
@@ -478,7 +478,7 @@ private fun EvidenceCard(
     val month = state.analysisDate.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
