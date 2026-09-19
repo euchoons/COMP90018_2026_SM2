@@ -12,6 +12,7 @@ data class UserProfile(
 sealed class AuthState {
     object Unauthenticated : AuthState()
     object Authenticating : AuthState()
+    object OfflineGuest : AuthState()
     data class Authenticated(val user: UserProfile) : AuthState()
     data class Error(val message: String) : AuthState()
 }
@@ -23,5 +24,6 @@ interface AuthRepository {
     suspend fun signInWithEmail(email: String, pass: String): Result<UserProfile>
     suspend fun registerWithEmail(email: String, pass: String, displayName: String): Result<UserProfile>
     suspend fun signOut()
+    suspend fun continueOffline()
     fun getSessionLogs(): List<String>
 }

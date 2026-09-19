@@ -6,7 +6,6 @@ import android.util.Log
 import au.edu.unimelb.floraguide.domain.repository.PhotoStore
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
@@ -17,8 +16,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -26,43 +23,47 @@ class FirebasePhotoStorage(
     context: Context,
     private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val expectedUserId: String? = null,
 ) : PhotoStore {
     private val cacheDirectory = File(context.applicationContext.cacheDir, "plantnet-cloud")
-    private val authenticationMutex = Mutex()
 
-    override suspend fun uploadPhoto(localPath: String): StoredPhoto = withContext(Dispatchers.IO) {
-        val file = File(localPath)
-        require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
-        require(file.length() in 1L..MAX_IMAGE_BYTES) {
-            "The photo is empty or exceeds the app's 20 MiB upload limit."
-        }
-        val contentType = imageContentType(file)
-        val digest = sha256(file)
+    override suspend fun uploadPhoto(localPath: String): StoredPhoto {
         val uid = ensureUser()
-        val extension = if (contentType == "image/png") "png" else "jpg"
-        // Content-based names avoid duplicate objects when retrying the same photo.
-        val reference = storage.reference.child("plant_photos/$uid/$digest.$extension")
-        val metadata = StorageMetadata.Builder()
-            .setContentType(contentType)
-            .setCustomMetadata("sha256", digest)
-            .build()
-        val upload = reference.putFile(Uri.fromFile(file), metadata)
-        try {
-            upload.await()
-            currentCoroutineContext().ensureActive()
-            Log.i(TAG, "stage=upload outcome=success bytes=${file.length()}")
-            StoredPhoto(
-                storagePath = reference.path,
-                gsUri = reference.toString(),
-                sizeBytes = file.length(),
-                sha256 = digest,
-                contentType = contentType,
-            )
-        } catch (cancelled: CancellationException) {
-            upload.cancel()
-            throw cancelled
-        } catch (error: StorageException) {
-            throw storageError("Upload", error)
+        return withContext(Dispatchers.IO) {
+            val file = File(localPath)
+            require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
+            require(file.length() in 1L..MAX_IMAGE_BYTES) {
+                "The photo is empty or exceeds the app's 20 MiB upload limit."
+            }
+            val contentType = imageContentType(file)
+            val digest = sha256(file)
+            check(ensureUser() == uid) { "Account changed before upload." }
+            val extension = if (contentType == "image/png") "png" else "jpg"
+            // Content-based names avoid duplicate objects when retrying the same photo.
+            val reference = storage.reference.child("plant_photos/$uid/$digest.$extension")
+            val metadata = StorageMetadata.Builder()
+                .setContentType(contentType)
+                .setCustomMetadata("sha256", digest)
+                .build()
+            val upload = reference.putFile(Uri.fromFile(file), metadata)
+            try {
+                upload.await()
+                currentCoroutineContext().ensureActive()
+                check(ensureUser() == uid) { "Account changed during upload." }
+                Log.i(TAG, "stage=upload outcome=success bytes=${file.length()}")
+                StoredPhoto(
+                    storagePath = reference.path,
+                    gsUri = reference.toString(),
+                    sizeBytes = file.length(),
+                    sha256 = digest,
+                    contentType = contentType,
+                )
+            } catch (cancelled: CancellationException) {
+                upload.cancel()
+                throw cancelled
+            } catch (error: StorageException) {
+                throw storageError("Upload", error)
+            }
         }
     }
 
@@ -112,18 +113,10 @@ class FirebasePhotoStorage(
         }
     }
 
-    private suspend fun ensureUser(): String = authenticationMutex.withLock {
-        auth.currentUser?.uid ?: try {
-            auth.signInAnonymously().await().user?.uid
-                ?: throw IOException("Firebase sign-in returned no user.")
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: FirebaseAuthException) {
-            throw IOException(
-                "Firebase Authentication failed (${error.errorCode}). " +
-                    "Check Anonymous sign-in and the project's authentication settings.",
-            )
-        }
+    private fun ensureUser(): String {
+        val uid = auth.currentUser?.uid ?: throw IOException("Sign in from Account before uploading a photo. The guided demo works offline.")
+        check(expectedUserId == null || expectedUserId == uid) { "Account changed before photo transfer." }
+        return uid
     }
 
     private fun storageError(action: String, error: StorageException): IOException {

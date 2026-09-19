@@ -23,9 +23,14 @@ import java.util.UUID
 import kotlin.math.round
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -74,29 +79,76 @@ class FloraGuideViewModel(
     private var analysisJob: Job? = null
     private val _uiState = MutableStateFlow(FloraGuideUiState())
     val uiState: StateFlow<FloraGuideUiState> = _uiState.asStateFlow()
+    val authState: StateFlow<AuthState> = container.authRepository.authState
+
+    private fun sessionKey(): String? = container.authRepository.getCurrentUser()?.uid
+        ?: if (authState.value == AuthState.OfflineGuest) "anonymous_user" else null
 
     init {
         viewModelScope.launch {
-            val obs = container.observationRepository.loadAll()
-            _uiState.update { it.copy(observations = obs) }
+            authState.map { sessionKey() }.distinctUntilChanged().collectLatest { uid ->
+                analysisJob?.cancel()
+                // Do not retain another account's photos, results or collection on screen.
+                _uiState.update { FloraGuideUiState(sensorSnapshot = it.sensorSnapshot) }
+                if (uid != null) {
+                    try {
+                        container.observationRepository.observeAll().collect { observations ->
+                            if (sessionKey() == uid) _uiState.update { it.copy(observations = observations) }
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        if (sessionKey() == uid) showMessage("Could not load local observations. Please reopen the app.")
+                    }
+                }
+            }
         }
         container.sensorMonitor.start { snapshot ->
             _uiState.update { it.copy(sensorSnapshot = snapshot) }
         }
     }
 
-    val authState: StateFlow<AuthState> = container.authRepository.authState
-
     fun signIn(email: String, pass: String) {
-        viewModelScope.launch { container.authRepository.signInWithEmail(email, pass) }
+        viewModelScope.launch {
+            container.authRepository.signInWithEmail(email, pass).onFailure { showMessage(it.message ?: "Sign-in failed.") }
+        }
     }
 
     fun register(email: String, pass: String, name: String) {
-        viewModelScope.launch { container.authRepository.registerWithEmail(email, pass, name) }
+        viewModelScope.launch {
+            container.authRepository.registerWithEmail(email, pass, name).onFailure { showMessage(it.message ?: "Registration failed.") }
+        }
     }
 
     fun signInAnonymously() {
-        viewModelScope.launch { container.authRepository.signInAnonymously() }
+        viewModelScope.launch {
+            container.authRepository.signInAnonymously().onFailure { showMessage(it.message ?: "Guest sign-in failed. You can continue offline.") }
+        }
+    }
+
+    fun continueOffline() {
+        viewModelScope.launch { container.authRepository.continueOffline() }
+    }
+
+    fun importLocalObservations() = observationAction(
+        "Local guest observations imported into this account.", container.observationRepository::importLocalObservations,
+    )
+
+    fun retrySync() = observationAction("Cloud sync queued.", container.observationRepository::retrySync)
+
+    private fun observationAction(message: String, action: suspend () -> Unit) {
+        val uid = sessionKey() ?: return
+        viewModelScope.launch {
+            if (sessionKey() != uid) return@launch
+            try {
+                action()
+                if (sessionKey() == uid) showMessage(message)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (sessionKey() == uid) showMessage("Could not complete this action. Please retry.")
+            }
+        }
     }
 
     fun signOut() {
@@ -107,24 +159,18 @@ class FloraGuideViewModel(
         predictions: List<ImagePrediction>,
         preferLiveData: Boolean,
     ) {
+        val uid = sessionKey()
         _uiState.update { it.copy(isContextLoading = true, message = null) }
         val current = _uiState.value
         try {
-            // Map species through ALA Taxonomy Resolver to map candidate names & synonyms to accepted ALA identifiers
-            val mappedCandidates = predictions.map { pred ->
-                val match = container.taxonomyClient.resolveTaxonomy(pred.species.scientificName)
-                pred.species.copy(
-                    scientificName = match.acceptedScientificName,
-                    id = match.acceptedGuid ?: pred.species.id
-                )
-            }
-
             val nearby = container.speciesContextRepository.nearbyOccurrenceCounts(
-                candidates = mappedCandidates,
+                candidates = predictions.map { it.species },
                 location = current.location,
                 radiusKm = CONTEXT_RADIUS_KM,
                 preferLiveData = preferLiveData,
             )
+            currentCoroutineContext().ensureActive()
+            if (sessionKey() != uid) throw CancellationException("Account changed")
             val latest = _uiState.value
             val fused = container.rankCandidates(
                 predictions = predictions,
@@ -165,16 +211,7 @@ class FloraGuideViewModel(
     }
 
     fun goToCollection() {
-        viewModelScope.launch {
-            val obs = container.observationRepository.loadAll()
-            _uiState.update {
-                it.copy(
-                    screen = AppScreen.COLLECTION,
-                    observations = obs,
-                    message = null,
-                )
-            }
-        }
+        _uiState.update { it.copy(screen = AppScreen.COLLECTION, message = null) }
     }
 
     fun goToAccount() {
@@ -302,6 +339,7 @@ class FloraGuideViewModel(
     }
 
     fun confirmSelectedObservation() {
+        val uid = sessionKey() ?: return
         val current = _uiState.value
         val selected = current.selectedCandidate ?: return
         val contextSource = current.nearbyContext?.source ?: ContextDataSource.DEMO_FALLBACK
@@ -320,14 +358,30 @@ class FloraGuideViewModel(
             contextSource = contextSource,
         )
         viewModelScope.launch {
-            container.observationRepository.save(observation)
-            val obs = container.observationRepository.loadAll()
-            _uiState.update {
-                it.copy(
-                    observations = obs,
-                    screen = AppScreen.COLLECTION,
-                    message = "Observation saved with a coarsened location.",
-                )
+            if (sessionKey() != uid) return@launch
+            try {
+                container.observationRepository.save(observation)
+                if (sessionKey() == uid) _uiState.update {
+                    it.copy(screen = AppScreen.COLLECTION, message = "Observation saved with a coarsened location.")
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (sessionKey() == uid) showMessage("Could not save this observation. Please retry.")
+            }
+        }
+    }
+
+    fun deleteObservation(id: String) {
+        val uid = sessionKey() ?: return
+        viewModelScope.launch {
+            if (sessionKey() != uid) return@launch
+            try {
+                container.observationRepository.delete(id)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                if (sessionKey() == uid) showMessage("Could not delete this observation. Please retry.")
             }
         }
     }
@@ -342,8 +396,10 @@ class FloraGuideViewModel(
         analysisDate: LocalDate,
         previouslyUploaded: StoredPhoto? = null,
     ) {
+        val uid = sessionKey() ?: return
         analysisJob?.cancel()
         analysisJob = viewModelScope.launch {
+            if (sessionKey() != uid) return@launch
             _uiState.update {
                 it.copy(
                     screen = AppScreen.RESULTS,
@@ -376,9 +432,11 @@ class FloraGuideViewModel(
                         localPath = localPath,
                         previouslyUploaded = previouslyUploaded,
                         onUploaded = { stored ->
+                            if (sessionKey() != uid) throw CancellationException("Account changed")
                             _uiState.update { it.copy(storedPhoto = stored) }
                         },
                         onStage = { stage ->
+                            if (sessionKey() != uid) throw CancellationException("Account changed")
                             _uiState.update { it.copy(identificationStage = stage) }
                         },
                     )
@@ -386,6 +444,8 @@ class FloraGuideViewModel(
                     // Only an explicit guided-demo action may use demo predictions.
                     container.imageClassifier.classify(null)
                 }
+                currentCoroutineContext().ensureActive()
+                if (sessionKey() != uid) throw CancellationException("Account changed")
                 val predictions = classification.predictions
                 val imageOnly = container.rankCandidates.imageOnly(predictions)
                 _uiState.update {

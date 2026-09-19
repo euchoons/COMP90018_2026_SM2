@@ -2,6 +2,7 @@ package au.edu.unimelb.floraguide.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CollectionsBookmark
@@ -34,13 +35,17 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    if (authState !is AuthState.Authenticated) {
+    if (authState !is AuthState.Authenticated && authState != AuthState.OfflineGuest) {
         AuthScreen(
             authState = authState,
             onSignIn = viewModel::signIn,
             onRegister = viewModel::register,
             onAnonymousSignIn = viewModel::signInAnonymously,
+            onContinueOffline = viewModel::continueOffline,
+            onImportLocal = viewModel::importLocalObservations,
+            onRetrySync = viewModel::retrySync,
             onSignOut = viewModel::signOut,
+            modifier = Modifier.safeDrawingPadding(),
         )
         return
     }
@@ -109,6 +114,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
             AppScreen.COLLECTION -> CollectionScreen(
                 state = state,
                 onStartScan = viewModel::goToScan,
+                onDelete = viewModel::deleteObservation,
                 modifier = Modifier.padding(padding),
             )
 
@@ -117,6 +123,9 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onSignIn = viewModel::signIn,
                 onRegister = viewModel::register,
                 onAnonymousSignIn = viewModel::signInAnonymously,
+                onContinueOffline = viewModel::continueOffline,
+                onImportLocal = viewModel::importLocalObservations,
+                onRetrySync = viewModel::retrySync,
                 onSignOut = viewModel::signOut,
                 modifier = Modifier.padding(padding),
             )

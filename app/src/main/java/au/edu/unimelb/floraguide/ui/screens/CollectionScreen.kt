@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -23,6 +25,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -42,8 +48,19 @@ import java.util.Locale
 fun CollectionScreen(
     state: FloraGuideUiState,
     onStartScan: () -> Unit,
+    onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var deleting by remember { mutableStateOf<Observation?>(null) }
+    deleting?.let { observation ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("Delete observation?") },
+            text = { Text("Remove this " + observation.species.commonName + " observation from your field guide? Cloud deletion will sync when online.") },
+            confirmButton = { TextButton(onClick = { onDelete(observation.id); deleting = null }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+        )
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -52,7 +69,7 @@ fun CollectionScreen(
         item {
             SectionHeading(
                 title = "My field guide",
-                subtitle = "Confirmed observations are stored locally in this prototype build.",
+                subtitle = "Saved on this device; signed-in observations also sync when online.",
             )
         }
 
@@ -97,7 +114,7 @@ fun CollectionScreen(
             }
         } else {
             items(items = state.observations, key = { it.id }) { observation ->
-                ObservationCard(observation = observation)
+                ObservationCard(observation = observation, onDelete = { deleting = observation })
             }
             item {
                 Button(onClick = onStartScan, modifier = Modifier.fillMaxWidth()) {
@@ -152,7 +169,7 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
 }
 
 @Composable
-private fun ObservationCard(observation: Observation) {
+private fun ObservationCard(observation: Observation, onDelete: () -> Unit) {
     val formatter = DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a", Locale.ENGLISH)
         .withZone(ZoneId.systemDefault())
 
@@ -167,6 +184,7 @@ private fun ObservationCard(observation: Observation) {
         ) {
             PhotoThumbnail(
                 path = observation.photoPath,
+                cloudPhotoUri = observation.cloudPhotoUri,
                 modifier = Modifier.size(90.dp),
                 contentDescription = observation.species.commonName,
             )
@@ -214,6 +232,7 @@ private fun ObservationCard(observation: Observation) {
                     )
                 }
                 StatusPill(label = observation.contextSource.label, positive = observation.contextSource.name.startsWith("ALA"))
+                TextButton(onClick = onDelete) { Text("Delete observation") }
             }
         }
     }

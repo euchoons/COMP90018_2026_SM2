@@ -1,11 +1,9 @@
 package au.edu.unimelb.floraguide.di
 
 import android.content.Context
-import androidx.room.Room
 import au.edu.unimelb.floraguide.BuildConfig
 import au.edu.unimelb.floraguide.data.ala.AlaOccurrenceClient
 import au.edu.unimelb.floraguide.data.ala.AlaSpeciesContextRepository
-import au.edu.unimelb.floraguide.data.ala.AlaTaxonomyClient
 import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
@@ -26,14 +24,10 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
     val database: FloraGuideDatabase by lazy {
-        Room.databaseBuilder(appContext, FloraGuideDatabase::class.java, "floraguide.db")
-            .fallbackToDestructiveMigration()
-            .build()
+        FloraGuideDatabase.getInstance(appContext)
     }
 
-    val authRepository: AuthRepository = FirebaseAuthRepository(appContext)
-
-    val taxonomyClient = AlaTaxonomyClient()
+    val authRepository: AuthRepository = FirebaseAuthRepository()
 
     val isPlantNetConfigured: Boolean = BuildConfig.PLANTNET_API_KEY.isNotBlank()
     val imageClassifier: ImageClassifier = PlantNetImageClassifier(

@@ -26,4 +26,9 @@ interface SpeciesContextRepository {
 interface ObservationRepository {
     suspend fun loadAll(): List<Observation>
     suspend fun save(observation: Observation)
+    fun observeAll(): kotlinx.coroutines.flow.Flow<List<Observation>> =
+        kotlinx.coroutines.flow.flow { emit(loadAll()) }
+    suspend fun delete(id: String) { error("Deletion is not supported by this observation store.") }
+    suspend fun importLocalObservations() { error("Import is not supported by this observation store.") }
+    suspend fun retrySync() { error("Sync is not supported by this observation store.") }
 }

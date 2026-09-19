@@ -3,8 +3,6 @@
 package au.edu.unimelb.floraguide.ui.components
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,6 +33,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,7 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.exifinterface.media.ExifInterface
+import au.edu.unimelb.floraguide.data.firebase.loadObservationThumbnail
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import java.util.Locale
@@ -220,14 +220,16 @@ fun PhotoThumbnail(
     path: String?,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
+    cloudPhotoUri: String? = null,
 ) {
-    val bitmap = remember(path) {
-        path?.let(::decodePhotoThumbnail)
+    val bitmap by produceState<Bitmap?>(null, path, cloudPhotoUri) {
+        value = loadObservationThumbnail(path, cloudPhotoUri)
     }
 
-    if (bitmap != null) {
+    val thumbnail = bitmap
+    if (thumbnail != null) {
         Image(
-            bitmap = bitmap.asImageBitmap(),
+            bitmap = thumbnail.asImageBitmap(),
             contentDescription = contentDescription,
             modifier = modifier.clip(RoundedCornerShape(18.dp)),
             contentScale = ContentScale.Crop,
@@ -242,41 +244,6 @@ fun PhotoThumbnail(
             Text(text = "🌿", style = MaterialTheme.typography.headlineLarge)
         }
     }
-}
-
-private fun decodePhotoThumbnail(path: String): Bitmap? {
-    val options = BitmapFactory.Options().apply { inSampleSize = 4 }
-    val decoded = BitmapFactory.decodeFile(path, options) ?: return null
-    val orientation = runCatching {
-        ExifInterface(path).getAttributeInt(
-            ExifInterface.TAG_ORIENTATION,
-            ExifInterface.ORIENTATION_NORMAL,
-        )
-    }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-
-    val matrix = Matrix()
-    when (orientation) {
-        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.setScale(-1f, 1f)
-        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.setRotate(180f)
-        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.setScale(1f, -1f)
-        ExifInterface.ORIENTATION_TRANSPOSE -> {
-            matrix.setRotate(90f)
-            matrix.postScale(-1f, 1f)
-        }
-        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.setRotate(90f)
-        ExifInterface.ORIENTATION_TRANSVERSE -> {
-            matrix.setRotate(-90f)
-            matrix.postScale(-1f, 1f)
-        }
-        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.setRotate(-90f)
-        else -> return decoded
-    }
-
-    return runCatching {
-        Bitmap.createBitmap(decoded, 0, 0, decoded.width, decoded.height, matrix, true)
-    }.onSuccess { transformed ->
-        if (transformed !== decoded) decoded.recycle()
-    }.getOrElse { decoded }
 }
 
 @Composable
