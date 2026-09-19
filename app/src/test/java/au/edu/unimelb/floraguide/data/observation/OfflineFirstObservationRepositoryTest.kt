@@ -15,6 +15,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.runBlocking
+import androidx.work.ExistingWorkPolicy
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -45,7 +48,7 @@ class OfflineFirstObservationRepositoryTest {
     }
 
     @Test
-    fun `save inserts local observation with PENDING_UPLOAD status`() {
+    fun `save inserts local observation with PENDING_UPLOAD status`() = runBlocking {
         val observation = Observation(
             id = "test-uuid-1",
             species = Species("blackwood", "Blackwood", "Acacia melanoxylon", emptySet(), emptyMap(), 0),
@@ -64,16 +67,21 @@ class OfflineFirstObservationRepositoryTest {
         assertEquals("test-uuid-1", savedEntity?.id)
         assertEquals(SyncState.PENDING_UPLOAD, savedEntity?.syncState)
         assertEquals(-37.796, savedEntity?.coarseLatitude ?: 0.0, 1e-4)
+        verify {
+            workManager.enqueueUniqueWork(any(), ExistingWorkPolicy.APPEND_OR_REPLACE, any<androidx.work.OneTimeWorkRequest>())
+        }
     }
 
     @Test
-    fun `deleteObservation marks syncState as PENDING_DELETE`() {
+    fun `deleteObservation marks syncState as PENDING_DELETE`() = runBlocking {
         val existingEntity = ObservationEntity(
             id = "test-uuid-2",
             userId = "anonymous_user",
             speciesId = "dandelion",
             scientificName = "Taraxacum officinale",
             commonName = "Dandelion",
+            preferredMonthsCsv = "",
+            habitatAffinityJson = "{}",
             observedAtEpochMs = System.currentTimeMillis(),
             coarseLatitude = -37.796,
             coarseLongitude = 144.961,
@@ -95,25 +103,25 @@ class OfflineFirstObservationRepositoryTest {
     private class FakeObservationDao : ObservationDao {
         val entities = mutableMapOf<String, ObservationEntity>()
 
-        override fun getAllForUser(userId: String): List<ObservationEntity> {
+        override suspend fun getAllForUser(userId: String): List<ObservationEntity> {
             return entities.values.filter { it.userId == userId && it.syncState != SyncState.PENDING_DELETE }
         }
 
-        override fun getPendingSync(): List<ObservationEntity> {
+        override suspend fun getPendingSync(): List<ObservationEntity> {
             return entities.values.filter { it.syncState == SyncState.PENDING_UPLOAD || it.syncState == SyncState.PENDING_DELETE }
         }
 
-        override fun insertOrUpdate(observation: ObservationEntity) {
+        override suspend fun insertOrUpdate(observation: ObservationEntity) {
             entities[observation.id] = observation
         }
 
-        override fun updateSyncStatus(id: String, state: SyncState, remoteUrl: String?) {
+        override suspend fun updateSyncStatus(id: String, state: SyncState, remoteUrl: String?) {
             entities[id]?.let {
                 entities[id] = it.copy(syncState = state, remotePhotoUrl = remoteUrl)
             }
         }
 
-        override fun deletePermanently(id: String) {
+        override suspend fun deletePermanently(id: String) {
             entities.remove(id)
         }
     }

@@ -48,10 +48,10 @@ class ObservationSyncWorkerTest {
     }
 
     private class FakeWorkerDao : ObservationDao {
-        override fun getAllForUser(userId: String): List<ObservationEntity> = emptyList()
-        override fun getPendingSync(): List<ObservationEntity> = emptyList()
-        override fun insertOrUpdate(observation: ObservationEntity) = Unit
-        override fun updateSyncStatus(id: String, state: SyncState, remoteUrl: String?) = Unit
-        override fun deletePermanently(id: String) = Unit
+        override suspend fun getAllForUser(userId: String): List<ObservationEntity> = emptyList()
+        override suspend fun getPendingSync(): List<ObservationEntity> = emptyList()
+        override suspend fun insertOrUpdate(observation: ObservationEntity) = Unit
+        override suspend fun updateSyncStatus(id: String, state: SyncState, remoteUrl: String?) = Unit
+        override suspend fun deletePermanently(id: String) = Unit
     }
 }

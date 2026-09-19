@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.local
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,7 +33,7 @@ class ObservationDaoTest {
     }
 
     @Test
-    fun `insertAndQueryObservations filter by user and exclude pending deletion`() {
+    fun `insertAndQueryObservations filter by user and exclude pending deletion`() = runBlocking {
         val item1 = createEntity("obs-1", "user-A", SyncState.SYNCED)
         val item2 = createEntity("obs-2", "user-A", SyncState.PENDING_DELETE)
         val item3 = createEntity("obs-3", "user-B", SyncState.SYNCED)
@@ -48,7 +49,7 @@ class ObservationDaoTest {
     }
 
     @Test
-    fun `getPendingSync fetches PENDING_UPLOAD and PENDING_DELETE items`() {
+    fun `getPendingSync fetches PENDING_UPLOAD and PENDING_DELETE items`() = runBlocking {
         val item1 = createEntity("obs-1", "user-A", SyncState.SYNCED)
         val item2 = createEntity("obs-2", "user-A", SyncState.PENDING_UPLOAD)
         val item3 = createEntity("obs-3", "user-A", SyncState.PENDING_DELETE)
@@ -65,7 +66,7 @@ class ObservationDaoTest {
     }
 
     @Test
-    fun `updateSyncStatus changes status and sets remote photo URL`() {
+    fun `updateSyncStatus changes status and sets remote photo URL`() = runBlocking {
         val item = createEntity("obs-1", "user-A", SyncState.PENDING_UPLOAD)
         dao.insertOrUpdate(item)
 
@@ -77,7 +78,7 @@ class ObservationDaoTest {
     }
 
     @Test
-    fun `deletePermanently removes entity completely from database`() {
+    fun `deletePermanently removes entity completely from database`() = runBlocking {
         val item = createEntity("obs-1", "user-A", SyncState.PENDING_DELETE)
         dao.insertOrUpdate(item)
 
@@ -92,6 +93,8 @@ class ObservationDaoTest {
         speciesId = "eucalyptus_camaldulensis",
         scientificName = "Eucalyptus camaldulensis",
         commonName = "River Red Gum",
+        preferredMonthsCsv = "",
+        habitatAffinityJson = "{}",
         observedAtEpochMs = System.currentTimeMillis(),
         coarseLatitude = -37.796,
         coarseLongitude = 144.961,
