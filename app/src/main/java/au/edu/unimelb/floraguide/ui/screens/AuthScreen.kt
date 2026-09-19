@@ -24,7 +24,7 @@ fun AuthScreen(
     var isRegistering by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    var displayName by srememberSaveable { mutableStateOf("") }
+    var displayName by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = modifier
