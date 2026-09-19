@@ -10,6 +10,7 @@ Add an entry when an AI tool materially affects submitted ideas, prose, code, te
 |---|---|---|---|---|---|
 | `[Date]` | `OpenAI ChatGPT — [model shown]` | `Generate a maintainable Kotlin/Compose prototype for an explainable context-aware species-identification app.` | Initial architecture, UI/data scaffolding, tests and documentation. | Team reviewed source, removed generated/local files, ran builds/tests, verified APIs and rewrote scope/claims. | `[Name]` |
 | `[Date]` | `[Tool]` | `[Use]` | `[Affected output]` | `[Review/test]` | `[Name]` |
+| 2026-09-20 | OpenAI Codex (GPT-6) | Restore the main build after PR #11 and automate PR checks (issue #24). | Gradle dependency catalog, executable wrapper, Android CI workflow. | Codex ran test/lint/assembleDebug: 36 tests passed in each of debug and release; lint had 0 errors and 18 dependency-update warnings. Human review is pending. | Tom (requested work) |
 
 The sample first row must be corrected to match the actual model, dates, prompts and retained files. Add other tools such as code completion, Grammarly, translation or image generation when used materially.
 
