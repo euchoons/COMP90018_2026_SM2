@@ -138,7 +138,7 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
     val progress = (uniqueSpecies / 3f).coerceIn(0f, 1f)
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -175,7 +175,7 @@ private fun ObservationCard(observation: Observation, onDelete: () -> Unit) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),

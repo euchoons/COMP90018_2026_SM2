@@ -1,6 +1,7 @@
 package au.edu.unimelb.floraguide.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
@@ -9,8 +10,10 @@ import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -20,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.domain.repository.AuthState
@@ -141,30 +145,32 @@ private fun FloraGuideNavigationBar(
     onCollection: () -> Unit,
     onAccount: () -> Unit,
 ) {
-    NavigationBar {
-        NavigationBarItem(
-            selected = selected == AppScreen.HOME,
-            onClick = onHome,
-            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("Home") },
-        )
-        NavigationBarItem(
-            selected = selected == AppScreen.SCAN,
-            onClick = onScan,
-            icon = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
-            label = { Text("Observe") },
-        )
-        NavigationBarItem(
-            selected = selected == AppScreen.COLLECTION,
-            onClick = onCollection,
-            icon = { Icon(Icons.Default.CollectionsBookmark, contentDescription = null) },
-            label = { Text("Field guide") },
-        )
-        NavigationBarItem(
-            selected = selected == AppScreen.ACCOUNT,
-            onClick = onAccount,
-            icon = { Icon(Icons.Default.Person, contentDescription = null) },
-            label = { Text("Account") },
-        )
+    NavigationBar(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+        FloraGuideNavigationItem(selected == AppScreen.HOME, onHome, Icons.Default.Home, "Home")
+        FloraGuideNavigationItem(selected == AppScreen.SCAN, onScan, Icons.Default.CameraAlt, "Observe")
+        FloraGuideNavigationItem(selected == AppScreen.COLLECTION, onCollection, Icons.Default.CollectionsBookmark, "Field guide")
+        FloraGuideNavigationItem(selected == AppScreen.ACCOUNT, onAccount, Icons.Default.Person, "Account")
     }
+}
+
+@Composable
+private fun RowScope.FloraGuideNavigationItem(
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector,
+    label: String,
+) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = null) },
+        label = { Text(label) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
+            unselectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            unselectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    )
 }
