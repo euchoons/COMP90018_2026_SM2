@@ -79,12 +79,12 @@ fun StatusPill(
 ) {
     Surface(
         modifier = modifier,
-        color = if (positive) {
+        color = if (!positive) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
-        contentColor = if (positive) {
+        contentColor = if (!positive) {
             MaterialTheme.colorScheme.onPrimaryContainer
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
