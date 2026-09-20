@@ -37,6 +37,29 @@ class MotionStabilityEstimatorTest {
     }
 
     @Test
+    fun combinedMotionPassesOutToAboutZeroPointFourThreeMetresPerSecondSquared() {
+        // With angular deviation at half the acceleration deviation the score collapses to
+        // exp(-1.2a), so the gate opens below a = ln(1/0.6) / 1.2.
+        val limit = motionBudget / 1.2
+        assertEquals(0.426, limit, 0.001)
+        assertTrue(MotionStabilityEstimator.isStable(settleHalfAngular(limit - 0.01)))
+        assertFalse(MotionStabilityEstimator.isStable(settleHalfAngular(limit + 0.01)))
+    }
+
+    @Test
+    fun shakyHandIsRejectedOnlyNarrowly() {
+        // Illustrative pairs from docs/MOTION_STABILITY_CALIBRATION.md.
+        val steadyHand = MotionStabilityEstimator.target(0.2, 0.1)
+        val shakyHand = MotionStabilityEstimator.target(0.5, 0.25)
+        assertEquals(0.787, steadyHand, 0.001)
+        assertEquals(0.549, shakyHand, 0.001)
+        assertTrue(MotionStabilityEstimator.isStable(steadyHand))
+        assertFalse(MotionStabilityEstimator.isStable(shakyHand))
+        // The reject margin is thin; hysteresis is the documented remedy if it flickers.
+        assertTrue(STABLE_THRESHOLD - shakyHand < 0.06)
+    }
+
+    @Test
     fun captureUnlocksOnTheThirdCalmSample() {
         val estimator = MotionStabilityEstimator()
         repeat(2) { estimator.update(0.0, 0.0) }
@@ -61,6 +84,9 @@ class MotionStabilityEstimatorTest {
         // gyroscope, which is why ScanScreen switches to manual capture in that case.
         assertFalse(MotionStabilityEstimator.isStable(settle(angularVelocity = 1.0)))
     }
+
+    private fun settleHalfAngular(accelerationDeviation: Double): Double =
+        settle(accelerationDeviation, accelerationDeviation / 2.0)
 
     private fun settle(accelerationDeviation: Double = 0.0, angularVelocity: Double = 0.0): Double {
         val estimator = MotionStabilityEstimator()
