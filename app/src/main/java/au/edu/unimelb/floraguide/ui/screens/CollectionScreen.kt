@@ -1,3 +1,5 @@
+@file:Suppress("UNNECESSARY_SAFE_CALL", "USELESS_ELVIS")
+
 package au.edu.unimelb.floraguide.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -196,12 +198,9 @@ private fun ObservationCard(observation: Observation) {
                 ) {
                     Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(15.dp))
                     Text(
-                        text = String.format(
-                            Locale.US,
-                            "%.3f, %.3f",
-                            observation.coarseLocation.latitude,
-                            observation.coarseLocation.longitude,
-                        ),
+                        text = observation.coarseLocation?.let { point ->
+                            String.format(Locale.US, "%.3f, %.3f", point.latitude, point.longitude)
+                        } ?: "Location not recorded",
                         style = MaterialTheme.typography.labelSmall,
                     )
                     Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
