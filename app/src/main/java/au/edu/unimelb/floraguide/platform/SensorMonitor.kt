@@ -8,6 +8,7 @@ import android.hardware.SensorManager
 import au.edu.unimelb.floraguide.domain.model.SensorAvailability
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
+import au.edu.unimelb.floraguide.domain.sensor.observationHeadingDegrees
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -84,11 +85,7 @@ class SensorMonitor(context: Context) : SensorEventListener {
         val magnetic = magneticVector ?: return
         val rotation = FloatArray(9)
         if (!SensorManager.getRotationMatrix(rotation, null, gravity, magnetic)) return
-        val orientation = FloatArray(3)
-        SensorManager.getOrientation(rotation, orientation)
-        headingDegrees = Math.toDegrees(orientation[0].toDouble())
-            .toFloat()
-            .let { (it + 360f) % 360f }
+        headingDegrees = observationHeadingDegrees(rotation)
     }
 
     private fun publish() {
