@@ -14,6 +14,7 @@
 - [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md) — current truth, decisions required, milestones and risk controls.
 - [`TECHNICAL_REFERENCE.md`](TECHNICAL_REFERENCE.md) — toolchain, ALA request shape, fusion formula and evaluation measures.
 - [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) — CameraX lifecycle, capture, rotation, resize and permission review, Firebase upload check and device test checklist.
+- [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) — stability gate constants, what they allow in m/s² and °/s, why they were relaxed, and the calibration runs still required.
 
 ## Complete Assignment 1
 

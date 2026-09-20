@@ -126,11 +126,11 @@ The guided demo skips live network use and fixes the date, location and context 
 The accelerometer magnitude is compared with gravity to estimate translational disturbance. Gyroscope magnitude estimates angular motion. The two signals are combined into a target stability value and exponentially smoothed:
 
 ```text
-stabilityTarget = exp(-(1.55 * accelerationDeviation + 1.25 * angularVelocity))
-smoothed = 0.82 * previous + 0.18 * target
+stabilityTarget = exp(-(0.9 * accelerationDeviation + 0.6 * angularVelocity))
+smoothed = 0.7 * previous + 0.3 * target
 ```
 
-Capture is considered stable when the score reaches the current heuristic threshold of `0.78`. These constants require physical-device calibration before final submission.
+Capture is considered stable when the score reaches `0.6`, which tolerates about 0.57 m/s² of acceleration deviation or about 49 °/s of rotation. The constants live in `domain/sensor/MotionStabilityEstimator.kt` and are pinned by tests. Their derivation, the reason the earlier stricter values were relaxed, and the device measurements still outstanding are in [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md).
 
 ### Heading
 
