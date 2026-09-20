@@ -15,6 +15,7 @@
 - [`TECHNICAL_REFERENCE.md`](TECHNICAL_REFERENCE.md) — toolchain, ALA request shape, fusion formula and evaluation measures.
 - [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) — CameraX lifecycle, capture, rotation, resize and permission review, Firebase upload check and device test checklist.
 - [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) — stability gate constants, what they allow in m/s² and °/s, why they were relaxed, and the calibration runs still required.
+- [`HARDWARE_ADAPTERS_VERIFICATION.md`](HARDWARE_ADAPTERS_VERIFICATION.md) — ambient-light guidance, compass heading and missing-sensor fallbacks, with the device checks still outstanding.
 
 ## Complete Assignment 1
 

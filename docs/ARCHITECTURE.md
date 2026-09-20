@@ -134,11 +134,13 @@ Capture is considered stable when the score reaches `0.6`, which tolerates about
 
 ### Heading
 
-Low-pass-filtered gravity and magnetic vectors are used with Android's rotation matrix to calculate azimuth. Heading is optional because some devices lack a magnetometer or the reading may be disturbed indoors.
+Low-pass-filtered gravity and magnetic vectors are used with Android's rotation matrix, and the azimuth is taken along the rear camera axis so it stays well conditioned when the phone is held upright to photograph a plant; a flat phone falls back to the top-edge reference. The value is a magnetic bearing, and it is captured with the photo rather than at confirmation time. Heading is optional: some devices lack a magnetometer, and a disturbed reading is reported as needing calibration instead of being displayed or stored.
 
 ### Light
 
-Ambient lux is mapped to simple low-light, usable and possible-glare messages. The thresholds are prototype heuristics and should be tested across devices and outdoor conditions.
+Ambient lux is classified as unavailable, low, usable or very bright, and shown on the capture pills and hint. The thresholds are prototype heuristics and should be tested across devices and outdoor conditions. The sensor faces the user, so it describes ambient conditions rather than the scene's exposure.
+
+Both adapters, and the behaviour when a sensor is missing, are documented in [`HARDWARE_ADAPTERS_VERIFICATION.md`](HARDWARE_ADAPTERS_VERIFICATION.md).
 
 ## Context fusion
 
@@ -181,8 +183,8 @@ This design supports a responsive interface, but final claims require measured i
 |---|---|---|
 | Camera | CameraX preview and capture | Guided demo remains available. |
 | Accelerometer/gyroscope | Stability gate | Manual capture if required sensors are unavailable. |
-| Ambient light | Lux feedback | Explicit unavailable state. |
-| Magnetometer | Heading metadata | Explicit unavailable state. |
+| Ambient light | Low-light and very-bright warnings | Explicit unavailable state; light never blocks capture. |
+| Magnetometer | Heading metadata | Explicit unavailable state; an unreliable compass prompts calibration and is not stored. |
 | Location | GPS/network location | Campus demo location with visible label. |
 | ALA | Live candidate counts | Partial merge, persistent warning, retry or deterministic fallback. |
 | Pl@ntNet | Cloud Top-8 candidates | Errors surface verbatim (no match, quota reached, key rejected); guided demo remains available. |
