@@ -125,8 +125,12 @@ fun SensorSummary(
             positive = snapshot.lightLux?.let { it in 25f..20_000f } ?: false,
         )
         StatusPill(
-            label = snapshot.headingDegrees?.let { "Heading ${it.toInt()}°" } ?: "No heading",
-            positive = snapshot.headingDegrees != null,
+            label = when {
+                snapshot.headingDegrees == null -> "No heading"
+                snapshot.compassNeedsCalibration -> "Calibrate compass"
+                else -> "Heading ${snapshot.headingDegrees.toInt()}°"
+            },
+            positive = snapshot.reliableHeadingDegrees != null,
         )
     }
 }

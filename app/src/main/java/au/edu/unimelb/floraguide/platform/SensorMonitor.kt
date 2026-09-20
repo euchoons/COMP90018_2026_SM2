@@ -39,6 +39,7 @@ class SensorMonitor(context: Context) : SensorEventListener {
     private var headingDegrees: Float? = null
     private var gravityVector: FloatArray? = null
     private var magneticVector: FloatArray? = null
+    private var magnetometerAccuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH
 
     fun start(onSnapshot: (SensorSnapshot) -> Unit) {
         listener = onSnapshot
@@ -68,6 +69,7 @@ class SensorMonitor(context: Context) : SensorEventListener {
 
             Sensor.TYPE_MAGNETIC_FIELD -> {
                 magneticVector = lowPass(event.values.copyOf(), magneticVector)
+                magnetometerAccuracy = event.accuracy
             }
 
             Sensor.TYPE_LIGHT -> lightLux = event.values.firstOrNull()
@@ -78,7 +80,12 @@ class SensorMonitor(context: Context) : SensorEventListener {
         publish()
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        if (sensor?.type == Sensor.TYPE_MAGNETIC_FIELD) {
+            magnetometerAccuracy = accuracy
+            publish()
+        }
+    }
 
     private fun updateHeading() {
         val gravity = gravityVector ?: return
@@ -94,6 +101,10 @@ class SensorMonitor(context: Context) : SensorEventListener {
                 stability = stabilityEstimator.score,
                 lightLux = lightLux,
                 headingDegrees = headingDegrees,
+                // Only UNRELIABLE is flagged: many phones sit at LOW accuracy for long periods,
+                // and hiding the heading there would make it unavailable most of the time.
+                compassNeedsCalibration =
+                    magnetometerAccuracy == SensorManager.SENSOR_STATUS_UNRELIABLE,
                 availability = availability,
             ),
         )

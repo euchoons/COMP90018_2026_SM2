@@ -173,8 +173,12 @@ fun CameraCaptureCard(
                 positive = snapshot.lightLux?.let { it in 25f..20_000f } ?: false,
             )
             CameraOverlayPill(
-                text = snapshot.headingDegrees?.let { "${it.toInt()}°" } ?: "Heading n/a",
-                positive = snapshot.headingDegrees != null,
+                text = when {
+                    snapshot.headingDegrees == null -> "Heading n/a"
+                    snapshot.compassNeedsCalibration -> "Calibrate compass"
+                    else -> "${snapshot.headingDegrees.toInt()}°"
+                },
+                positive = snapshot.reliableHeadingDegrees != null,
             )
         }
 

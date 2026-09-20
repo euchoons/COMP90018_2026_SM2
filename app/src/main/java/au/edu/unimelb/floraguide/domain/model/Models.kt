@@ -74,9 +74,14 @@ data class SensorSnapshot(
     val stability: Double = 0.0,
     val lightLux: Float? = null,
     val headingDegrees: Float? = null,
+    val compassNeedsCalibration: Boolean = false,
     val availability: SensorAvailability = SensorAvailability(),
 ) {
     val isStable: Boolean get() = MotionStabilityEstimator.isStable(stability)
+
+    /** Heading worth recording with an observation; null while the compass is uncalibrated. */
+    val reliableHeadingDegrees: Float?
+        get() = headingDegrees.takeUnless { compassNeedsCalibration }
 
     val lightAssessment: String
         get() = when (lightLux) {
