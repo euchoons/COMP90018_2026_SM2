@@ -1,5 +1,6 @@
 package au.edu.unimelb.floraguide.domain.model
 
+import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.min
@@ -75,7 +76,7 @@ data class SensorSnapshot(
     val headingDegrees: Float? = null,
     val availability: SensorAvailability = SensorAvailability(),
 ) {
-    val isStable: Boolean get() = stability >= 0.6
+    val isStable: Boolean get() = MotionStabilityEstimator.isStable(stability)
 
     val lightAssessment: String
         get() = when (lightLux) {

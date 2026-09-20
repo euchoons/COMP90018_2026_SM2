@@ -7,8 +7,8 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import au.edu.unimelb.floraguide.domain.model.SensorAvailability
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
+import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.math.sqrt
 
 /**
@@ -30,9 +30,10 @@ class SensorMonitor(context: Context) : SensorEventListener {
     )
 
     private var listener: ((SensorSnapshot) -> Unit)? = null
+    // Start "moving" so capture stays locked until real readings arrive.
     private var accelerationDeviation = 1.0
     private var angularVelocity = 1.0
-    private var smoothedStability = 0.0
+    private val stabilityEstimator = MotionStabilityEstimator()
     private var lightLux: Float? = null
     private var headingDegrees: Float? = null
     private var gravityVector: FloatArray? = null
@@ -72,9 +73,7 @@ class SensorMonitor(context: Context) : SensorEventListener {
         }
 
         updateHeading()
-        val target = exp(-(accelerationDeviation * 0.9 + angularVelocity * 0.6))
-            .coerceIn(0.0, 1.0)
-        smoothedStability = (0.7 * smoothedStability + 0.3 * target).coerceIn(0.0, 1.0)
+        stabilityEstimator.update(accelerationDeviation, angularVelocity)
         publish()
     }
 
@@ -95,7 +94,7 @@ class SensorMonitor(context: Context) : SensorEventListener {
     private fun publish() {
         listener?.invoke(
             SensorSnapshot(
-                stability = smoothedStability,
+                stability = stabilityEstimator.score,
                 lightLux = lightLux,
                 headingDegrees = headingDegrees,
                 availability = availability,
