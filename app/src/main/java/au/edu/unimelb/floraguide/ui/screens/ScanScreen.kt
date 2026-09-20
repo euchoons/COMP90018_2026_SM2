@@ -43,6 +43,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.CameraCaptureCard
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
@@ -123,14 +124,20 @@ fun ScanScreen(
         if (locationGranted) onPermissionResult(true)
     }
 
-    val availability = state.sensorSnapshot.availability
-    val canUseStabilityGate = availability.accelerometer && availability.gyroscope
+    val canUseStabilityGate = state.sensorSnapshot.canMeasureStability
     val captureEnabled = !stabilityGateEnabled || !canUseStabilityGate || state.sensorSnapshot.isStable
+    // Light never blocks capture; it only qualifies the hint once capture is possible.
+    val lightWarning = when (state.sensorSnapshot.lightCondition) {
+        LightCondition.LOW -> "low light may blur the photo"
+        LightCondition.VERY_BRIGHT -> "harsh light may wash out detail"
+        LightCondition.USABLE, LightCondition.UNAVAILABLE -> null
+    }
     val captureHint = when {
         stabilityGateEnabled && canUseStabilityGate && !state.sensorSnapshot.isStable ->
             "Hold still — capture unlocks when the phone is stable"
-        stabilityGateEnabled && canUseStabilityGate -> "Stable — ready to capture"
-        else -> "Manual capture fallback active"
+        stabilityGateEnabled && canUseStabilityGate ->
+            lightWarning?.let { "Stable — $it" } ?: "Stable — ready to capture"
+        else -> lightWarning?.let { "Manual capture — $it" } ?: "Manual capture fallback active"
     }
 
     LazyColumn(

@@ -17,7 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import java.io.File
 import java.time.Instant
@@ -157,20 +158,26 @@ fun CameraCaptureCard(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(
+        // Warning labels are longer than readings, so the pills wrap on narrow phones.
+        FlowRow(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CameraOverlayPill(
-                text = if (snapshot.isStable) "Steady" else "Hold still",
-                positive = snapshot.isStable,
+                text = when {
+                    !snapshot.canMeasureStability -> "Stability n/a"
+                    snapshot.isStable -> "Steady"
+                    else -> "Hold still"
+                },
+                positive = snapshot.canMeasureStability && snapshot.isStable,
             )
             CameraOverlayPill(
-                text = snapshot.lightLux?.let { "${it.toInt()} lux" } ?: "Light n/a",
-                positive = snapshot.lightLux?.let { it in 25f..20_000f } ?: false,
+                text = lightLabel(snapshot),
+                positive = snapshot.lightCondition == LightCondition.USABLE,
             )
             CameraOverlayPill(
                 text = when {

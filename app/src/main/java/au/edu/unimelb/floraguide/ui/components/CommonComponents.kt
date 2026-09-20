@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.data.firebase.loadObservationThumbnail
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import java.util.Locale
 
@@ -117,12 +118,16 @@ fun SensorSummary(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         StatusPill(
-            label = "Stability ${(snapshot.stability * 100).toInt()}%",
-            positive = snapshot.isStable,
+            label = if (snapshot.canMeasureStability) {
+                "Stability ${(snapshot.stability * 100).toInt()}%"
+            } else {
+                "Stability n/a"
+            },
+            positive = snapshot.canMeasureStability && snapshot.isStable,
         )
         StatusPill(
-            label = snapshot.lightLux?.let { "${it.toInt()} lux" } ?: "No light sensor",
-            positive = snapshot.lightLux?.let { it in 25f..20_000f } ?: false,
+            label = lightLabel(snapshot),
+            positive = snapshot.lightCondition == LightCondition.USABLE,
         )
         StatusPill(
             label = when {
@@ -132,6 +137,17 @@ fun SensorSummary(
             },
             positive = snapshot.reliableHeadingDegrees != null,
         )
+    }
+}
+
+/** Ambient-light pill text shared by the Home summary and the camera overlay. */
+internal fun lightLabel(snapshot: SensorSnapshot): String {
+    val lux = snapshot.lightLux?.toInt()
+    return when (snapshot.lightCondition) {
+        LightCondition.UNAVAILABLE -> "Light n/a"
+        LightCondition.LOW -> "Low light · $lux lux"
+        LightCondition.USABLE -> "$lux lux"
+        LightCondition.VERY_BRIGHT -> "Very bright · $lux lux"
     }
 }
 
