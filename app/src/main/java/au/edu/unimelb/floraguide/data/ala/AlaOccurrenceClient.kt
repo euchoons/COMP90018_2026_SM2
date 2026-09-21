@@ -28,6 +28,7 @@ interface AlaOccurrenceSource {
 /** Minimal, dependency-free ALA read client. Network calls must be made from an IO dispatcher. */
 class AlaOccurrenceClient(
     private val baseUrl: String = DEFAULT_ALA_SEARCH_URL,
+    private val nameMatchUrl: String = "https://api.ala.org.au/namematching/api/searchByClassification",
     private val connectionFactory: (URL) -> HttpURLConnection = { url ->
         url.openConnection() as HttpURLConnection
     },
@@ -39,7 +40,8 @@ class AlaOccurrenceClient(
         location: GeoPoint,
         radiusKm: Int,
     ): AlaOccurrenceResponse {
-        val query = "scientificName:\"$scientificName\""
+        val taxonId = resolveTaxon(scientificName)
+        val query = "taxonConceptID:\"${taxonId.replace("\\", "\\\\").replace("\"", "\\\"")}\""
         val url = URL(
             buildString {
                 append(baseUrl)
@@ -118,7 +120,39 @@ class AlaOccurrenceClient(
         ((nanoTime() - startedAt).coerceAtLeast(0L) / 1_000_000L)
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
+
+    private fun resolveTaxon(scientificName: String): String {
+        if (scientificName.isBlank()) throw UnresolvedAlaTaxonException()
+        val connection = connectionFactory(URL("$nameMatchUrl?scientificName=${encode(scientificName)}"))
+        try {
+            connection.connectTimeout = 4_000
+            connection.readTimeout = 5_000
+            connection.setRequestProperty("Accept", "application/json")
+            val status = connection.responseCode
+            if (status !in 200..299) throw AlaRequestException("ALA name matching returned HTTP $status", status, 0)
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            return parseTaxonId(body, scientificName)
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
+
+// ponytail: exact species matches only; add validated synonym handling in the taxonomy workstream.
+internal fun parseTaxonId(body: String, scientificName: String): String {
+    val root = JSONObject(body)
+    if (!root.has("success") || root.get("success") !is Boolean) {
+        throw AlaResponseException("ALA name matching response did not contain a boolean success")
+    }
+    if (!root.getBoolean("success") || root.optString("matchType") != "exactMatch" ||
+        !root.optString("rank").equals("species", ignoreCase = true) ||
+        !root.optString("scientificName").equals(scientificName.trim(), ignoreCase = true)
+    ) throw UnresolvedAlaTaxonException()
+    return (root.opt("taxonConceptID") as? String)?.takeIf { it.isNotBlank() }
+        ?: throw AlaResponseException("ALA name matching response did not contain a taxonConceptID")
+}
+
+class UnresolvedAlaTaxonException : Exception("ALA could not resolve an exact species match")
 
 internal fun parseTotalRecords(body: String): Int = try {
     val root = JSONObject(body)

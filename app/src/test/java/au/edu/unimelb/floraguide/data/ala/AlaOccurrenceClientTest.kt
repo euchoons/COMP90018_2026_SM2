@@ -50,7 +50,7 @@ class AlaOccurrenceClientTest {
                 FakeHttpURLConnection(
                     url = url,
                     status = 200,
-                    body = "{\"totalRecords\":532}",
+                    body = if (url.path.contains("searchByClassification")) taxonMatch("Eucalyptus camaldulensis") else "{\"totalRecords\":532}",
                 )
             },
             nanoTime = { clock.removeFirst() },
@@ -66,9 +66,10 @@ class AlaOccurrenceClientTest {
         assertEquals(532, result.totalRecords)
         assertEquals(200, result.httpStatus)
         assertEquals(42L, result.elapsedMillis)
-        assertTrue(requestedUrls.single().query.contains("pageSize=0"))
-        assertTrue(requestedUrls.single().query.contains("facet=false"))
-        assertTrue(requestedUrls.single().query.contains("scientificName%3A%22Eucalyptus"))
+        assertEquals(2, requestedUrls.size)
+        assertTrue(requestedUrls.last().query.contains("pageSize=0"))
+        assertTrue(requestedUrls.last().query.contains("facet=false"))
+        assertTrue(requestedUrls.last().query.contains("taxonConceptID%3A%22"))
         assertTrue(logMessages.single().contains("totalRecords=532"))
     }
 
@@ -76,7 +77,10 @@ class AlaOccurrenceClientTest {
     fun nonSuccessfulHttpStatusCarriesTelemetry() {
         val clock = ArrayDeque(listOf(2_000_000_000L, 2_125_000_000L))
         val client = AlaOccurrenceClient(
-            connectionFactory = { url -> FakeHttpURLConnection(url, status = 503, body = "") },
+            connectionFactory = { url ->
+                if (url.path.contains("searchByClassification")) FakeHttpURLConnection(url, 200, taxonMatch("Acacia melanoxylon"))
+                else FakeHttpURLConnection(url, status = 503, body = "")
+            },
             nanoTime = { clock.removeFirst() },
             logger = {},
         )
@@ -92,6 +96,30 @@ class AlaOccurrenceClientTest {
         assertEquals(503, error.httpStatus)
         assertEquals(125L, error.elapsedMillis)
     }
+
+    @Test
+    fun unresolvedOrInexactTaxaAreNotZeroCounts() {
+        for (body in listOf("{\"success\":false}", taxonMatch("Different species"), taxonMatch("Acacia melanoxylon").replace("exactMatch", "fuzzyMatch"))) {
+            assertThrows(UnresolvedAlaTaxonException::class.java) { parseTaxonId(body, "Acacia melanoxylon") }
+        }
+        assertThrows(AlaResponseException::class.java) { parseTaxonId("{}", "Acacia melanoxylon") }
+    }
+
+    @Test
+    fun unresolvedMatchSkipsOccurrenceRequest() {
+        val urls = mutableListOf<URL>()
+        val client = AlaOccurrenceClient(connectionFactory = { url ->
+            urls += url
+            FakeHttpURLConnection(url, 200, "{\"success\":false}")
+        }, logger = {})
+        assertThrows(UnresolvedAlaTaxonException::class.java) {
+            client.countNearbyOccurrences("Unknown plant", GeoPoint(0.0, 0.0), 8)
+        }
+        assertEquals(1, urls.size)
+    }
+
+    private fun taxonMatch(name: String) =
+        """{"success":true,"scientificName":"$name","rank":"species","matchType":"exactMatch","taxonConceptID":"https://id.biodiversity.org.au/node/apni/2921040"}"""
 
     private class FakeHttpURLConnection(
         url: URL,

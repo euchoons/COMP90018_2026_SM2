@@ -44,12 +44,10 @@ class PlantNetImageClassifier(
 
 /**
  * Pl@ntNet covers the world flora, so there is no fixed catalogue to map into and no label
- * mapping table is required: the ALA occurrence lookup already queries by scientific name.
+ * mapping table is required: ALA resolves scientific names at lookup time.
  *
- * Season and habitat priors are left empty deliberately. `Species.seasonalPrior` and
- * `Species.habitatPrior` then return the same constant for every candidate, which adds a constant
- * to every raw score and therefore cancels out in the softmax. Ranking is driven by the image
- * score and nearby ALA records alone, instead of by invented ecology.
+ * Season and habitat metadata are left empty deliberately. The ranker disables incomplete
+ * cues for the entire candidate set instead of substituting invented ecology.
  */
 private fun PlantNetResult.toSpecies(): Species = Species(
     id = scientificName,
@@ -57,7 +55,6 @@ private fun PlantNetResult.toSpecies(): Species = Species(
     scientificName = scientificName,
     preferredMonths = emptySet(),
     habitatAffinity = emptyMap(),
-    // No offline record count is known for an arbitrary species; a uniform 0 keeps the
-    // ALA-unavailable fallback honest rather than inventing a nearby-count ordering.
+    // Unused by live lookup; demo counts are only read for explicit guided-demo candidates.
     demoNearbyCount = 0,
 )

@@ -62,7 +62,7 @@ class AlaSpeciesContextRepositoryTest {
     }
 
     @Test
-    fun partialLookupMergesDemoFallbackAndRemainsRetryable() = runBlocking {
+    fun partialLookupLeavesFailedCountUnknownAndRemainsRetryable() = runBlocking {
         val source = FakeSource(
             successCounts = mapOf(candidates[0].scientificName to 11),
             failureStatuses = mapOf(candidates[1].scientificName to 503),
@@ -82,8 +82,33 @@ class AlaSpeciesContextRepositoryTest {
         assertEquals(2, result.requestCount)
         assertEquals(setOf(200, 503), result.httpStatusCodes)
         assertEquals(11, result.countsBySpeciesId.getValue(candidates[0].id))
-        assertEquals(candidates[1].demoNearbyCount, result.countsBySpeciesId.getValue(candidates[1].id))
+        assertTrue(candidates[1].id !in result.countsBySpeciesId)
+        assertEquals(setOf(candidates[1].id), result.failedSpeciesIds)
         assertTrue(result.warning.orEmpty().contains("1/2"))
+    }
+
+    @Test
+    fun allZeroSuccessIsNotAFailure() = runBlocking {
+        val repository = AlaSpeciesContextRepository(FakeSource(candidates.associate { it.scientificName to 0 }))
+        val result = repository.nearbyOccurrenceCounts(candidates, location, 8, true)
+        assertEquals(ContextDataSource.ALA_LIVE, result.source)
+        assertEquals(candidates.associate { it.id to 0 }, result.countsBySpeciesId)
+        assertTrue(result.failedSpeciesIds.isEmpty())
+    }
+
+    @Test
+    fun unresolvedTaxaAndTimeoutsAreDistinctAndNeverBecomeDemoCounts() = runBlocking {
+        val repository = AlaSpeciesContextRepository(object : AlaOccurrenceSource {
+            override fun countNearbyOccurrences(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse {
+                if (scientificName == candidates[0].scientificName) throw UnresolvedAlaTaxonException()
+                throw java.net.SocketTimeoutException("timeout")
+            }
+        })
+        val result = repository.nearbyOccurrenceCounts(candidates, location, 8, true)
+        assertEquals(ContextDataSource.UNAVAILABLE, result.source)
+        assertTrue(result.countsBySpeciesId.isEmpty())
+        assertEquals(setOf(candidates[0].id), result.unresolvedSpeciesIds)
+        assertEquals(setOf(candidates[1].id), result.failedSpeciesIds)
     }
 
     @Test

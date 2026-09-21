@@ -42,6 +42,7 @@ class AlaSpeciesContextRepository(
                         LookupOutcome(
                             speciesId = species.id,
                             errorStatus = (error as? AlaRequestException)?.httpStatus,
+                            unresolved = error is UnresolvedAlaTaxonException,
                         )
                     }
                 }
@@ -56,25 +57,17 @@ class AlaSpeciesContextRepository(
             outcome.response?.httpStatus ?: outcome.errorStatus
         }.toSet()
 
-        if (liveResults.isEmpty()) {
-            return demoFallback(
-                candidates = candidates,
-                radiusKm = radiusKm,
-                warning = "ALA could not be reached. Showing deterministic demo records so the flow remains testable.",
-                lookupElapsedMillis = elapsedMillis,
-                requestCount = candidates.size,
-                httpStatusCodes = httpStatusCodes,
-            )
-        }
-
-        val merged = candidates.associate { species ->
-            species.id to (liveResults[species.id] ?: species.demoNearbyCount)
-        }
         val isComplete = liveResults.size == candidates.size
+        val unresolved = outcomes.filter { it.unresolved }.map { it.speciesId }.toSet()
+        val failed = outcomes.filter { it.response == null && !it.unresolved }.map { it.speciesId }.toSet()
 
         return NearbyContext(
-            countsBySpeciesId = merged,
-            source = if (isComplete) ContextDataSource.ALA_LIVE else ContextDataSource.ALA_PARTIAL,
+            countsBySpeciesId = liveResults,
+            source = when {
+                isComplete -> ContextDataSource.ALA_LIVE
+                liveResults.isEmpty() -> ContextDataSource.UNAVAILABLE
+                else -> ContextDataSource.ALA_PARTIAL
+            },
             radiusKm = radiusKm,
             lookupElapsedMillis = elapsedMillis,
             successfulRequestCount = liveResults.size,
@@ -83,8 +76,11 @@ class AlaSpeciesContextRepository(
             warning = if (isComplete) {
                 null
             } else {
-                "${liveResults.size}/${candidates.size} ALA requests succeeded; missing counts use demo fallback values."
+                "${liveResults.size}/${candidates.size} ALA counts available; ${unresolved.size} unresolved taxa, " +
+                    "${failed.size} failed lookups. Location cue disabled for all candidates; no demo substitution."
             },
+            unresolvedSpeciesIds = unresolved,
+            failedSpeciesIds = failed,
         )
     }
 
@@ -115,5 +111,6 @@ class AlaSpeciesContextRepository(
         val speciesId: String,
         val response: AlaOccurrenceResponse? = null,
         val errorStatus: Int? = null,
+        val unresolved: Boolean = false,
     )
 }
