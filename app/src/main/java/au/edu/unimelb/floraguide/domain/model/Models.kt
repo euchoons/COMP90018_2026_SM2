@@ -87,6 +87,9 @@ data class SensorSnapshot(
     val reliableHeadingDegrees: Float?
         get() = headingDegrees.takeUnless { compassNeedsCalibration }
 
+    // ponytail: the compass models the rear camera only; omit front-camera bearings until supported.
+    fun headingForCapture(isRearCamera: Boolean): Float? = reliableHeadingDegrees.takeIf { isRearCamera }
+
     val lightCondition: LightCondition
         get() = when {
             lightLux == null -> LightCondition.UNAVAILABLE

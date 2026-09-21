@@ -59,7 +59,7 @@ fun CameraCaptureCard(
     snapshot: SensorSnapshot,
     captureEnabled: Boolean,
     captureHint: String,
-    onPhotoCaptured: (String) -> Unit,
+    onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -75,6 +75,7 @@ fun CameraCaptureCard(
     var isSaving by remember { mutableStateOf(false) }
     var cameraReady by remember { mutableStateOf(false) }
     var cameraFailed by remember { mutableStateOf(false) }
+    var isRearCamera by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, previewView) {
         val future = ProcessCameraProvider.getInstance(context)
@@ -112,6 +113,7 @@ fun CameraCaptureCard(
                         capture,
                     )
                     imageCapture = capture
+                    isRearCamera = selector == CameraSelector.DEFAULT_BACK_CAMERA
                     cameraReady = true
                     cameraFailed = false
                 }.onFailure { error ->
@@ -146,6 +148,7 @@ fun CameraCaptureCard(
         onDispose { listener.disable() }
     }
 
+    val heading = snapshot.headingForCapture(isRearCamera)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -181,11 +184,11 @@ fun CameraCaptureCard(
             )
             CameraOverlayPill(
                 text = when {
-                    snapshot.headingDegrees == null -> "Heading n/a"
+                    !isRearCamera || snapshot.headingDegrees == null -> "Heading n/a"
                     snapshot.compassNeedsCalibration -> "Calibrate compass"
                     else -> "${snapshot.headingDegrees.toInt()}°"
                 },
-                positive = snapshot.reliableHeadingDegrees != null,
+                positive = heading != null,
             )
         }
 
@@ -210,13 +213,15 @@ fun CameraCaptureCard(
             Button(
                 onClick = {
                     val capture = imageCapture ?: return@Button
+                    // Freeze the shutter-time value; JPEG saving can outlive this sensor reading.
+                    val captureHeading = heading
                     isSaving = true
                     capturePhoto(
                         context = context,
                         imageCapture = capture,
                         onSaved = { path ->
                             isSaving = false
-                            onPhotoCaptured(path)
+                            onPhotoCaptured(path, captureHeading)
                         },
                         onError = { message ->
                             isSaving = false

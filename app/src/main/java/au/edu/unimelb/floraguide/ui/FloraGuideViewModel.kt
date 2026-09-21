@@ -291,7 +291,7 @@ class FloraGuideViewModel(
         }
     }
 
-    fun analyzeCapturedPhoto(photoPath: String?) {
+    fun analyzeCapturedPhoto(photoPath: String?, captureHeadingDegrees: Float?) {
         if (photoPath.isNullOrBlank()) {
             showMessage("Capture a photo before starting identification.")
             return
@@ -300,7 +300,7 @@ class FloraGuideViewModel(
             photoPath = photoPath,
             preferLiveData = true,
             analysisDate = LocalDate.now(),
-            captureHeadingDegrees = _uiState.value.sensorSnapshot.reliableHeadingDegrees,
+            captureHeadingDegrees = captureHeadingDegrees,
         )
     }
 

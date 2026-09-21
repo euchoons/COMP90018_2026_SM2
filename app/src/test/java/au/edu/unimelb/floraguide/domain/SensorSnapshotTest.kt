@@ -11,6 +11,15 @@ import org.junit.Test
 
 class SensorSnapshotTest {
     @Test
+    fun captureHeadingRequiresRearCameraAndCalibratedCompass() {
+        val snapshot = SensorSnapshot(headingDegrees = 90f)
+        assertEquals(90f, snapshot.headingForCapture(isRearCamera = true))
+        assertNull(snapshot.headingForCapture(isRearCamera = false))
+        assertNull(snapshot.copy(compassNeedsCalibration = true).headingForCapture(isRearCamera = true))
+        assertNull(SensorSnapshot().headingForCapture(isRearCamera = true))
+    }
+
+    @Test
     fun missingLightSensorIsReportedAsUnavailable() {
         assertEquals(LightCondition.UNAVAILABLE, SensorSnapshot(lightLux = null).lightCondition)
     }

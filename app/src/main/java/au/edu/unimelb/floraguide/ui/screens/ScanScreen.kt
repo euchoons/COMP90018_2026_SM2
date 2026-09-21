@@ -57,7 +57,7 @@ fun ScanScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onPermissionResult: (Boolean) -> Unit,
     onUseDemoLocation: () -> Unit,
-    onPhotoCaptured: (String) -> Unit,
+    onPhotoCaptured: (String, Float?) -> Unit,
     onGuidedDemo: () -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
