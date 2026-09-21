@@ -1,5 +1,6 @@
 package au.edu.unimelb.floraguide.domain.model
 
+import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.min
@@ -73,17 +74,49 @@ data class SensorSnapshot(
     val stability: Double = 0.0,
     val lightLux: Float? = null,
     val headingDegrees: Float? = null,
+    val compassNeedsCalibration: Boolean = false,
     val availability: SensorAvailability = SensorAvailability(),
 ) {
-    val isStable: Boolean get() = stability >= 0.6
+    /** The stability score only moves once both motion sensors report. */
+    val canMeasureStability: Boolean
+        get() = availability.accelerometer && availability.gyroscope
 
-    val lightAssessment: String
-        get() = when (lightLux) {
-            null -> "Light sensor unavailable"
-            in 0f..<25f -> "Low light"
-            in 25f..<20_000f -> "Light looks usable"
-            else -> "Possible glare"
+    val isStable: Boolean get() = MotionStabilityEstimator.isStable(stability)
+
+    /** Heading worth recording with an observation; null while the compass is uncalibrated. */
+    val reliableHeadingDegrees: Float?
+        get() = headingDegrees.takeUnless { compassNeedsCalibration }
+
+    // ponytail: the compass models the rear camera only; omit front-camera bearings until supported.
+    fun headingForCapture(isRearCamera: Boolean): Float? = reliableHeadingDegrees.takeIf { isRearCamera }
+
+    val lightCondition: LightCondition
+        get() = when {
+            lightLux == null -> LightCondition.UNAVAILABLE
+            lightLux < LOW_LIGHT_LUX -> LightCondition.LOW
+            lightLux < VERY_BRIGHT_LUX -> LightCondition.USABLE
+            else -> LightCondition.VERY_BRIGHT
         }
+
+    // Prototype thresholds pending field calibration; see docs/HARDWARE_ADAPTERS_VERIFICATION.md.
+    companion object {
+        /** Dimmer than a typical living room; handheld shots need long exposures. */
+        const val LOW_LIGHT_LUX = 25f
+
+        /** Inside the 10,000–25,000 lux band of full daylight; direct sun reads higher. */
+        const val VERY_BRIGHT_LUX = 20_000f
+    }
+}
+
+/**
+ * Ambient light around the phone. The sensor sits beside the front display, so this describes
+ * the light falling on the user rather than exposure of the scene the rear camera sees.
+ */
+enum class LightCondition {
+    UNAVAILABLE,
+    LOW,
+    USABLE,
+    VERY_BRIGHT,
 }
 
 enum class ContextDataSource(val label: String) {

@@ -1,7 +1,11 @@
 package au.edu.unimelb.floraguide.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -35,8 +39,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.CameraCaptureCard
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
@@ -50,7 +57,7 @@ fun ScanScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onPermissionResult: (Boolean) -> Unit,
     onUseDemoLocation: () -> Unit,
-    onPhotoCaptured: (String) -> Unit,
+    onPhotoCaptured: (String, Float?) -> Unit,
     onGuidedDemo: () -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -71,6 +78,10 @@ fun ScanScreen(
         )
     }
     var stabilityGateEnabled by rememberSaveable { mutableStateOf(true) }
+    // Once Android stops showing the dialog, relaunching the request returns "denied" instantly,
+    // so the only way forward is the system app-settings page.
+    var cameraPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+    val activity = LocalActivity.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -78,6 +89,12 @@ fun ScanScreen(
         cameraGranted = results[Manifest.permission.CAMERA] == true ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
+        // The location-only request from LocationCard must not reset the camera state.
+        if (Manifest.permission.CAMERA in results) {
+            cameraPermanentlyDenied = !cameraGranted &&
+                activity != null &&
+                !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+        }
         locationGranted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             results[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
@@ -85,18 +102,42 @@ fun ScanScreen(
         onPermissionResult(locationGranted)
     }
 
+    // Permissions can be granted from system settings while this screen stays composed.
+    LifecycleResumeEffect(Unit) {
+        if (!cameraGranted &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            cameraGranted = true
+            cameraPermanentlyDenied = false
+        }
+        if (!locationGranted &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            locationGranted = true
+        }
+        onPauseOrDispose { }
+    }
+
     LaunchedEffect(locationGranted) {
         if (locationGranted) onPermissionResult(true)
     }
 
-    val availability = state.sensorSnapshot.availability
-    val canUseStabilityGate = availability.accelerometer && availability.gyroscope
+    val canUseStabilityGate = state.sensorSnapshot.canMeasureStability
     val captureEnabled = !stabilityGateEnabled || !canUseStabilityGate || state.sensorSnapshot.isStable
+    // Light never blocks capture; it only qualifies the hint once capture is possible.
+    val lightWarning = when (state.sensorSnapshot.lightCondition) {
+        LightCondition.LOW -> "low light may blur the photo"
+        LightCondition.VERY_BRIGHT -> "harsh light may wash out detail"
+        LightCondition.USABLE, LightCondition.UNAVAILABLE -> null
+    }
     val captureHint = when {
         stabilityGateEnabled && canUseStabilityGate && !state.sensorSnapshot.isStable ->
             "Hold still — capture unlocks when the phone is stable"
-        stabilityGateEnabled && canUseStabilityGate -> "Stable — ready to capture"
-        else -> "Manual capture fallback active"
+        stabilityGateEnabled && canUseStabilityGate ->
+            lightWarning?.let { "Stable — $it" } ?: "Stable — ready to capture"
+        else -> lightWarning?.let { "Manual capture — $it" } ?: "Manual capture fallback active"
     }
 
     LazyColumn(
@@ -196,6 +237,15 @@ fun ScanScreen(
         } else {
             item {
                 PermissionCard(
+                    permanentlyDenied = cameraPermanentlyDenied,
+                    onOpenSettings = {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null),
+                            ),
+                        )
+                    },
                     onRequestPermissions = {
                         permissionLauncher.launch(
                             arrayOf(
@@ -267,6 +317,8 @@ private fun LocationCard(
 
 @Composable
 private fun PermissionCard(
+    permanentlyDenied: Boolean,
+    onOpenSettings: () -> Unit,
     onRequestPermissions: () -> Unit,
     onGuidedDemo: () -> Unit,
 ) {
@@ -290,12 +342,22 @@ private fun PermissionCard(
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
-                text = "Camera captures the observation. Location is used only to query nearby records; saved observations round coordinates before persistence.",
+                text = if (permanentlyDenied) {
+                    "Camera access is turned off for FloraGuide. Allow it under Permissions in app settings, or continue with the guided sample."
+                } else {
+                    "Camera captures the observation. Location is used only to query nearby records; saved observations round coordinates before persistence."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
-            Button(onClick = onRequestPermissions, modifier = Modifier.fillMaxWidth()) {
-                Text("Enable camera and location")
+            if (permanentlyDenied) {
+                Button(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth()) {
+                    Text("Open app settings")
+                }
+            } else {
+                Button(onClick = onRequestPermissions, modifier = Modifier.fillMaxWidth()) {
+                    Text("Enable camera and location")
+                }
             }
             FilledTonalButton(onClick = onGuidedDemo, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)

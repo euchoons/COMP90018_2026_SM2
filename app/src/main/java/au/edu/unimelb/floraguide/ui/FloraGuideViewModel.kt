@@ -45,6 +45,8 @@ data class FloraGuideUiState(
     val locationStatus: String = "University of Melbourne demo location",
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
     val photoPath: String? = null,
+    /** Heading when the photo was taken; the live heading has moved on by confirmation time. */
+    val captureHeadingDegrees: Float? = null,
     val storedPhoto: StoredPhoto? = null,
     val identificationStage: IdentificationStage? = null,
     val analysisError: String? = null,
@@ -289,12 +291,17 @@ class FloraGuideViewModel(
         }
     }
 
-    fun analyzeCapturedPhoto(photoPath: String?) {
+    fun analyzeCapturedPhoto(photoPath: String?, captureHeadingDegrees: Float?) {
         if (photoPath.isNullOrBlank()) {
             showMessage("Capture a photo before starting identification.")
             return
         }
-        startAnalysis(photoPath, preferLiveData = true, analysisDate = LocalDate.now())
+        startAnalysis(
+            photoPath = photoPath,
+            preferLiveData = true,
+            analysisDate = LocalDate.now(),
+            captureHeadingDegrees = captureHeadingDegrees,
+        )
     }
 
     fun retryIdentification() {
@@ -304,6 +311,8 @@ class FloraGuideViewModel(
             photoPath = current.photoPath,
             preferLiveData = true,
             analysisDate = current.analysisDate,
+            // The phone has moved since the capture; keep the heading it was taken with.
+            captureHeadingDegrees = current.captureHeadingDegrees,
             previouslyUploaded = current.storedPhoto,
         )
     }
@@ -322,6 +331,7 @@ class FloraGuideViewModel(
             photoPath = null,
             preferLiveData = false,
             analysisDate = GUIDED_DEMO_DATE,
+            captureHeadingDegrees = null,
         )
     }
 
@@ -353,7 +363,7 @@ class FloraGuideViewModel(
             cloudPhotoUri = current.storedPhoto?.gsUri,
             imageScore = current.imagePredictions.firstOrNull { it.species.id == selected.species.id }?.score,
             imageSource = current.imageSource,
-            headingDegrees = current.sensorSnapshot.headingDegrees,
+            headingDegrees = current.captureHeadingDegrees,
             relativeScore = selected.relativeScore,
             contextSource = contextSource,
         )
@@ -394,6 +404,7 @@ class FloraGuideViewModel(
         photoPath: String?,
         preferLiveData: Boolean,
         analysisDate: LocalDate,
+        captureHeadingDegrees: Float?,
         previouslyUploaded: StoredPhoto? = null,
     ) {
         val uid = sessionKey() ?: return
@@ -404,6 +415,7 @@ class FloraGuideViewModel(
                 it.copy(
                     screen = AppScreen.RESULTS,
                     photoPath = photoPath,
+                    captureHeadingDegrees = captureHeadingDegrees,
                     storedPhoto = previouslyUploaded,
                     identificationStage = null,
                     analysisError = null,

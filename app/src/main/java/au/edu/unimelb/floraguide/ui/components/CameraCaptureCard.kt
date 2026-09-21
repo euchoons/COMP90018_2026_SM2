@@ -1,17 +1,23 @@
 package au.edu.unimelb.floraguide.ui.components
 
 import android.content.Context
+import android.util.Size
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import java.io.File
 import java.time.Instant
@@ -52,7 +59,7 @@ fun CameraCaptureCard(
     snapshot: SensorSnapshot,
     captureEnabled: Boolean,
     captureHint: String,
-    onPhotoCaptured: (String) -> Unit,
+    onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,32 +74,51 @@ fun CameraCaptureCard(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var cameraReady by remember { mutableStateOf(false) }
+    var cameraFailed by remember { mutableStateOf(false) }
+    var isRearCamera by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, previewView) {
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
+        // The provider future can complete after the user has already left the Scan screen.
+        // Binding at that point would reopen the camera for a preview nobody can see.
+        var disposed = false
         val executor = ContextCompat.getMainExecutor(context)
         future.addListener(
             {
+                if (disposed) return@addListener
                 runCatching {
-                    provider = future.get()
+                    val cameraProvider = future.get()
+                    provider = cameraProvider
+                    // Tablets and Chromebooks may only have a front camera.
+                    val selector = when {
+                        cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ->
+                            CameraSelector.DEFAULT_BACK_CAMERA
+                        cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
+                            CameraSelector.DEFAULT_FRONT_CAMERA
+                        else -> error("No camera is available on this device.")
+                    }
                     val preview = Preview.Builder().build().also {
                         it.surfaceProvider = previewView.surfaceProvider
                     }
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setResolutionSelector(CAPTURE_RESOLUTION)
                         .build()
-                    provider?.unbindAll()
-                    provider?.bindToLifecycle(
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
                         lifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        selector,
                         preview,
                         capture,
                     )
                     imageCapture = capture
+                    isRearCamera = selector == CameraSelector.DEFAULT_BACK_CAMERA
                     cameraReady = true
+                    cameraFailed = false
                 }.onFailure { error ->
                     cameraReady = false
+                    cameraFailed = true
                     onError(error.message ?: "Camera could not start.")
                 }
             },
@@ -100,11 +126,29 @@ fun CameraCaptureCard(
         )
 
         onDispose {
+            disposed = true
             provider?.unbindAll()
             imageCapture = null
+            cameraReady = false
         }
     }
 
+    // With auto-rotate locked the display stays portrait while the phone is held sideways, so the
+    // JPEG orientation follows the physical orientation rather than the display rotation.
+    DisposableEffect(imageCapture) {
+        val capture = imageCapture ?: return@DisposableEffect onDispose { }
+        val listener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+                capture.targetRotation = surfaceRotationFor(orientation)
+            }
+        }
+        // Without an accelerometer the display rotation chosen at bind time is kept.
+        if (listener.canDetectOrientation()) listener.enable()
+        onDispose { listener.disable() }
+    }
+
+    val heading = snapshot.headingForCapture(isRearCamera)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -117,24 +161,34 @@ fun CameraCaptureCard(
             modifier = Modifier.fillMaxSize(),
         )
 
-        Row(
+        // Warning labels are longer than readings, so the pills wrap on narrow phones.
+        FlowRow(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CameraOverlayPill(
-                text = if (snapshot.isStable) "Steady" else "Hold still",
-                positive = snapshot.isStable,
+                text = when {
+                    !snapshot.canMeasureStability -> "Stability n/a"
+                    snapshot.isStable -> "Steady"
+                    else -> "Hold still"
+                },
+                positive = snapshot.canMeasureStability && snapshot.isStable,
             )
             CameraOverlayPill(
-                text = snapshot.lightLux?.let { "${it.toInt()} lux" } ?: "Light n/a",
-                positive = snapshot.lightLux?.let { it in 25f..20_000f } ?: false,
+                text = lightLabel(snapshot),
+                positive = snapshot.lightCondition == LightCondition.USABLE,
             )
             CameraOverlayPill(
-                text = snapshot.headingDegrees?.let { "${it.toInt()}°" } ?: "Heading n/a",
-                positive = snapshot.headingDegrees != null,
+                text = when {
+                    !isRearCamera || snapshot.headingDegrees == null -> "Heading n/a"
+                    snapshot.compassNeedsCalibration -> "Calibrate compass"
+                    else -> "${snapshot.headingDegrees.toInt()}°"
+                },
+                positive = heading != null,
             )
         }
 
@@ -148,21 +202,26 @@ fun CameraCaptureCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = if (cameraReady) captureHint else "Starting CameraX…",
+                text = when {
+                    cameraReady -> captureHint
+                    cameraFailed -> "Camera unavailable — the guided demo on Home still works"
+                    else -> "Starting CameraX…"
+                },
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White,
             )
             Button(
                 onClick = {
                     val capture = imageCapture ?: return@Button
+                    // Freeze the shutter-time value; JPEG saving can outlive this sensor reading.
+                    val captureHeading = heading
                     isSaving = true
-                    capture.targetRotation = previewView.display?.rotation ?: capture.targetRotation
                     capturePhoto(
                         context = context,
                         imageCapture = capture,
                         onSaved = { path ->
                             isSaving = false
-                            onPhotoCaptured(path)
+                            onPhotoCaptured(path, captureHeading)
                         },
                         onError = { message ->
                             isSaving = false
@@ -207,6 +266,30 @@ private fun CameraOverlayPill(text: String, positive: Boolean) {
             style = MaterialTheme.typography.labelSmall,
         )
     }
+}
+
+/**
+ * Caps captures near 1920x1440 (4:3, ~2.8 MP) instead of the full sensor, which is 12–50 MP on
+ * current phones. Every capture is uploaded to Pl@ntNet and Firebase, and the Pl@ntNet round
+ * trip was measured with a 1123x1600 photo, so this keeps upload size down without dropping
+ * below a resolution known to work. Rationale: docs/CAMERA_AND_SENSOR_VALIDATION.md.
+ */
+private val CAPTURE_RESOLUTION = ResolutionSelector.Builder()
+    .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+    .setResolutionStrategy(
+        ResolutionStrategy(
+            Size(1920, 1440),
+            ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,
+        ),
+    )
+    .build()
+
+/** Maps [OrientationEventListener] degrees to a Surface rotation, as in the CameraX guide. */
+private fun surfaceRotationFor(orientationDegrees: Int): Int = when (orientationDegrees) {
+    in 45 until 135 -> Surface.ROTATION_270
+    in 135 until 225 -> Surface.ROTATION_180
+    in 225 until 315 -> Surface.ROTATION_90
+    else -> Surface.ROTATION_0
 }
 
 private fun capturePhoto(
