@@ -43,11 +43,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import au.edu.unimelb.floraguide.domain.model.Habitat
+import au.edu.unimelb.floraguide.domain.model.GeoPoint
 import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.CameraCaptureCard
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
+import au.edu.unimelb.floraguide.ui.components.LocationMap
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.StatusPill
 
@@ -111,11 +113,14 @@ fun ScanScreen(
             cameraGranted = true
             cameraPermanentlyDenied = false
         }
-        if (!locationGranted &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            locationGranted = true
+        val hasLocationPermission =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        if (locationGranted != hasLocationPermission) {
+            locationGranted = hasLocationPermission
+            if (!hasLocationPermission) onPermissionResult(false)
         }
         onPauseOrDispose { }
     }
@@ -154,6 +159,7 @@ fun ScanScreen(
 
         item {
             LocationCard(
+                location = state.location,
                 status = state.locationStatus,
                 usingDemo = state.usingDemoLocation,
                 locationGranted = locationGranted,
@@ -271,6 +277,7 @@ fun ScanScreen(
 
 @Composable
 private fun LocationCard(
+    location: GeoPoint,
     status: String,
     usingDemo: Boolean,
     locationGranted: Boolean,
@@ -312,6 +319,11 @@ private fun LocationCard(
                 }
             }
         }
+        LocationMap(
+            location = location,
+            usingDemo = usingDemo,
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        )
     }
 }
 

@@ -18,6 +18,7 @@ robolectric = "4.17"
 androidxTest = "1.7.0"
 work = "2.11.2"
 mockk = "1.14.11"
+mapsCompose = "6.12.0"
 minSdk = "26"
 targetSdk = "36"
 compileSdk = "36"
@@ -62,6 +63,7 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+google-maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

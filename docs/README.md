@@ -10,6 +10,8 @@
 
 ## Understand the implementation
 
+- [`GOOGLE_MAPS_SETUP.md`](GOOGLE_MAPS_SETUP.md) — Observe map API key setup, live location behavior and device verification.
+
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — package map, runtime flow, algorithms, fallbacks and replacement seams.
 - [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md) — current truth, decisions required, milestones and risk controls.
 - [`TECHNICAL_REFERENCE.md`](TECHNICAL_REFERENCE.md) — toolchain, ALA request shape, fusion formula and evaluation measures.

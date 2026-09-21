@@ -41,6 +41,13 @@ android {
         ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
         val escapedKey = plantNetApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "PLANTNET_API_KEY", "\"$escapedKey\"")
+
+        val mapsApiKey = listOf(
+            localProperties.getProperty("MAPS_API_KEY"),
+            System.getenv("MAPS_API_KEY"),
+        ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("boolean", "MAPS_CONFIGURED", mapsApiKey.isNotEmpty().toString())
     }
 
     buildTypes {
@@ -88,6 +95,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.google.maps.compose)
 
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
