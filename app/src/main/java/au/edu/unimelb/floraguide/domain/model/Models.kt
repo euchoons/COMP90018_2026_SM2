@@ -61,7 +61,15 @@ data class GeoPoint(
     val latitude: Double,
     val longitude: Double,
     val accuracyMetres: Float? = null,
-)
+    /** Transient device-fix time; historical/coarsened observation coordinates are not live fixes. */
+    val fixTimeMillis: Long? = null,
+) {
+    fun isUsableForContext(nowMillis: Long): Boolean =
+        latitude.isFinite() && latitude in -90.0..90.0 &&
+            longitude.isFinite() && longitude in -180.0..180.0 &&
+            accuracyMetres != null && accuracyMetres.isFinite() && accuracyMetres in 0f..1_000f &&
+            fixTimeMillis != null && nowMillis - fixTimeMillis in 0L..120_000L
+}
 
 data class SensorAvailability(
     val accelerometer: Boolean = false,
@@ -121,7 +129,8 @@ enum class LightCondition {
 
 enum class ContextDataSource(val label: String) {
     ALA_LIVE("Live ALA records"),
-    ALA_PARTIAL("Live ALA + demo fallback"),
+    ALA_PARTIAL("Incomplete live ALA records"),
+    UNAVAILABLE("Geographic evidence unavailable"),
     DEMO_FALLBACK("Offline demo records"),
 }
 
@@ -134,6 +143,8 @@ data class NearbyContext(
     val requestCount: Int = 0,
     val httpStatusCodes: Set<Int> = emptySet(),
     val warning: String? = null,
+    val unresolvedSpeciesIds: Set<String> = emptySet(),
+    val failedSpeciesIds: Set<String> = emptySet(),
 )
 
 data class EvidenceBreakdown(
@@ -141,6 +152,9 @@ data class EvidenceBreakdown(
     val locationPrior: Double,
     val seasonalPrior: Double,
     val habitatPrior: Double,
+    val locationUsed: Boolean = true,
+    val seasonUsed: Boolean = true,
+    val habitatUsed: Boolean = true,
 )
 
 data class RankedCandidate(

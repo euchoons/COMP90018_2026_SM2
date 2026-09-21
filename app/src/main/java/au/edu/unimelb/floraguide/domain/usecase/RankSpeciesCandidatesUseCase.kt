@@ -31,6 +31,11 @@ class RankSpeciesCandidatesUseCase(
         if (predictions.isEmpty()) return emptyList()
 
         val epsilon = 1e-8
+        // ponytail: incomplete cues are disabled for everyone; revisit when metadata coverage improves.
+        val useLocation = predictions.all { nearbyCounts.containsKey(it.species.id) }
+        val useSeason = predictions.all { it.species.preferredMonths.isNotEmpty() }
+        val useHabitat = predictions.all { it.species.habitatAffinity.containsKey(habitat) }
+        if (!useLocation && !useSeason && !useHabitat) return imageOnly(predictions)
         val candidateCount = predictions.size
         val totalNearby = predictions.sumOf { prediction ->
             (nearbyCounts[prediction.species.id] ?: 0).coerceAtLeast(0)
@@ -39,9 +44,9 @@ class RankSpeciesCandidatesUseCase(
 
         val components = predictions.map { prediction ->
             val count = (nearbyCounts[prediction.species.id] ?: 0).coerceAtLeast(0)
-            val locationPrior = (count + locationSmoothing) / locationDenominator
-            val seasonalPrior = prediction.species.seasonalPrior(date.monthValue)
-            val habitatPrior = prediction.species.habitatPrior(habitat)
+            val locationPrior = if (useLocation) (count + locationSmoothing) / locationDenominator else 1.0
+            val seasonalPrior = if (useSeason) prediction.species.seasonalPrior(date.monthValue) else 1.0
+            val habitatPrior = if (useHabitat) prediction.species.habitatPrior(habitat) else 1.0
             val rawScore =
                 imageWeight * ln(prediction.score.coerceAtLeast(epsilon)) +
                     locationWeight * ln(locationPrior.coerceAtLeast(epsilon)) +
@@ -57,6 +62,9 @@ class RankSpeciesCandidatesUseCase(
                     locationPrior = locationPrior,
                     seasonalPrior = seasonalPrior,
                     habitatPrior = habitatPrior,
+                    locationUsed = useLocation,
+                    seasonUsed = useSeason,
+                    habitatUsed = useHabitat,
                 ),
             )
         }
@@ -95,6 +103,9 @@ class RankSpeciesCandidatesUseCase(
                     locationPrior = 0.0,
                     seasonalPrior = 0.0,
                     habitatPrior = 0.0,
+                    locationUsed = false,
+                    seasonUsed = false,
+                    habitatUsed = false,
                 ),
             )
         }

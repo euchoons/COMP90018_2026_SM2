@@ -46,7 +46,7 @@ class RankSpeciesCandidatesUseCaseTest {
     }
 
     @Test
-    fun missingNearbyRecordsAreSmoothedRatherThanZeroed() {
+    fun missingNearbyRecordsDisableLocationWithoutDiscardingCandidates() {
         val result = ranker(
             predictions = predictions,
             nearbyCounts = mapOf("river_red_gum" to 50),
@@ -56,6 +56,43 @@ class RankSpeciesCandidatesUseCaseTest {
 
         assertEquals(predictions.size, result.size)
         assertTrue(result.all { it.relativeScore > 0.0 })
-        assertTrue(result.first { it.species.id == "london_plane" }.evidence.locationPrior > 0.0)
+        assertTrue(result.all { !it.evidence.locationUsed })
+    }
+
+    @Test
+    fun incompleteCuesReturnExactImageOnlyBaseline() {
+        val mixed = predictions.mapIndexed { index, prediction ->
+            if (index == 0) prediction.copy(species = prediction.species.copy(
+                preferredMonths = emptySet(), habitatAffinity = emptyMap(),
+            )) else prediction
+        }
+        for (counts in listOf(emptyMap(), mapOf(mixed.first().species.id to 999))) {
+            assertEquals(ranker.imageOnly(mixed), ranker(mixed, counts, Habitat.TREE_CANOPY, LocalDate.of(2026, 8, 17)))
+        }
+    }
+
+    @Test
+    fun completeZeroCountsRemainKnownAndDoNotChangeImageRanking() {
+        val live = predictions.map { it.copy(species = it.species.copy(preferredMonths = emptySet(), habitatAffinity = emptyMap())) }
+        val baseline = ranker.imageOnly(live)
+        val ranked = ranker(live, live.associate { it.species.id to 0 }, Habitat.LAWN, LocalDate.of(2026, 8, 17))
+        assertEquals(baseline.map { it.species.id }, ranked.map { it.species.id })
+        ranked.zip(baseline).forEach { (actual, expected) ->
+            assertEquals(expected.relativeScore, actual.relativeScore, 1e-12)
+            assertTrue(actual.evidence.locationUsed)
+            assertEquals(0, actual.nearbyRecordCount)
+            assertTrue(!actual.evidence.seasonUsed && !actual.evidence.habitatUsed)
+        }
+    }
+
+    @Test
+    fun missingSelectedHabitatDisablesOnlyHabitatCue() {
+        val mixed = predictions.mapIndexed { index, prediction ->
+            if (index == 0) prediction.copy(species = prediction.species.copy(
+                habitatAffinity = mapOf(Habitat.LAWN to 1.0),
+            )) else prediction
+        }
+        val ranked = ranker(mixed, emptyMap(), Habitat.TREE_CANOPY, LocalDate.of(2026, 8, 17))
+        assertTrue(ranked.all { it.evidence.seasonUsed && !it.evidence.habitatUsed && !it.evidence.locationUsed })
     }
 }
