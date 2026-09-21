@@ -172,6 +172,11 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
 private fun ObservationCard(observation: Observation, onDelete: () -> Unit) {
     val formatter = DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a", Locale.ENGLISH)
         .withZone(ZoneId.systemDefault())
+    // UI preparation only: the model still requires a location; missing-context handling is #19.
+    @Suppress("UNNECESSARY_SAFE_CALL", "USELESS_ELVIS")
+    val locationText = observation.coarseLocation?.let { point ->
+        String.format(Locale.US, "%.3f, %.3f", point.latitude, point.longitude)
+    } ?: "Location not recorded"
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -214,12 +219,7 @@ private fun ObservationCard(observation: Observation, onDelete: () -> Unit) {
                 ) {
                     Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(15.dp))
                     Text(
-                        text = String.format(
-                            Locale.US,
-                            "%.3f, %.3f",
-                            observation.coarseLocation.latitude,
-                            observation.coarseLocation.longitude,
-                        ),
+                        text = locationText,
                         style = MaterialTheme.typography.labelSmall,
                     )
                     Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(14.dp))
