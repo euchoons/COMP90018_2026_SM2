@@ -7,18 +7,19 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 
     alias(libs.plugins.google.services)
+    alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "au.edu.unimelb.floraguide"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "au.edu.unimelb.floraguide"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-baseline"
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
+        versionCode = libs.versions.versionCode.get().toInt()
+        versionName = libs.versions.versionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -53,8 +54,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+        targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
     }
 
     buildFeatures {
@@ -69,7 +70,7 @@ android {
 
 kotlin {
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
+        jvmTarget.set(JvmTarget.fromTarget(libs.versions.jvmTarget.get()))
     }
 }
 
@@ -96,12 +97,23 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    testImplementation(libs.androidx.test.core.ktx)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.storage)
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
     implementation(libs.kotlinx.coroutines.play.services)
 }

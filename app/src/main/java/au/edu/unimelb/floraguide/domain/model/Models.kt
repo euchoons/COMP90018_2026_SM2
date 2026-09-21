@@ -139,4 +139,5 @@ enum class AppScreen {
     SCAN,
     RESULTS,
     COLLECTION,
+    ACCOUNT,
 }
