@@ -115,8 +115,12 @@ fun ResultsScreen(
                         positive = state.imageSource == ImageSource.PLANTNET_LIVE,
                     )
                     StatusPill(
-                        label = if (state.usingDemoLocation) "Demo location" else "Live location",
-                        positive = !state.usingDemoLocation,
+                        label = when {
+                            !state.analysisPrefersLiveData -> "Demo location"
+                            state.analysisLocation == null -> "Capture location unavailable"
+                            else -> "Capture location recorded"
+                        },
+                        positive = state.analysisPrefersLiveData && state.analysisLocation != null,
                     )
                     Text(
                         text = state.selectedHabitat.label,
@@ -173,7 +177,7 @@ fun ResultsScreen(
                 CandidateCard(
                     candidate = candidate,
                     selected = state.selectedCandidate?.species?.id == candidate.species.id,
-                    contextApplied = state.fusedRanking.isNotEmpty(),
+                    contextApplied = candidate.evidence.let { it.locationUsed || it.seasonUsed || it.habitatUsed },
                     onClick = { onSelectSpecies(candidate.species.id) },
                 )
             }
@@ -192,9 +196,12 @@ fun ResultsScreen(
         if (state.displayedRanking.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (state.analysisLocation == null) {
+                        Text("Identification is available without GPS. Saving currently requires a usable capture location; retake with location enabled.")
+                    }
                     Button(
                         onClick = onConfirm,
-                        enabled = !state.isClassifying && !state.isContextLoading,
+                        enabled = !state.isClassifying && !state.isContextLoading && state.analysisLocation != null,
                         modifier = Modifier.fillMaxWidth().height(54.dp),
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
@@ -257,7 +264,12 @@ private fun AnalysisProgressCard(state: FloraGuideUiState, onRetryContext: () ->
             AnalysisStep(
                 number = "3",
                 title = "Explainable fusion",
-                detail = if (state.fusedRanking.isNotEmpty()) "Softmax-normalised reranking complete" else "Pending context",
+                detail = when {
+                    state.fusedRanking.isEmpty() -> "Pending context"
+                    state.fusedRanking.none { it.evidence.let { e -> e.locationUsed || e.seasonUsed || e.habitatUsed } } ->
+                        "No eligible context; image-only baseline retained"
+                    else -> "Reranked using eligible cues only"
+                },
                 complete = state.fusedRanking.isNotEmpty(),
                 loading = false,
             )
@@ -379,7 +391,7 @@ private fun RankingComparison(
                     title = if (isContextLoading) "Context loading" else "Fused",
                     candidates = fused,
                     modifier = Modifier.weight(1f),
-                    placeholder = if (isContextLoading) "ALA / fallback\nthen rerank" else "Pending",
+                    placeholder = if (isContextLoading) "Checking eligible cues" else "Pending",
                 )
             }
         }
@@ -456,7 +468,8 @@ private fun CandidateCard(
                 )
                 Text(
                     text = if (contextApplied) {
-                        "Image #${candidate.imageRank} → fused #${candidate.finalRank} · ${candidate.nearbyRecordCount} nearby records"
+                        "Image #${candidate.imageRank} → fused #${candidate.finalRank}" +
+                            if (candidate.evidence.locationUsed) " · ${candidate.nearbyRecordCount} nearby records" else " · location cue off"
                     } else {
                         "Image rank #${candidate.imageRank}"
                     },
@@ -506,18 +519,18 @@ private fun EvidenceCard(
             )
             EvidenceBar(
                 label = "Location prior",
-                value = candidate.evidence.locationPrior,
-                detail = "${candidate.nearbyRecordCount} records / ${state.nearbyContext?.radiusKm ?: 8} km",
+                value = candidate.evidence.locationPrior.takeIf { candidate.evidence.locationUsed },
+                detail = if (candidate.evidence.locationUsed) "${candidate.nearbyRecordCount} records / ${state.nearbyContext?.radiusKm ?: 8} km" else "Off · incomplete or unavailable",
             )
             EvidenceBar(
                 label = "Seasonal prior",
-                value = candidate.evidence.seasonalPrior,
-                detail = month,
+                value = candidate.evidence.seasonalPrior.takeIf { candidate.evidence.seasonUsed },
+                detail = if (candidate.evidence.seasonUsed) month else "Off · missing metadata",
             )
             EvidenceBar(
                 label = "Microhabitat prior",
-                value = candidate.evidence.habitatPrior,
-                detail = state.selectedHabitat.shortLabel,
+                value = candidate.evidence.habitatPrior.takeIf { candidate.evidence.habitatUsed },
+                detail = if (candidate.evidence.habitatUsed) state.selectedHabitat.shortLabel else "Off · missing metadata",
             )
             HorizontalDivider()
             Text(
@@ -527,7 +540,7 @@ private fun EvidenceCard(
             )
             Text(
                 text = if (state.imageSource == ImageSource.PLANTNET_LIVE) {
-                    "Season and habitat priors are neutral for live species without validated ecology data."
+                    "A cue is disabled for every candidate if any candidate lacks its required data. Unknown does not mean unsuitable."
                 } else {
                     "Try changing the habitat below; the demo ordering updates without another network request."
                 },

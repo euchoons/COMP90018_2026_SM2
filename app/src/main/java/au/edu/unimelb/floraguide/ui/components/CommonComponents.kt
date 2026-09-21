@@ -198,7 +198,7 @@ fun HabitatSelector(
 @Composable
 fun EvidenceBar(
     label: String,
-    value: Double,
+    value: Double?,
     detail: String,
     modifier: Modifier = Modifier,
 ) {
@@ -211,7 +211,7 @@ fun EvidenceBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        LinearProgressIndicator(
+        if (value != null) LinearProgressIndicator(
             progress = { value.coerceIn(0.0, 1.0).toFloat() },
             modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
         )

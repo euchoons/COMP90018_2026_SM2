@@ -47,6 +47,7 @@ data class FloraGuideUiState(
     val photoPath: String? = null,
     /** Heading when the photo was taken; the live heading has moved on by confirmation time. */
     val captureHeadingDegrees: Float? = null,
+    val analysisLocation: GeoPoint? = null,
     val storedPhoto: StoredPhoto? = null,
     val identificationStage: IdentificationStage? = null,
     val analysisError: String? = null,
@@ -165,9 +166,14 @@ class FloraGuideViewModel(
         _uiState.update { it.copy(isContextLoading = true, message = null) }
         val current = _uiState.value
         try {
-            val nearby = container.speciesContextRepository.nearbyOccurrenceCounts(
+            val nearby = if (preferLiveData && current.analysisLocation == null) {
+                NearbyContext(
+                    emptyMap(), ContextDataSource.UNAVAILABLE, CONTEXT_RADIUS_KM,
+                    warning = "Capture location unavailable or unreliable. Location cue disabled; demo coordinates are not used.",
+                )
+            } else container.speciesContextRepository.nearbyOccurrenceCounts(
                 candidates = predictions.map { it.species },
-                location = current.location,
+                location = requireNotNull(current.analysisLocation),
                 radiusKm = CONTEXT_RADIUS_KM,
                 preferLiveData = preferLiveData,
             )
@@ -176,7 +182,9 @@ class FloraGuideViewModel(
             val latest = _uiState.value
             val fused = container.rankCandidates(
                 predictions = predictions,
-                nearbyCounts = nearby.countsBySpeciesId,
+                nearbyCounts = nearby.countsBySpeciesId.takeUnless {
+                    preferLiveData && nearby.source == ContextDataSource.DEMO_FALLBACK
+                } ?: emptyMap(),
                 habitat = latest.selectedHabitat,
                 date = latest.analysisDate,
             )
@@ -192,10 +200,15 @@ class FloraGuideViewModel(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
+            val warning = "Context lookup failed. Location cue disabled; no demo substitution."
+            val fused = container.rankCandidates(predictions, emptyMap(), current.selectedHabitat, current.analysisDate)
             _uiState.update {
                 it.copy(
                     isContextLoading = false,
-                    message = error.message ?: "Context lookup failed.",
+                    nearbyContext = NearbyContext(emptyMap(), ContextDataSource.UNAVAILABLE, CONTEXT_RADIUS_KM, warning = warning),
+                    fusedRanking = fused,
+                    selectedSpeciesId = fused.firstOrNull()?.species?.id,
+                    message = warning,
                 )
             }
         }
@@ -232,6 +245,7 @@ class FloraGuideViewModel(
                 screen = AppScreen.SCAN,
                 message = null,
                 photoPath = null,
+                analysisLocation = null,
                 storedPhoto = null,
                 identificationStage = null,
                 analysisError = null,
@@ -314,6 +328,7 @@ class FloraGuideViewModel(
             // The phone has moved since the capture; keep the heading it was taken with.
             captureHeadingDegrees = current.captureHeadingDegrees,
             previouslyUploaded = current.storedPhoto,
+            analysisLocation = current.analysisLocation,
         )
     }
 
@@ -332,12 +347,13 @@ class FloraGuideViewModel(
             preferLiveData = false,
             analysisDate = GUIDED_DEMO_DATE,
             captureHeadingDegrees = null,
+            analysisLocation = CAMPUS_DEMO_LOCATION,
         )
     }
 
     fun retryContextLookup() {
         val current = _uiState.value
-        if (current.imagePredictions.isEmpty()) return
+        if (current.imagePredictions.isEmpty() || !current.analysisPrefersLiveData) return
         analysisJob?.cancel()
         _uiState.update { it.copy(analysisPrefersLiveData = true) }
         analysisJob = viewModelScope.launch {
@@ -352,12 +368,17 @@ class FloraGuideViewModel(
         val uid = sessionKey() ?: return
         val current = _uiState.value
         val selected = current.selectedCandidate ?: return
-        val contextSource = current.nearbyContext?.source ?: ContextDataSource.DEMO_FALLBACK
+        // The current observation schema requires a location; never save demo coordinates as real GPS.
+        val location = current.analysisLocation ?: run {
+            showMessage("This capture has no usable location. Retake with location enabled to save it.")
+            return
+        }
+        val contextSource = current.nearbyContext?.source ?: ContextDataSource.UNAVAILABLE
         val observation = Observation(
             id = UUID.randomUUID().toString(),
             species = selected.species,
             observedAt = Instant.now(),
-            coarseLocation = current.location.coarsened(),
+            coarseLocation = location.coarsened(),
             habitat = current.selectedHabitat,
             photoPath = current.photoPath,
             cloudPhotoUri = current.storedPhoto?.gsUri,
@@ -406,6 +427,9 @@ class FloraGuideViewModel(
         analysisDate: LocalDate,
         captureHeadingDegrees: Float?,
         previouslyUploaded: StoredPhoto? = null,
+        analysisLocation: GeoPoint? = _uiState.value.location.takeIf {
+            !_uiState.value.usingDemoLocation && it.isUsableForContext(System.currentTimeMillis())
+        },
     ) {
         val uid = sessionKey() ?: return
         analysisJob?.cancel()
@@ -416,6 +440,7 @@ class FloraGuideViewModel(
                     screen = AppScreen.RESULTS,
                     photoPath = photoPath,
                     captureHeadingDegrees = captureHeadingDegrees,
+                    analysisLocation = analysisLocation,
                     storedPhoto = previouslyUploaded,
                     identificationStage = null,
                     analysisError = null,
@@ -496,7 +521,9 @@ class FloraGuideViewModel(
         if (current.imagePredictions.isEmpty()) return
         val fused = container.rankCandidates(
             predictions = current.imagePredictions,
-            nearbyCounts = context.countsBySpeciesId,
+            nearbyCounts = context.countsBySpeciesId.takeUnless {
+                current.analysisPrefersLiveData && context.source == ContextDataSource.DEMO_FALLBACK
+            } ?: emptyMap(),
             habitat = current.selectedHabitat,
             date = current.analysisDate,
         )

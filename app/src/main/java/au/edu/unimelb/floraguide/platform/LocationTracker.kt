@@ -37,7 +37,7 @@ class LocationTracker(context: Context) {
             override fun onProviderEnabled(provider: String) = Unit
 
             override fun onProviderDisabled(provider: String) {
-                onError("Location provider disabled; the last known location is retained.")
+                onError("Location provider disabled; live geographic evidence is unavailable.")
             }
         }
         activeListener = listener
@@ -68,5 +68,6 @@ class LocationTracker(context: Context) {
         latitude = latitude,
         longitude = longitude,
         accuracyMetres = if (hasAccuracy()) accuracy else null,
+        fixTimeMillis = time,
     )
 }

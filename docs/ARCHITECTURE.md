@@ -77,9 +77,9 @@ A future `TfliteImageClassifier` implements the same interface, performs bitmap 
 
 `PlantNetClient` uploads the captured JPEG to the Pl@ntNet v2 API as a streamed multipart request, enforces timeouts, parses candidates strictly and records telemetry. The API key is a query parameter and is never logged.
 
-`PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. Pl@ntNet covers the world flora, so there is no fixed catalogue and therefore no label-to-ALA mapping table: `AlaOccurrenceClient` already queries by scientific name.
+`PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves an exact ALA species match before querying occurrences by taxon ID.
 
-Season and habitat affinities are deliberately left empty for these species. `seasonalPrior` and `habitatPrior` then return the same constant for every candidate, which adds a constant to every raw score and cancels in the softmax. Ranking is decided by the image score and nearby ALA records rather than by invented ecology. A photo captured during integration demonstrates the effect: Pl@ntNet ranked the tropical *Corymbia bella* first (0.173) ahead of *Eucalyptus camaldulensis* (0.125), and the campus ALA counts (0 versus 532 within 8 km) restore the correct order.
+Season and habitat affinities are deliberately left empty for these species. An incomplete cue is disabled for every candidate, rather than treating unknown metadata as unsuitability. Geographic evidence is used only with a usable analysis location and complete successful counts. Otherwise the image-only baseline remains available. See [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
 When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so the guided demo stays offline and repeatable.
 
@@ -87,7 +87,7 @@ When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so t
 
 `AlaOccurrenceClient` performs count-only, read-only occurrence searches. It builds the query, enforces timeouts, parses `totalRecords` strictly and records request telemetry.
 
-`AlaSpeciesContextRepository` requests all candidate counts concurrently. It preserves coroutine cancellation, merges partial responses with deterministic fallback counts and reports whether the source was live, partial or offline.
+`AlaSpeciesContextRepository` requests all candidate counts concurrently. It preserves coroutine cancellation and separates successful counts (including zero), failed lookups and unresolved taxa. Partial/all failures disable the location cue; deterministic counts are exclusive to the explicit guided demo.
 
 ### `data/observation`
 
@@ -109,7 +109,7 @@ User captures a photo
   -> ImageClassifier returns Top-K candidates
   -> image-only ranking is exposed immediately
   -> SpeciesContextRepository requests nearby counts concurrently
-  -> result is labelled live, partial or fallback
+  -> result is labelled live, partial, unavailable or explicit demo
   -> RankSpeciesCandidatesUseCase applies location, season and habitat
   -> fused Top 3 and evidence are displayed
   -> user changes habitat, causing a local rerank without another request
@@ -185,8 +185,8 @@ This design supports a responsive interface, but final claims require measured i
 | Accelerometer/gyroscope | Stability gate | Manual capture if required sensors are unavailable. |
 | Ambient light | Low-light and very-bright warnings | Explicit unavailable state; light never blocks capture. |
 | Magnetometer | Heading metadata | Explicit unavailable state; an unreliable compass prompts calibration and is not stored. |
-| Location | GPS/network location | Campus demo location with visible label. |
-| ALA | Live candidate counts | Partial merge, persistent warning, retry or deterministic fallback. |
+| Location | Fresh, accurate GPS/network fix frozen at analysis start | Geographic cue disabled; demo coordinates are never used for live scans. |
+| ALA | Exact taxon match and live candidate counts | Incomplete cue disabled, persistent warning and retry; demo only on explicit request. |
 | Pl@ntNet | Cloud Top-8 candidates | Errors surface verbatim (no match, quota reached, key rejected); guided demo remains available. |
 | Image model | Future on-device TFLite model | Clearly labelled deterministic demo adapter. |
 | Cloud store | Future Firebase implementation | Local observation repository. |
