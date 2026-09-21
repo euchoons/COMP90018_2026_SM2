@@ -29,6 +29,27 @@ class FloraGuideViewModelTest {
     }
     @After fun close() { Dispatchers.resetMain() }
 
+    @Test fun `capture heading survives later sensor readings and retries including null`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val sensorListener = slot<(SensorSnapshot) -> Unit>()
+        every { container.sensorMonitor.start(capture(sensorListener)) } just Runs
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        for (capturedHeading in listOf(90f, null)) {
+            // Simulate movement between the shutter and the JPEG-saved callback.
+            sensorListener.captured(SensorSnapshot(headingDegrees = 180f))
+            model.analyzeCapturedPhoto("/capture.jpg", capturedHeading)
+            sensorListener.captured(SensorSnapshot(headingDegrees = 270f))
+            runCurrent()
+            assertEquals(capturedHeading, model.uiState.value.captureHeadingDegrees)
+            model.retryIdentification()
+            runCurrent()
+            assertEquals(capturedHeading, model.uiState.value.captureHeadingDegrees)
+        }
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `account changes cancel old observation subscriptions and clear analysis`() = runTest(dispatcher) {
         val subscribed = mutableListOf<String>()
         val closed = mutableListOf<String>()

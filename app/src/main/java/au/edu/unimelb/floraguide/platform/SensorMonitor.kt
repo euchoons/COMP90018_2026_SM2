@@ -7,8 +7,9 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import au.edu.unimelb.floraguide.domain.model.SensorAvailability
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
+import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
+import au.edu.unimelb.floraguide.domain.sensor.observationHeadingDegrees
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.math.sqrt
 
 /**
@@ -30,13 +31,15 @@ class SensorMonitor(context: Context) : SensorEventListener {
     )
 
     private var listener: ((SensorSnapshot) -> Unit)? = null
+    // Start "moving" so capture stays locked until real readings arrive.
     private var accelerationDeviation = 1.0
     private var angularVelocity = 1.0
-    private var smoothedStability = 0.0
+    private val stabilityEstimator = MotionStabilityEstimator()
     private var lightLux: Float? = null
     private var headingDegrees: Float? = null
     private var gravityVector: FloatArray? = null
     private var magneticVector: FloatArray? = null
+    private var magnetometerAccuracy = SensorManager.SENSOR_STATUS_ACCURACY_HIGH
 
     fun start(onSnapshot: (SensorSnapshot) -> Unit) {
         listener = onSnapshot
@@ -66,38 +69,42 @@ class SensorMonitor(context: Context) : SensorEventListener {
 
             Sensor.TYPE_MAGNETIC_FIELD -> {
                 magneticVector = lowPass(event.values.copyOf(), magneticVector)
+                magnetometerAccuracy = event.accuracy
             }
 
             Sensor.TYPE_LIGHT -> lightLux = event.values.firstOrNull()
         }
 
         updateHeading()
-        val target = exp(-(accelerationDeviation * 0.9 + angularVelocity * 0.6))
-            .coerceIn(0.0, 1.0)
-        smoothedStability = (0.7 * smoothedStability + 0.3 * target).coerceIn(0.0, 1.0)
+        stabilityEstimator.update(accelerationDeviation, angularVelocity)
         publish()
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        if (sensor?.type == Sensor.TYPE_MAGNETIC_FIELD) {
+            magnetometerAccuracy = accuracy
+            publish()
+        }
+    }
 
     private fun updateHeading() {
         val gravity = gravityVector ?: return
         val magnetic = magneticVector ?: return
         val rotation = FloatArray(9)
         if (!SensorManager.getRotationMatrix(rotation, null, gravity, magnetic)) return
-        val orientation = FloatArray(3)
-        SensorManager.getOrientation(rotation, orientation)
-        headingDegrees = Math.toDegrees(orientation[0].toDouble())
-            .toFloat()
-            .let { (it + 360f) % 360f }
+        headingDegrees = observationHeadingDegrees(rotation)
     }
 
     private fun publish() {
         listener?.invoke(
             SensorSnapshot(
-                stability = smoothedStability,
+                stability = stabilityEstimator.score,
                 lightLux = lightLux,
                 headingDegrees = headingDegrees,
+                // Only UNRELIABLE is flagged: many phones sit at LOW accuracy for long periods,
+                // and hiding the heading there would make it unavailable most of the time.
+                compassNeedsCalibration =
+                    magnetometerAccuracy == SensorManager.SENSOR_STATUS_UNRELIABLE,
                 availability = availability,
             ),
         )
