@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.InformationCard
+import au.edu.unimelb.floraguide.ui.components.LocationMap
 import au.edu.unimelb.floraguide.ui.components.PhotoThumbnail
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.StatusPill
@@ -78,6 +79,13 @@ fun CollectionScreen(
         }
 
         if (state.observations.isEmpty()) {
+            item {
+                LocationMap(
+                    location = state.location,
+                    usingDemo = state.usingDemoLocation,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
