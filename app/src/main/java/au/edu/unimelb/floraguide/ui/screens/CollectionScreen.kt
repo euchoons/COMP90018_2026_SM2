@@ -78,14 +78,15 @@ fun CollectionScreen(
             CollectionMissionCard(uniqueSpecies = state.uniqueSpeciesCount)
         }
 
+        item {
+            LocationMap(
+                location = state.location,
+                usingDemo = state.usingDemoLocation,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
         if (state.observations.isEmpty()) {
-            item {
-                LocationMap(
-                    location = state.location,
-                    usingDemo = state.usingDemoLocation,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
