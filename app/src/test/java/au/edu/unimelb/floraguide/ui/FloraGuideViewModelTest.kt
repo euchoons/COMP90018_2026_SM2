@@ -120,4 +120,25 @@ class FloraGuideViewModelTest {
         state.value = AuthState.Unauthenticated
         runCurrent()
     }
+
+    @Test fun `image-only and final rankings contain the same candidates`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val species = (1..8).map { Species("s$it", "Plant $it", "Genus species$it", emptySet(), emptyMap(), 0) }
+        every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
+        coEvery { container.imageClassifier.classify(null) } returns ImageClassification(
+            species.mapIndexed { index, item -> ImagePrediction(item, 0.9 - index * 0.1, index + 1) },
+            ImageSource.DEMO_ADAPTER,
+        )
+        coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), any(), any(), false) } returns
+            NearbyContext(emptyMap(), ContextDataSource.DEMO_FALLBACK, 8)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.runGuidedDemo()
+        runCurrent()
+        val imageOnly = model.uiState.value.imageOnlyRanking.map { it.species.id }
+        assertEquals(5, imageOnly.size)
+        assertEquals(imageOnly.toSet(), model.uiState.value.fusedRanking.map { it.species.id }.toSet())
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
 }

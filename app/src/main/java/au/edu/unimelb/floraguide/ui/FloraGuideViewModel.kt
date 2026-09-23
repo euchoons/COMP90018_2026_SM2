@@ -493,7 +493,8 @@ class FloraGuideViewModel(
                 currentCoroutineContext().ensureActive()
                 if (sessionKey() != uid) throw CancellationException("Account changed")
 
-                val predictions = classification.predictions
+                // Rank, display and save the same candidates that are checked against ALA.
+                val predictions = classification.predictions.take(MAX_ALA_CANDIDATES)
                 val imageOnly = container.rankCandidates.imageOnly(predictions)
                 _uiState.update {
                     it.copy(
