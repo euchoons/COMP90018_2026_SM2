@@ -38,6 +38,7 @@ import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
+import au.edu.unimelb.floraguide.ui.LOCAL_TIME_FORMAT
 import au.edu.unimelb.floraguide.ui.components.CloudIdentificationCard
 import au.edu.unimelb.floraguide.ui.components.EvidenceBar
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
@@ -77,7 +78,7 @@ fun ResultsScreen(
                     StatusPill(state.imageSource?.label ?: "Identifying", state.imageSource == ImageSource.PLANTNET_LIVE)
                     StatusPill(state.capture?.locationSource?.label ?: "Location unavailable",
                         state.capture?.locationSource == CaptureLocationSource.DEVICE)
-                    state.capture?.capturedAt?.let { Text("Capture: $it", style = MaterialTheme.typography.labelSmall) }
+                    state.capture?.capturedAt?.let { Text("Capture: ${LOCAL_TIME_FORMAT.format(it)}", style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
@@ -197,7 +198,7 @@ private fun ContextProgress(state: FloraGuideUiState, onRetry: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                 )
                 context.warning?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-                context.retryNotBefore?.let { Text("Server retry time: $it", style = MaterialTheme.typography.bodySmall) }
+                context.retryNotBefore?.let { Text("Server retry time: ${LOCAL_TIME_FORMAT.format(it)}", style = MaterialTheme.typography.bodySmall) }
             }
             else -> Text("Waiting for Pl@ntNet candidate names.", style = MaterialTheme.typography.bodySmall)
         }

@@ -23,6 +23,8 @@ import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -356,7 +358,7 @@ class FloraGuideViewModel(
         }
         current.nearbyContext?.retryNotBefore?.let { deadline ->
             if (Instant.now().isBefore(deadline)) {
-                showMessage("ALA requested a pause. Retry after $deadline.")
+                showMessage("ALA requested a pause. Retry after ${LOCAL_TIME_FORMAT.format(deadline)}.")
                 return
             }
         }
@@ -648,3 +650,7 @@ val CAMPUS_DEMO_LOCATION = GeoPoint(
 )
 
 private val GUIDED_DEMO_DATE: LocalDate = LocalDate.of(2026, 8, 17)
+
+/** Instants are UTC; users see capture and retry times in the device's zone. */
+internal val LOCAL_TIME_FORMAT: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("d MMM, h:mm:ss a", Locale.ENGLISH).withZone(ZoneId.systemDefault())
