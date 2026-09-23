@@ -31,7 +31,8 @@ internal fun ObservationEntity.toObservation(): Observation {
         coarseLocation = GeoPoint(coarseLatitude, coarseLongitude),
         habitat = Habitat.valueOf(habitatName), photoPath = localPhotoPath,
         headingDegrees = headingDegrees, relativeScore = relativeScore,
-        contextSource = ContextDataSource.valueOf(contextSource),
+        // Rows without decodable JSON predate schema 3, so old context labels are not trusted.
+        contextSource = ObservationJsonCodec.legacyContextSource(ContextDataSource.valueOf(contextSource)),
     )
     return legacy.copy(photoPath = localPhotoPath ?: remotePhotoUrl, cloudPhotoUri = remotePhotoUrl)
 }

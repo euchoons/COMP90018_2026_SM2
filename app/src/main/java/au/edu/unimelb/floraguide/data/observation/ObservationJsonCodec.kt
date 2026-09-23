@@ -62,14 +62,7 @@ internal object ObservationJsonCodec {
         val schemaVersion = json.optInt("schemaVersion", 1)
         val storedSource = enumValueOrNull<ContextDataSource>(json.optionalString("contextSource"))
             ?: ContextDataSource.NOT_REQUESTED
-        val contextSource = if (
-            schemaVersion < 3 &&
-            (storedSource == ContextDataSource.ALA_PARTIAL || storedSource == ContextDataSource.DEMO_FALLBACK)
-        ) {
-            ContextDataSource.LEGACY_UNVERIFIED
-        } else {
-            storedSource
-        }
+        val contextSource = if (schemaVersion < 3) legacyContextSource(storedSource) else storedSource
 
         Observation(
             id = json.getString("id"),
@@ -136,6 +129,14 @@ internal object ObservationJsonCodec {
             demoNearbyCount = json.optInt("demoNearbyCount", 0).coerceAtLeast(0),
         )
     }
+
+    /** Before schema 3, ALA_PARTIAL and DEMO_FALLBACK could include substituted demo counts. */
+    fun legacyContextSource(stored: ContextDataSource): ContextDataSource =
+        if (stored == ContextDataSource.ALA_PARTIAL || stored == ContextDataSource.DEMO_FALLBACK) {
+            ContextDataSource.LEGACY_UNVERIFIED
+        } else {
+            stored
+        }
 
     private inline fun <reified T : Enum<T>> enumValueOrNull(value: String?): T? =
         value?.let { runCatching { enumValueOf<T>(it) }.getOrNull() }
