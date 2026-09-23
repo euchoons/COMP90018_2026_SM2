@@ -125,7 +125,9 @@ These constants are prototype values. The final report should explain how weight
 - image-only Top-1 and Top-3 accuracy;
 - fused Top-1 and Top-3 accuracy;
 - confusion by species;
-- unknown/genus fallback performance.
+- unknown/genus fallback performance;
+- share of live captures with complete ALA context, where the geographic boost was
+  applied at all (one unresolved or failed candidate disables it for the capture).
 
 ### Ablation
 

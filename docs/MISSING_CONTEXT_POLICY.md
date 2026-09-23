@@ -27,6 +27,11 @@ candidates keep image-only scores/order; available counts remain visible as cont
 The trade-off is losing usable partial evidence rather than favouring candidates
 whose lookups happened to succeed. These constants are provisional, not optimised.
 
+Unresolved names count as missing, so a single unresolved candidate disables geographic
+support for the whole capture. A synonym, an infraspecific name or a species outside the
+Australian name index among the five candidates is enough to keep the image-only order,
+which can make the boost rare in practice.
+
 PR #31 deliberately limits both displayed and reranked candidates to the first five
 Pl@ntNet results (the API requests eight). This limit is unchanged here and must be
 reported when evaluating candidate recall. Lookup failures never remove a candidate
@@ -47,7 +52,10 @@ to the explicit guided demo; demo evidence must never enter live ranking.
 ## Evaluation boundary
 
 #20 will compare the provisional bounded boost, image-only baseline and any agreed
-alternative on the same held-out cases. This change does not select optimal weights,
-prove either formula superior, calibrate scores or close the taxonomy investigation #10.
+alternative on the same held-out cases. It must also report the share of live captures
+with complete context, i.e. how often geographic support was applied at all, and how many
+of the others were blocked by unresolved names rather than failed lookups. This change
+does not select optimal weights, prove either formula superior, calibrate scores or close
+the taxonomy investigation #10.
 
 ALA API reference: https://docs.ala.org.au/ (Namematching and Occurrences).
