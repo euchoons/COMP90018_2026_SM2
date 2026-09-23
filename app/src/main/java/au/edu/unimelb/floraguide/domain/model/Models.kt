@@ -5,7 +5,7 @@ import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.min
 
-/** A small, explicit domain model keeps Android/framework details outside the ranking logic. */
+/** Framework-independent domain types shared by camera, Pl@ntNet, ALA and persistence. */
 data class Species(
     val id: String,
     val commonName: String,
@@ -61,6 +61,26 @@ data class GeoPoint(
     val latitude: Double,
     val longitude: Double,
     val accuracyMetres: Float? = null,
+) {
+    fun hasValidCoordinates(): Boolean =
+        latitude.isFinite() && longitude.isFinite() &&
+            latitude in -90.0..90.0 && longitude in -180.0..180.0
+}
+
+enum class CaptureLocationSource(val label: String) {
+    DEVICE("Device location at capture"),
+    GUIDED_DEMO("Guided demo location"),
+    UNAVAILABLE("No usable capture location"),
+    LEGACY_UNKNOWN("Legacy location; origin not recorded"),
+}
+
+/** Snapshot taken at the shutter press, like the heading. Retries reuse the same time/location. */
+data class CaptureSnapshot(
+    val observationId: String,
+    val capturedAt: Instant,
+    val location: GeoPoint?,
+    val locationSource: CaptureLocationSource,
+    val headingDegrees: Float?,
 )
 
 data class SensorAvailability(
@@ -121,11 +141,15 @@ enum class LightCondition {
 
 enum class ContextDataSource(val label: String) {
     ALA_LIVE("Live ALA records"),
-    ALA_PARTIAL("Live ALA + demo fallback"),
-    DEMO_FALLBACK("Offline demo records"),
+    ALA_PARTIAL("Partial ALA results; missing counts unknown"),
+    ALA_UNAVAILABLE("ALA unavailable; image-only ranking"),
+    NOT_REQUESTED("ALA not queried"),
+    LEGACY_UNVERIFIED("Legacy context; provenance unverified"),
+    DEMO_FALLBACK("Explicit offline demo records"),
 }
 
 data class NearbyContext(
+    /** Successful results only. Missing key means unknown; value 0 means a successful zero. */
     val countsBySpeciesId: Map<String, Int>,
     val source: ContextDataSource,
     val radiusKm: Int,
@@ -134,6 +158,10 @@ data class NearbyContext(
     val requestCount: Int = 0,
     val httpStatusCodes: Set<Int> = emptySet(),
     val warning: String? = null,
+    val failuresBySpeciesId: Map<String, String> = emptyMap(),
+    val attemptsBySpeciesId: Map<String, Int> = emptyMap(),
+    val queriedAt: Instant? = null,
+    val retryNotBefore: Instant? = null,
 )
 
 data class EvidenceBreakdown(
@@ -141,6 +169,7 @@ data class EvidenceBreakdown(
     val locationPrior: Double,
     val seasonalPrior: Double,
     val habitatPrior: Double,
+    val locationMultiplier: Double = 1.0,
 )
 
 data class RankedCandidate(
@@ -148,14 +177,23 @@ data class RankedCandidate(
     val relativeScore: Double,
     val imageRank: Int,
     val finalRank: Int,
-    val nearbyRecordCount: Int,
+    val nearbyRecordCount: Int?,
     val evidence: EvidenceBreakdown,
+)
+
+data class CandidateEvidenceRecord(
+    val scientificName: String,
+    val imageScore: Double,
+    val finalRelativeScore: Double,
+    val nearbyRecordCount: Int?,
+    val lookupFailure: String? = null,
 )
 
 data class Observation(
     val id: String,
     val species: Species,
     val observedAt: Instant,
+    /** Kept non-null to remain compatible with the current Room/Firestore schema. */
     val coarseLocation: GeoPoint,
     val habitat: Habitat,
     val photoPath: String?,
@@ -165,6 +203,14 @@ data class Observation(
     val cloudPhotoUri: String? = null,
     val imageScore: Double? = null,
     val imageSource: ImageSource? = null,
+    val locationSource: CaptureLocationSource = CaptureLocationSource.LEGACY_UNKNOWN,
+    val confirmedAt: Instant? = null,
+    val nearbyRecordCount: Int? = null,
+    val contextRadiusKm: Int? = null,
+    val contextQueriedAt: Instant? = null,
+    val rankingRule: String? = null,
+    val candidateEvidence: List<CandidateEvidenceRecord> = emptyList(),
+    val verificationStatus: String = "USER_SELECTED_UNVERIFIED",
 )
 
 enum class AppScreen {

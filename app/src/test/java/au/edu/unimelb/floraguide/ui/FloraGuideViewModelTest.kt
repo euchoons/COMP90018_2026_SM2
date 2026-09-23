@@ -95,4 +95,67 @@ class FloraGuideViewModelTest {
         state.value = AuthState.Unauthenticated
         runCurrent()
     }
+
+    @Test fun `habitat change keeps an explicit species choice while auto selection follows the top`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val canopy = Species("canopy", "Blackwood", "Acacia melanoxylon", emptySet(), mapOf(Habitat.TREE_CANOPY to 1.0), 0)
+        val lawn = Species("lawn", "Kidney weed", "Dichondra repens", emptySet(), mapOf(Habitat.LAWN to 1.0), 0)
+        every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
+        coEvery { container.imageClassifier.classify(null) } returns ImageClassification(
+            listOf(ImagePrediction(canopy, 0.5, 1), ImagePrediction(lawn, 0.5, 2)), ImageSource.DEMO_ADAPTER,
+        )
+        coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), any(), any(), false) } returns
+            NearbyContext(emptyMap(), ContextDataSource.DEMO_FALLBACK, 8)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.runGuidedDemo()
+        runCurrent()
+        assertEquals("canopy", model.uiState.value.selectedCandidate?.species?.id)
+        model.setHabitat(Habitat.LAWN)
+        assertEquals("lawn", model.uiState.value.selectedCandidate?.species?.id)
+        model.selectSpecies("canopy")
+        model.setHabitat(Habitat.LAWN)
+        assertEquals("lawn", model.uiState.value.displayedRanking.first().species.id)
+        assertEquals("canopy", model.uiState.value.selectedCandidate?.species?.id)
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `image-only and final rankings contain the same candidates`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val species = (1..8).map { Species("s$it", "Plant $it", "Genus species$it", emptySet(), emptyMap(), 0) }
+        every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
+        coEvery { container.imageClassifier.classify(null) } returns ImageClassification(
+            species.mapIndexed { index, item -> ImagePrediction(item, 0.9 - index * 0.1, index + 1) },
+            ImageSource.DEMO_ADAPTER,
+        )
+        coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), any(), any(), false) } returns
+            NearbyContext(emptyMap(), ContextDataSource.DEMO_FALLBACK, 8)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.runGuidedDemo()
+        runCurrent()
+        val imageOnly = model.uiState.value.imageOnlyRanking.map { it.species.id }
+        assertEquals(5, imageOnly.size)
+        assertEquals(imageOnly.toSet(), model.uiState.value.fusedRanking.map { it.species.id }.toSet())
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `capture keeps the shutter-time location even if the fix expires while saving`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val shutterFix = GeoPoint(-37.7963, 144.9614, 12f)
+        every { container.locationTracker.snapshotForObservation() } returnsMany listOf(shutterFix, null)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.beginCapture()
+        model.analyzeCapturedPhoto("/capture.jpg", 45f)
+        runCurrent()
+        val capture = model.uiState.value.capture!!
+        assertEquals(shutterFix, capture.location)
+        assertEquals(CaptureLocationSource.DEVICE, capture.locationSource)
+        assertEquals(45f, capture.headingDegrees)
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
 }

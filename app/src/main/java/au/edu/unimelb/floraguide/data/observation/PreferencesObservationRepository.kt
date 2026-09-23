@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
-/** Observation metadata remains local; image bytes are stored in Firebase Storage. */
+/** Legacy local observation store used only for one-time import into the offline-first repository. */
 class PreferencesObservationRepository(context: Context) : ObservationRepository {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 

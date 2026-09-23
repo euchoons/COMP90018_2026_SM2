@@ -26,7 +26,7 @@ flowchart LR
     IC --> PlantNet[PlantNetImageClassifier]
     PlantNet --> PNHTTP[PlantNetClient]
     PlantNet --> Demo[DemoImageClassifier]
-    SCR --> ALA[AlaSpeciesContextRepository]
+    SCR --> ALA[ReliableAlaSpeciesContextRepository]
     ALA --> HTTP[AlaOccurrenceClient]
     OR --> Local[PreferencesObservationRepository]
 ```
@@ -87,7 +87,7 @@ When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so t
 
 `AlaOccurrenceClient` performs count-only, read-only occurrence searches. It builds the query, enforces timeouts, parses `totalRecords` strictly and records request telemetry.
 
-`AlaSpeciesContextRepository` requests all candidate counts concurrently. It preserves coroutine cancellation, merges partial responses with deterministic fallback counts and reports whether the source was live, partial or offline.
+`ReliableAlaSpeciesContextRepository` requests every candidate count concurrently (at most 5), retrying timeouts and HTTP 408/429/5xx once while honouring `Retry-After`. It preserves coroutine cancellation and never substitutes demo counts: a failed candidate has no count, and the source is reported as live, partial or unavailable. Ranking applies ALA only when every lookup succeeds; otherwise the image-only order is kept.
 
 ### `data/observation`
 

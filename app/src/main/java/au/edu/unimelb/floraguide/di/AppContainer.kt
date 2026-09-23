@@ -3,7 +3,7 @@ package au.edu.unimelb.floraguide.di
 import android.content.Context
 import au.edu.unimelb.floraguide.BuildConfig
 import au.edu.unimelb.floraguide.data.ala.AlaOccurrenceClient
-import au.edu.unimelb.floraguide.data.ala.AlaSpeciesContextRepository
+import au.edu.unimelb.floraguide.data.ala.ReliableAlaSpeciesContextRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
@@ -35,11 +35,14 @@ class AppContainer(context: Context) {
     )
     val photoStorage: PhotoStore = FirebasePhotoStorage(appContext)
     val identifyStoredPhoto = IdentifyStoredPhotoUseCase(photoStorage, imageClassifier)
-    val speciesContextRepository: SpeciesContextRepository = AlaSpeciesContextRepository(AlaOccurrenceClient())
+
+    /** Real scans use the reliability-focused ALA adapter. */
+    val speciesContextRepository: SpeciesContextRepository =
+        ReliableAlaSpeciesContextRepository(AlaOccurrenceClient())
 
     val observationRepository: ObservationRepository = OfflineFirstObservationRepository(
         context = appContext,
-        dao = database.observationDao()
+        dao = database.observationDao(),
     )
 
     val rankCandidates = RankSpeciesCandidatesUseCase()
