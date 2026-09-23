@@ -59,6 +59,7 @@ class ReliableAlaSpeciesContextRepository(
             unique.map { species -> async { lookup(species, location, radiusKm) } }.awaitAll()
         }
         val successes = outcomes.mapNotNull { item -> item.count?.let { item.id to it } }.toMap()
+        val unresolved = outcomes.count { it.failure == AlaFailureKind.UNRESOLVED_TAXON.name }
         val source = when (successes.size) {
             0 -> ContextDataSource.ALA_UNAVAILABLE
             unique.size -> ContextDataSource.ALA_LIVE
@@ -79,6 +80,8 @@ class ReliableAlaSpeciesContextRepository(
                     "${successes.size}/${unique.size} ALA lookups succeeded. Missing counts are unknown; " +
                         "the image-only order is retained to avoid rewarding selective availability."
                 else -> null
+            }?.let { warning ->
+                if (unresolved > 0) "$warning $unresolved taxon name(s) unresolved; not treated as zero records." else warning
             },
             failuresBySpeciesId = outcomes.mapNotNull { it.failure?.let { reason -> it.id to reason } }.toMap(),
             attemptsBySpeciesId = outcomes.associate { it.id to it.attempts },

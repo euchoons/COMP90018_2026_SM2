@@ -73,6 +73,40 @@ class ReliableAlaSpeciesContextRepositoryTest {
         assertTrue(failure is CancellationException)
     }
 
+    @Test fun allZeroCountsAreCompleteLiveResults() = runBlocking {
+        val result = lookup(FakeSource(candidates.associate { it.scientificName to 0 }))
+        assertEquals(ContextDataSource.ALA_LIVE, result.source)
+        assertEquals(candidates.associate { it.id to 0 }, result.countsBySpeciesId)
+        assertTrue(result.failuresBySpeciesId.isEmpty())
+    }
+
+    @Test fun unresolvedTaxonIsNotRetriedWhileTimeoutIsRetried() = runBlocking {
+        val source = object : AlaOccurrenceSource {
+            override suspend fun countNearbyOccurrencesAsync(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse {
+                throw AlaRequestException("unavailable", null, 0, kind =
+                    if (scientificName == candidates.first().scientificName) AlaFailureKind.UNRESOLVED_TAXON else AlaFailureKind.TIMEOUT)
+            }
+        }
+        val result = lookup(source)
+        assertEquals(ContextDataSource.ALA_UNAVAILABLE, result.source)
+        assertTrue(result.countsBySpeciesId.isEmpty())
+        assertEquals("UNRESOLVED_TAXON", result.failuresBySpeciesId[candidates[0].id])
+        assertEquals("TIMEOUT", result.failuresBySpeciesId[candidates[1].id])
+        assertEquals(1, result.attemptsBySpeciesId[candidates[0].id])
+        assertEquals(2, result.attemptsBySpeciesId[candidates[1].id])
+        assertTrue(result.warning.orEmpty().contains("1 taxon"))
+    }
+
+    @Test fun oversizedRetryAfterIsReportedWithoutEarlyRetry() = runBlocking {
+        val result = lookup(object : AlaOccurrenceSource {
+            override suspend fun countNearbyOccurrencesAsync(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse =
+                throw AlaRequestException("rate limited", 429, 0, retryAfterMillis = 60_000)
+        })
+        assertTrue(result.attemptsBySpeciesId.values.all { it == 1 })
+        assertTrue(result.failuresBySpeciesId.values.all { it == "HTTP_429" })
+        assertTrue(result.retryNotBefore != null)
+    }
+
     private class FakeSource(
         private val successCounts: Map<String, Int>,
         private val failureStatuses: Map<String, Int> = emptyMap(),

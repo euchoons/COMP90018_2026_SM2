@@ -36,6 +36,7 @@ class AlaOccurrenceClient(
     private val executor: ExecutorService = networkExecutor,
     private val connectTimeoutMillis: Int = 4_000,
     private val readTimeoutMillis: Int = 5_000,
+    private val nameMatchUrl: String = "https://api.ala.org.au/namematching/api/searchByClassification",
 ) : AlaOccurrenceSource {
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
@@ -52,12 +53,24 @@ class AlaOccurrenceClient(
         require(name.isNotEmpty() && name.length <= 300 && name.none { it.isISOControl() }) {
             "Invalid scientific name"
         }
+        val started = nanoTime()
+        val taxonId = request(URL("$nameMatchUrl?scientificName=${URLEncoder.encode(name, "UTF-8")}")) { body, status, elapsed ->
+            parseTaxonId(body, name) ?: throw AlaRequestException(
+                "ALA did not resolve an exact species match", status, elapsed, kind = AlaFailureKind.UNRESOLVED_TAXON,
+            )
+        }
         // URL encoding alone does not escape Solr query syntax inside a quoted phrase.
-        val escapedName = name.replace("\\", "\\\\").replace("\"", "\\\"")
-        val query = URLEncoder.encode("scientificName:\"$escapedName\"", "UTF-8")
+        val escapedId = taxonId.replace("\\", "\\\\").replace("\"", "\\\"")
+        val query = URLEncoder.encode("taxonConceptID:\"$escapedId\"", "UTF-8")
         val url = URL("$baseUrl?q=$query&lat=${location.latitude}&lon=${location.longitude}" +
             "&radius=$radiusKm&pageSize=0&facet=false")
+        return request(url) { body, status, _ ->
+            AlaOccurrenceResponse(parseTotalRecords(body), status, elapsed(started))
+        }
+    }
 
+    /** Both endpoints share the same cancellable, bounded transport; repository owns retries. */
+    private suspend fun <T> request(url: URL, parse: (String, Int, Long) -> T): T {
         return suspendCancellableCoroutine { continuation ->
             val activeConnection = AtomicReference<HttpURLConnection?>()
             val future = AtomicReference<Future<*>?>()
@@ -99,19 +112,15 @@ class AlaOccurrenceClient(
                             val size = input.read(buffer)
                             if (size < 0) break
                             if (bytes.size() + size > MAX_RESPONSE_BYTES) {
-                                throw AlaResponseException("ALA count response was unexpectedly large")
+                                throw AlaResponseException("ALA response was unexpectedly large")
                             }
                             bytes.write(buffer, 0, size)
                         }
                     }
-                    val result = AlaOccurrenceResponse(
-                        totalRecords = parseTotalRecords(bytes.toString("UTF-8")),
-                        httpStatus = status,
-                        elapsedMillis = elapsed(started),
-                    )
+                    val elapsedMillis = elapsed(started)
+                    val result = parse(bytes.toString("UTF-8"), status, elapsedMillis)
                     // Do not log query URLs, coordinates, image URLs or response bodies.
-                    runCatching { logger("status=$status elapsedMs=${result.elapsedMillis} " +
-                        "totalRecords=${result.totalRecords} outcome=success") }
+                    runCatching { logger("status=$status elapsedMs=$elapsedMillis outcome=success") }
                     if (continuation.isActive) continuation.resume(result)
                 } catch (error: Exception) {
                     if (!continuation.isActive) return@submit
@@ -119,7 +128,7 @@ class AlaOccurrenceClient(
                         message = when (error) {
                             is SocketTimeoutException -> "ALA request timed out"
                             is UnknownHostException, is ConnectException -> "ALA network connection unavailable"
-                            is AlaResponseException -> "ALA returned an invalid count response"
+                            is AlaResponseException -> "ALA returned an invalid response"
                             else -> "ALA request failed"
                         },
                         httpStatus = status,
@@ -154,6 +163,35 @@ class AlaOccurrenceClient(
             Thread(task, "FloraGuide-ALA-http").apply { isDaemon = true }
         }
     }
+}
+
+/** Null means unresolved; malformed success payloads are failures, never ecological evidence. */
+internal fun parseTaxonId(body: String, requestedName: String): String? = try {
+    val root = JSONObject(body)
+    val success = root.opt("success")
+    if (success !is Boolean) throw AlaResponseException("ALA name matching omitted boolean success")
+    if (!success) null else {
+        val name = root.opt("scientificName") as? String
+            ?: throw AlaResponseException("ALA name matching omitted scientificName")
+        val rank = root.opt("rank") as? String
+            ?: throw AlaResponseException("ALA name matching omitted rank")
+        val match = root.opt("matchType") as? String
+            ?: throw AlaResponseException("ALA name matching omitted matchType")
+        // ponytail: exact species matches only; validate synonym/ambiguous-name handling separately.
+        if (!name.equals(requestedName.trim(), ignoreCase = true) ||
+            !rank.equals("species", ignoreCase = true) || match != "exactMatch"
+        ) null else {
+            val id = root.opt("taxonConceptID") as? String
+            if (id.isNullOrBlank() || id.length > 2_048 || id.any { it.isISOControl() }) {
+                throw AlaResponseException("ALA name matching returned an invalid taxonConceptID")
+            }
+            id
+        }
+    }
+} catch (error: AlaResponseException) {
+    throw error
+} catch (error: Exception) {
+    throw AlaResponseException("ALA name matching response was not valid JSON", error)
 }
 
 internal fun parseTotalRecords(body: String): Int = try {
@@ -204,7 +242,7 @@ interface AlaOccurrenceSource {
 }
 
 enum class AlaFailureKind {
-    OFFLINE, TIMEOUT, HTTP, INVALID_RESPONSE, INVALID_INPUT, OTHER,
+    OFFLINE, TIMEOUT, HTTP, INVALID_RESPONSE, INVALID_INPUT, UNRESOLVED_TAXON, OTHER,
 }
 
 class AlaRequestException(
