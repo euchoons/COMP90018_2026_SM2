@@ -45,6 +45,7 @@ data class ImagePrediction(
     val rank: Int,
 )
 
+/** Where a candidate list came from. Fallbacks must stay visible in the UI. */
 enum class ImageSource(val label: String) {
     PLANTNET_LIVE("Pl@ntNet cloud model"),
     DEMO_ADAPTER("Prototype image adapter"),
@@ -96,14 +97,17 @@ data class SensorSnapshot(
     val compassNeedsCalibration: Boolean = false,
     val availability: SensorAvailability = SensorAvailability(),
 ) {
+    /** The stability score only moves once both motion sensors report. */
     val canMeasureStability: Boolean
         get() = availability.accelerometer && availability.gyroscope
 
     val isStable: Boolean get() = MotionStabilityEstimator.isStable(stability)
 
+    /** Heading worth recording with an observation; null while the compass is uncalibrated. */
     val reliableHeadingDegrees: Float?
         get() = headingDegrees.takeUnless { compassNeedsCalibration }
 
+    // ponytail: the compass models the rear camera only; omit front-camera bearings until supported.
     fun headingForCapture(isRearCamera: Boolean): Float? = reliableHeadingDegrees.takeIf { isRearCamera }
 
     val lightCondition: LightCondition
@@ -114,12 +118,20 @@ data class SensorSnapshot(
             else -> LightCondition.VERY_BRIGHT
         }
 
+    // Prototype thresholds pending field calibration; see docs/HARDWARE_ADAPTERS_VERIFICATION.md.
     companion object {
+        /** Dimmer than a typical living room; handheld shots need long exposures. */
         const val LOW_LIGHT_LUX = 25f
+
+        /** Inside the 10,000–25,000 lux band of full daylight; direct sun reads higher. */
         const val VERY_BRIGHT_LUX = 20_000f
     }
 }
 
+/**
+ * Ambient light around the phone. The sensor sits beside the front display, so this describes
+ * the light falling on the user rather than exposure of the scene the rear camera sees.
+ */
 enum class LightCondition {
     UNAVAILABLE,
     LOW,

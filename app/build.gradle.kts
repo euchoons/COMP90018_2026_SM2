@@ -61,6 +61,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // An absent key is not a build failure: live scans then report the missing key, and the
+        // guided demo still runs offline.
+        // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
+        // prototype but is not secret storage; move it behind a proxy if this is ever published.
         buildConfigField(
             "String",
             "PLANTNET_API_KEY",
