@@ -60,6 +60,7 @@ data class FloraGuideUiState(
     val fusedRanking: List<RankedCandidate> = emptyList(),
     val nearbyContext: NearbyContext? = null,
     val analysisDate: LocalDate = LocalDate.now(),
+    /** Null follows the top suggestion; an explicit choice survives reranking. */
     val selectedSpeciesId: String? = null,
     val isClassifying: Boolean = false,
     val isContextLoading: Boolean = false,
@@ -503,7 +504,6 @@ class FloraGuideViewModel(
                         imageElapsedMillis = classification.elapsedMillis,
                         imageOnlyRanking = imageOnly,
                         fusedRanking = imageOnly,
-                        selectedSpeciesId = imageOnly.firstOrNull()?.species?.id,
                         isClassifying = false,
                         isContextLoading = true,
                     )
@@ -574,7 +574,6 @@ class FloraGuideViewModel(
                 it.copy(
                     fusedRanking = fused,
                     nearbyContext = nearby,
-                    selectedSpeciesId = fused.firstOrNull()?.species?.id,
                     isContextLoading = false,
                     message = nearby.warning,
                 )
@@ -593,7 +592,6 @@ class FloraGuideViewModel(
                         radiusKm = CONTEXT_RADIUS_KM,
                         warning = "ALA lookup failed. Image-only ranking is retained.",
                     ),
-                    selectedSpeciesId = imageOnly.firstOrNull()?.species?.id,
                     message = error.message ?: "Context lookup failed.",
                 )
             }
@@ -616,10 +614,7 @@ class FloraGuideViewModel(
             container.rankCandidates.live(candidates, context)
         }
         _uiState.update {
-            it.copy(
-                fusedRanking = fused,
-                selectedSpeciesId = fused.firstOrNull()?.species?.id,
-            )
+            it.copy(fusedRanking = fused)
         }
     }
 

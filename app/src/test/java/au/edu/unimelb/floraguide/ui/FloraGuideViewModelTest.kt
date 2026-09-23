@@ -95,4 +95,29 @@ class FloraGuideViewModelTest {
         state.value = AuthState.Unauthenticated
         runCurrent()
     }
+
+    @Test fun `habitat change keeps an explicit species choice while auto selection follows the top`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val canopy = Species("canopy", "Blackwood", "Acacia melanoxylon", emptySet(), mapOf(Habitat.TREE_CANOPY to 1.0), 0)
+        val lawn = Species("lawn", "Kidney weed", "Dichondra repens", emptySet(), mapOf(Habitat.LAWN to 1.0), 0)
+        every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
+        coEvery { container.imageClassifier.classify(null) } returns ImageClassification(
+            listOf(ImagePrediction(canopy, 0.5, 1), ImagePrediction(lawn, 0.5, 2)), ImageSource.DEMO_ADAPTER,
+        )
+        coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), any(), any(), false) } returns
+            NearbyContext(emptyMap(), ContextDataSource.DEMO_FALLBACK, 8)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.runGuidedDemo()
+        runCurrent()
+        assertEquals("canopy", model.uiState.value.selectedCandidate?.species?.id)
+        model.setHabitat(Habitat.LAWN)
+        assertEquals("lawn", model.uiState.value.selectedCandidate?.species?.id)
+        model.selectSpecies("canopy")
+        model.setHabitat(Habitat.LAWN)
+        assertEquals("lawn", model.uiState.value.displayedRanking.first().species.id)
+        assertEquals("canopy", model.uiState.value.selectedCandidate?.species?.id)
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
 }
