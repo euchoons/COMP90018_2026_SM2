@@ -74,6 +74,8 @@ data class FloraGuideUiState(
     val selectedCandidate: RankedCandidate?
         get() = displayedRanking.firstOrNull { it.species.id == selectedSpeciesId }
             ?: displayedRanking.firstOrNull()
+    val captureHeadingDegrees: Float?
+        get() = capture?.headingDegrees
 
     val uniqueSpeciesCount: Int
         get() = observations
