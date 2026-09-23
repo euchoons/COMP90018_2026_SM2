@@ -157,6 +157,13 @@ fun ResultsScreen(
                     Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion locally")
                 }
             }
+            // canSave keeps the button disabled, so its click handler can never explain this.
+            if (state.capture != null && state.capture?.location == null) {
+                item {
+                    Text("Saving needs a capture location. Enable location, wait for a device fix, then take a new photo.",
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
         item {
             InformationCard("Interpretation and privacy",
