@@ -19,9 +19,6 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 private const val DEFAULT_ALA_SEARCH_URL =
@@ -42,15 +39,6 @@ class AlaOccurrenceClient(
 ) : AlaOccurrenceSource {
     init {
         require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
-    }
-
-    /** Compatibility adapter for existing IO-thread callers. Never call on the main thread. */
-    override fun countNearbyOccurrences(
-        scientificName: String,
-        location: GeoPoint,
-        radiusKm: Int,
-    ): AlaOccurrenceResponse = runBlocking {
-        countNearbyOccurrencesAsync(scientificName, location, radiusKm)
     }
 
     override suspend fun countNearbyOccurrencesAsync(
@@ -207,20 +195,12 @@ data class AlaOccurrenceResponse(
 )
 
 interface AlaOccurrenceSource {
-    fun countNearbyOccurrences(
-        scientificName: String,
-        location: GeoPoint,
-        radiusKm: Int,
-    ): AlaOccurrenceResponse
-
-    /** New cancellable entry point. Legacy implementations can continue implementing the synchronous method. */
+    /** Cancellable: cancelling the caller closes the connection. */
     suspend fun countNearbyOccurrencesAsync(
         scientificName: String,
         location: GeoPoint,
         radiusKm: Int,
-    ): AlaOccurrenceResponse = withContext(Dispatchers.IO) {
-        countNearbyOccurrences(scientificName, location, radiusKm)
-    }
+    ): AlaOccurrenceResponse
 }
 
 enum class AlaFailureKind {

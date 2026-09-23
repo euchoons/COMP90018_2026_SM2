@@ -18,10 +18,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Production adapter selected by AppContainer. Failed live lookups never manufacture demo counts.
- * The baseline AlaSpeciesContextRepository is retained for legacy callers, not live captures.
- */
+/** Production adapter selected by AppContainer. Failed live lookups never manufacture demo counts. */
 class ReliableAlaSpeciesContextRepository(
     private val client: AlaOccurrenceSource,
     private val nanoTime: () -> Long = System::nanoTime,

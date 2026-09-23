@@ -6,6 +6,7 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.ArrayDeque
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -57,11 +58,13 @@ class AlaOccurrenceClientTest {
             logger = logMessages::add,
         )
 
-        val result = client.countNearbyOccurrences(
-            scientificName = "Eucalyptus camaldulensis",
-            location = GeoPoint(-37.7963, 144.9614),
-            radiusKm = 8,
-        )
+        val result = runBlocking {
+            client.countNearbyOccurrencesAsync(
+                scientificName = "Eucalyptus camaldulensis",
+                location = GeoPoint(-37.7963, 144.9614),
+                radiusKm = 8,
+            )
+        }
 
         assertEquals(532, result.totalRecords)
         assertEquals(200, result.httpStatus)
@@ -82,11 +85,13 @@ class AlaOccurrenceClientTest {
         )
 
         val error = assertThrows(AlaRequestException::class.java) {
-            client.countNearbyOccurrences(
-                scientificName = "Acacia melanoxylon",
-                location = GeoPoint(-37.7963, 144.9614),
-                radiusKm = 8,
-            )
+            runBlocking {
+                client.countNearbyOccurrencesAsync(
+                    scientificName = "Acacia melanoxylon",
+                    location = GeoPoint(-37.7963, 144.9614),
+                    radiusKm = 8,
+                )
+            }
         }
 
         assertEquals(503, error.httpStatus)
