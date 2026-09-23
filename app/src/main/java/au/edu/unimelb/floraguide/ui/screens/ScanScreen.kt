@@ -45,6 +45,7 @@ fun ScanScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onPermissionResult: (Boolean) -> Unit,
     onUseDemoLocation: () -> Unit,
+    onCaptureStarted: () -> Unit,
     onPhotoCaptured: (String, Float?) -> Unit,
     onGuidedDemo: () -> Unit,
     onError: (String) -> Unit,
@@ -107,7 +108,7 @@ fun ScanScreen(
         }
         if (cameraGranted) item {
             CameraCaptureCard(snapshot = state.sensorSnapshot, captureEnabled = captureEnabled, captureHint = captureHint,
-                onPhotoCaptured = onPhotoCaptured, onError = onError)
+                onCaptureStarted = onCaptureStarted, onPhotoCaptured = onPhotoCaptured, onError = onError)
         } else item {
             Button(onClick = { permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA)) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Enable camera")

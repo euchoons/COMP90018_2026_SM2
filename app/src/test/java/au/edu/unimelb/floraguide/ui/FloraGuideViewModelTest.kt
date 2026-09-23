@@ -141,4 +141,21 @@ class FloraGuideViewModelTest {
         state.value = AuthState.Unauthenticated
         runCurrent()
     }
+
+    @Test fun `capture keeps the shutter-time location even if the fix expires while saving`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val shutterFix = GeoPoint(-37.7963, 144.9614, 12f)
+        every { container.locationTracker.snapshotForObservation() } returnsMany listOf(shutterFix, null)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.beginCapture()
+        model.analyzeCapturedPhoto("/capture.jpg", 45f)
+        runCurrent()
+        val capture = model.uiState.value.capture!!
+        assertEquals(shutterFix, capture.location)
+        assertEquals(CaptureLocationSource.DEVICE, capture.locationSource)
+        assertEquals(45f, capture.headingDegrees)
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
 }

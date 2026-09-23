@@ -74,7 +74,7 @@ enum class CaptureLocationSource(val label: String) {
     LEGACY_UNKNOWN("Legacy location; origin not recorded"),
 }
 
-/** Snapshot created when camera capture completes. Retries reuse the same time/location. */
+/** Snapshot taken at the shutter press, like the heading. Retries reuse the same time/location. */
 data class CaptureSnapshot(
     val observationId: String,
     val capturedAt: Instant,

@@ -99,6 +99,7 @@ class FloraGuideViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
     private var analysisJob: Job? = null
+    private var pendingCapture: CaptureSnapshot? = null
     private val observationFactory = CreateObservationUseCase()
     private val _uiState = MutableStateFlow(FloraGuideUiState())
     val uiState: StateFlow<FloraGuideUiState> = _uiState.asStateFlow()
@@ -284,13 +285,32 @@ class FloraGuideViewModel(
         }
     }
 
+    /**
+     * Called at the shutter press. Saving the JPEG can take seconds, long enough for a fix near
+     * the 60 s freshness limit to expire, so time and location are frozen here like the heading.
+     */
+    fun beginCapture() {
+        pendingCapture = liveCaptureNow()
+    }
+
     fun analyzeCapturedPhoto(photoPath: String?, captureHeadingDegrees: Float?) {
         if (photoPath.isNullOrBlank()) {
             showMessage("Capture a photo before starting identification.")
             return
         }
+        val capture = (pendingCapture ?: liveCaptureNow()).copy(headingDegrees = captureHeadingDegrees)
+        pendingCapture = null
+        container.locationTracker.stop()
+        startAnalysis(
+            photoPath = photoPath,
+            preferLiveData = true,
+            capture = capture,
+        )
+    }
+
+    private fun liveCaptureNow(): CaptureSnapshot {
         val location = container.locationTracker.snapshotForObservation()
-        val capture = CaptureSnapshot(
+        return CaptureSnapshot(
             observationId = UUID.randomUUID().toString(),
             capturedAt = Instant.now(),
             location = location,
@@ -299,13 +319,7 @@ class FloraGuideViewModel(
             } else {
                 CaptureLocationSource.UNAVAILABLE
             },
-            headingDegrees = captureHeadingDegrees,
-        )
-        container.locationTracker.stop()
-        startAnalysis(
-            photoPath = photoPath,
-            preferLiveData = true,
-            capture = capture,
+            headingDegrees = null,
         )
     }
 
