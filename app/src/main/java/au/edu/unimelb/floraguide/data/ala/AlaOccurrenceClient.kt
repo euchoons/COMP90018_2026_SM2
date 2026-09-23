@@ -2,15 +2,203 @@ package au.edu.unimelb.floraguide.data.ala
 
 import android.util.Log
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
+import java.io.ByteArrayOutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.URLEncoder
+import java.net.UnknownHostException
+import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 private const val DEFAULT_ALA_SEARCH_URL =
     "https://api.ala.org.au/occurrences/occurrences/search"
-private const val LOG_TAG = "FloraGuide-ALA"
+private const val MAX_RESPONSE_BYTES = 1_048_576
 
+/** Count-only public queries. No API key, photo, account ID or write request is sent to ALA. */
+class AlaOccurrenceClient(
+    private val baseUrl: String = DEFAULT_ALA_SEARCH_URL,
+    private val connectionFactory: (URL) -> HttpURLConnection = {
+        it.openConnection() as HttpURLConnection
+    },
+    private val nanoTime: () -> Long = System::nanoTime,
+    private val logger: (String) -> Unit = { Log.i("FloraGuide-ALA", it) },
+    private val executor: ExecutorService = networkExecutor,
+    private val connectTimeoutMillis: Int = 4_000,
+    private val readTimeoutMillis: Int = 5_000,
+) : AlaOccurrenceSource {
+    init {
+        require(connectTimeoutMillis > 0 && readTimeoutMillis > 0)
+    }
+
+    /** Compatibility adapter for existing IO-thread callers. Never call on the main thread. */
+    override fun countNearbyOccurrences(
+        scientificName: String,
+        location: GeoPoint,
+        radiusKm: Int,
+    ): AlaOccurrenceResponse = runBlocking {
+        countNearbyOccurrencesAsync(scientificName, location, radiusKm)
+    }
+
+    override suspend fun countNearbyOccurrencesAsync(
+        scientificName: String,
+        location: GeoPoint,
+        radiusKm: Int,
+    ): AlaOccurrenceResponse {
+        require(location.hasValidCoordinates()) { "Invalid query coordinates" }
+        require(radiusKm in 1..100) { "Radius must be between 1 and 100 km" }
+        val name = scientificName.trim()
+        require(name.isNotEmpty() && name.length <= 300 && name.none { it.isISOControl() }) {
+            "Invalid scientific name"
+        }
+        // URL encoding alone does not escape Solr query syntax inside a quoted phrase.
+        val escapedName = name.replace("\\", "\\\\").replace("\"", "\\\"")
+        val query = URLEncoder.encode("scientificName:\"$escapedName\"", "UTF-8")
+        val url = URL("$baseUrl?q=$query&lat=${location.latitude}&lon=${location.longitude}" +
+            "&radius=$radiusKm&pageSize=0&facet=false")
+
+        return suspendCancellableCoroutine { continuation ->
+            val activeConnection = AtomicReference<HttpURLConnection?>()
+            val future = AtomicReference<Future<*>?>()
+            continuation.invokeOnCancellation {
+                future.get()?.cancel(true)
+                // Close the socket as well as interrupting the worker: interrupt alone is not enough.
+                runCatching { activeConnection.getAndSet(null)?.disconnect() }
+            }
+            val task = executor.submit {
+                val started = nanoTime()
+                var status: Int? = null
+                var connection: HttpURLConnection? = null
+                try {
+                    if (!continuation.isActive) return@submit
+                    connection = connectionFactory(url).apply {
+                        requestMethod = "GET"
+                        connectTimeout = connectTimeoutMillis
+                        readTimeout = readTimeoutMillis
+                        instanceFollowRedirects = false
+                        setRequestProperty("Accept", "application/json")
+                        setRequestProperty("User-Agent", "FloraGuide-COMP90018/ALA-1.0")
+                    }
+                    activeConnection.set(connection)
+                    if (!continuation.isActive) return@submit
+                    status = connection.responseCode
+                    if (status !in 200..299) {
+                        throw AlaRequestException(
+                            message = "ALA returned HTTP $status",
+                            httpStatus = status,
+                            elapsedMillis = elapsed(started),
+                            retryAfterMillis = parseRetryAfterMillis(connection.getHeaderField("Retry-After")),
+                        )
+                    }
+                    val bytes = ByteArrayOutputStream()
+                    connection.inputStream.use { input ->
+                        val buffer = ByteArray(4096)
+                        while (true) {
+                            if (!continuation.isActive) return@submit
+                            val size = input.read(buffer)
+                            if (size < 0) break
+                            if (bytes.size() + size > MAX_RESPONSE_BYTES) {
+                                throw AlaResponseException("ALA count response was unexpectedly large")
+                            }
+                            bytes.write(buffer, 0, size)
+                        }
+                    }
+                    val result = AlaOccurrenceResponse(
+                        totalRecords = parseTotalRecords(bytes.toString("UTF-8")),
+                        httpStatus = status,
+                        elapsedMillis = elapsed(started),
+                    )
+                    // Do not log query URLs, coordinates, image URLs or response bodies.
+                    runCatching { logger("status=$status elapsedMs=${result.elapsedMillis} " +
+                        "totalRecords=${result.totalRecords} outcome=success") }
+                    if (continuation.isActive) continuation.resume(result)
+                } catch (error: Exception) {
+                    if (!continuation.isActive) return@submit
+                    val failure = if (error is AlaRequestException) error else AlaRequestException(
+                        message = when (error) {
+                            is SocketTimeoutException -> "ALA request timed out"
+                            is UnknownHostException, is ConnectException -> "ALA network connection unavailable"
+                            is AlaResponseException -> "ALA returned an invalid count response"
+                            else -> "ALA request failed"
+                        },
+                        httpStatus = status,
+                        elapsedMillis = elapsed(started),
+                        cause = error,
+                        kind = when (error) {
+                            is SocketTimeoutException -> AlaFailureKind.TIMEOUT
+                            is UnknownHostException, is ConnectException -> AlaFailureKind.OFFLINE
+                            is AlaResponseException -> AlaFailureKind.INVALID_RESPONSE
+                            else -> AlaFailureKind.OTHER
+                        },
+                    )
+                    runCatching { logger("status=${status ?: "unavailable"} " +
+                        "elapsedMs=${failure.elapsedMillis} outcome=${failure.kind}") }
+                    continuation.resumeWithException(failure)
+                } finally {
+                    activeConnection.compareAndSet(connection, null)
+                    runCatching { connection?.disconnect() }
+                }
+            }
+            future.set(task)
+            if (!continuation.isActive) task.cancel(true)
+        }
+    }
+
+    private fun elapsed(started: Long): Long = (nanoTime() - started).coerceAtLeast(0L) / 1_000_000L
+
+    private companion object {
+        // Shared daemon workers avoid a new thread pool for every photo.
+        val networkExecutor: ExecutorService = Executors.newFixedThreadPool(3) { task ->
+            Thread(task, "FloraGuide-ALA-http").apply { isDaemon = true }
+        }
+    }
+}
+
+internal fun parseTotalRecords(body: String): Int = try {
+    val root = JSONObject(body)
+    val raw = root.opt("totalRecords")
+    if (raw !is Number) throw AlaResponseException("ALA totalRecords was not numeric")
+    val count = raw.toLong()
+    val numeric = raw.toDouble()
+    if (!numeric.isFinite() || numeric != count.toDouble() || count !in 0L..Int.MAX_VALUE.toLong()) {
+        throw AlaResponseException("ALA totalRecords was not a supported non-negative integer")
+    }
+    count.toInt()
+} catch (error: AlaResponseException) {
+    throw error
+} catch (error: Exception) {
+    throw AlaResponseException("ALA response was not valid JSON", error)
+}
+
+/** Supports both RFC delay-seconds and an HTTP-date. Never retry before this duration. */
+internal fun parseRetryAfterMillis(header: String?, now: Instant = Instant.now()): Long? {
+    val value = header?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    value.toLongOrNull()?.let { seconds ->
+        if (seconds < 0) return null
+        return seconds.coerceAtMost(Long.MAX_VALUE / 1000L) * 1000L
+    }
+    return runCatching {
+        val target = ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()
+        java.time.Duration.between(now, target).toMillis().coerceAtLeast(0L)
+    }.getOrNull()
+}
+
+
+// Shared contract types remain here for source compatibility with existing callers.
+/** One network attempt, before repository-level retry. */
 data class AlaOccurrenceResponse(
     val totalRecords: Int,
     val httpStatus: Int,
@@ -23,127 +211,19 @@ interface AlaOccurrenceSource {
         location: GeoPoint,
         radiusKm: Int,
     ): AlaOccurrenceResponse
-}
 
-/** Minimal, dependency-free ALA read client. Network calls must be made from an IO dispatcher. */
-class AlaOccurrenceClient(
-    private val baseUrl: String = DEFAULT_ALA_SEARCH_URL,
-    private val connectionFactory: (URL) -> HttpURLConnection = { url ->
-        url.openConnection() as HttpURLConnection
-    },
-    private val nanoTime: () -> Long = System::nanoTime,
-    private val logger: (String) -> Unit = { message -> Log.i(LOG_TAG, message) },
-) : AlaOccurrenceSource {
-    override fun countNearbyOccurrences(
+    /** New cancellable entry point. Legacy implementations can continue implementing the synchronous method. */
+    suspend fun countNearbyOccurrencesAsync(
         scientificName: String,
         location: GeoPoint,
         radiusKm: Int,
-    ): AlaOccurrenceResponse {
-        val query = "scientificName:\"$scientificName\""
-        val url = URL(
-            buildString {
-                append(baseUrl)
-                append("?q=")
-                append(encode(query))
-                append("&lat=")
-                append(location.latitude)
-                append("&lon=")
-                append(location.longitude)
-                append("&radius=")
-                append(radiusKm)
-                // Only the aggregate count is used, so avoid downloading an occurrence record.
-                append("&pageSize=0&facet=false")
-            },
-        )
-
-        val startedAt = nanoTime()
-        var status: Int? = null
-        var connection: HttpURLConnection? = null
-
-        try {
-            connection = connectionFactory(url).apply {
-                requestMethod = "GET"
-                connectTimeout = 4_000
-                readTimeout = 5_000
-                setRequestProperty("Accept", "application/json")
-                setRequestProperty("User-Agent", "FloraGuide-COMP90018-prototype/0.1")
-            }
-
-            status = connection.responseCode
-            if (status !in 200..299) {
-                val elapsedMillis = elapsedMillisSince(startedAt)
-                logger(
-                    "endpoint=$baseUrl status=$status elapsedMs=$elapsedMillis " +
-                        "scientificName=$scientificName outcome=http_error",
-                )
-                throw AlaRequestException(
-                    message = "ALA returned HTTP $status",
-                    httpStatus = status,
-                    elapsedMillis = elapsedMillis,
-                )
-            }
-
-            val body = connection.inputStream.bufferedReader().use { reader -> reader.readText() }
-            val totalRecords = parseTotalRecords(body)
-            val elapsedMillis = elapsedMillisSince(startedAt)
-            logger(
-                "endpoint=$baseUrl status=$status elapsedMs=$elapsedMillis " +
-                    "scientificName=$scientificName totalRecords=$totalRecords outcome=success",
-            )
-            return AlaOccurrenceResponse(
-                totalRecords = totalRecords,
-                httpStatus = status,
-                elapsedMillis = elapsedMillis,
-            )
-        } catch (error: AlaRequestException) {
-            throw error
-        } catch (error: Exception) {
-            val elapsedMillis = elapsedMillisSince(startedAt)
-            logger(
-                "endpoint=$baseUrl status=${status ?: "unavailable"} elapsedMs=$elapsedMillis " +
-                    "scientificName=$scientificName outcome=failed error=${error.javaClass.simpleName}",
-            )
-            throw AlaRequestException(
-                message = "ALA request failed: ${error.message ?: error.javaClass.simpleName}",
-                httpStatus = status,
-                elapsedMillis = elapsedMillis,
-                cause = error,
-            )
-        } finally {
-            connection?.disconnect()
-        }
+    ): AlaOccurrenceResponse = withContext(Dispatchers.IO) {
+        countNearbyOccurrences(scientificName, location, radiusKm)
     }
-
-    private fun elapsedMillisSince(startedAt: Long): Long =
-        ((nanoTime() - startedAt).coerceAtLeast(0L) / 1_000_000L)
-
-    private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8.name())
 }
 
-internal fun parseTotalRecords(body: String): Int = try {
-    val root = JSONObject(body)
-    if (!root.has("totalRecords") || root.isNull("totalRecords")) {
-        throw AlaResponseException("ALA response did not contain totalRecords")
-    }
-
-    val rawValue = root.get("totalRecords")
-    if (rawValue !is Number) {
-        throw AlaResponseException("ALA totalRecords was not numeric")
-    }
-
-    val count = rawValue.toLong()
-    val exactNumericValue = rawValue.toDouble()
-    if (!exactNumericValue.isFinite() || exactNumericValue != count.toDouble()) {
-        throw AlaResponseException("ALA totalRecords was not an integer")
-    }
-    if (count !in 0L..Int.MAX_VALUE.toLong()) {
-        throw AlaResponseException("ALA totalRecords was outside the supported range")
-    }
-    count.toInt()
-} catch (error: AlaResponseException) {
-    throw error
-} catch (error: Exception) {
-    throw AlaResponseException("ALA response was not valid JSON", error)
+enum class AlaFailureKind {
+    OFFLINE, TIMEOUT, HTTP, INVALID_RESPONSE, INVALID_INPUT, OTHER,
 }
 
 class AlaRequestException(
@@ -151,6 +231,13 @@ class AlaRequestException(
     val httpStatus: Int?,
     val elapsedMillis: Long,
     cause: Throwable? = null,
-) : Exception(message, cause)
+    val kind: AlaFailureKind = AlaFailureKind.HTTP,
+    val retryAfterMillis: Long? = null,
+) : Exception(message, cause) {
+    val isRetryable: Boolean
+        get() = kind == AlaFailureKind.TIMEOUT ||
+            (kind == AlaFailureKind.HTTP &&
+                (httpStatus == 408 || httpStatus == 429 || httpStatus in 500..599))
+}
 
 class AlaResponseException(message: String, cause: Throwable? = null) : Exception(message, cause)
