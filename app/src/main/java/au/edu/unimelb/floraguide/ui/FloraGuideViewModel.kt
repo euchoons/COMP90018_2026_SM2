@@ -47,6 +47,8 @@ data class FloraGuideUiState(
     val location: GeoPoint = CAMPUS_DEMO_LOCATION,
     val usingDemoLocation: Boolean = true,
     val locationStatus: String = "Location not yet available; enable it before capture",
+    /** Explicit "Skip location" for this scan; survives Activity recreation, unlike Compose effects. */
+    val locationSkipped: Boolean = false,
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
     val photoPath: String? = null,
     val storedPhoto: StoredPhoto? = null,
@@ -245,7 +247,7 @@ class FloraGuideViewModel(
             skipLocation("Location permission denied. Identification can continue, but ALA will be skipped.")
             return
         }
-        _uiState.update { it.copy(locationStatus = "Waiting for a recent device location...") }
+        _uiState.update { it.copy(locationSkipped = false, locationStatus = "Waiting for a recent device location...") }
         container.locationTracker.start(
             onLocation = { point ->
                 _uiState.update {
@@ -264,7 +266,10 @@ class FloraGuideViewModel(
     }
 
     /** Retains the historical callback name used by the UI; live scans no longer substitute demo coordinates. */
-    fun useCampusDemoLocation(reason: String? = null) = skipLocation(reason)
+    fun useCampusDemoLocation(reason: String? = null) {
+        skipLocation(reason)
+        _uiState.update { it.copy(locationSkipped = true) }
+    }
 
     private fun skipLocation(reason: String? = null) {
         container.locationTracker.stop()

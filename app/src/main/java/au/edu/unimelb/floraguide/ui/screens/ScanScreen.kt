@@ -63,7 +63,8 @@ fun ScanScreen(
             results.containsKey(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (requestedLocation) onPermissionResult(locationGranted)
     }
-    LaunchedEffect(locationGranted) { if (locationGranted) onPermissionResult(true) }
+    // Re-runs after rotation or theme changes, so it must not override an explicit skip.
+    LaunchedEffect(locationGranted) { if (locationGranted && !state.locationSkipped) onPermissionResult(true) }
     val sensors = state.sensorSnapshot.availability
     val canGate = sensors.accelerometer && sensors.gyroscope
     val captureEnabled = !stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable
