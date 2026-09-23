@@ -16,4 +16,21 @@ class LocationFreshnessPolicy(
         if (!accuracy.isFinite() || accuracy < 0 || accuracy > maxAccuracyMetres) return false
         return (nowElapsedNanos - fixElapsedNanos) / 1_000_000L <= maxAgeMillis
     }
+
+    /**
+     * A newer fix from the same provider always wins. Across providers (GPS vs network) a coarser
+     * fix only replaces a more accurate one once that one is no longer usable.
+     */
+    fun shouldReplace(
+        current: GeoPoint,
+        currentFixNanos: Long,
+        candidate: GeoPoint,
+        candidateFixNanos: Long,
+        sameProvider: Boolean,
+        nowElapsedNanos: Long,
+    ): Boolean {
+        if (candidateFixNanos < currentFixNanos) return false
+        if (sameProvider || !isUsable(current, currentFixNanos, nowElapsedNanos)) return true
+        return (candidate.accuracyMetres ?: Float.MAX_VALUE) <= (current.accuracyMetres ?: Float.MAX_VALUE)
+    }
 }

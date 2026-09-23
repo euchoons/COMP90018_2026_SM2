@@ -53,8 +53,14 @@ class LocationTracker(context: Context) {
         }
         fun accept(location: Location) {
             val point = location.toGeoPoint()
-            if (!policy.isUsable(point, location.elapsedRealtimeNanos, SystemClock.elapsedRealtimeNanos())) return
-            if (lastFix != null && location.elapsedRealtimeNanos < lastFix!!.elapsedRealtimeNanos) return
+            val now = SystemClock.elapsedRealtimeNanos()
+            if (!policy.isUsable(point, location.elapsedRealtimeNanos, now)) return
+            val current = lastFix
+            if (current != null && !policy.shouldReplace(
+                    current.toGeoPoint(), current.elapsedRealtimeNanos, point, location.elapsedRealtimeNanos,
+                    sameProvider = current.provider == location.provider, nowElapsedNanos = now,
+                )
+            ) return
             lastFix = Location(location)
             onLocation(point)
         }
