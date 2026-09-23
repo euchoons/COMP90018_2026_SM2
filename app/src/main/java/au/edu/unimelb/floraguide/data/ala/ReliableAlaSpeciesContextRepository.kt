@@ -25,7 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 class ReliableAlaSpeciesContextRepository(
     private val client: AlaOccurrenceSource,
     private val nanoTime: () -> Long = System::nanoTime,
-    maxConcurrentRequests: Int = 3,
+    // One permit per candidate (the ViewModel checks at most 5): none waits behind another's timeout.
+    maxConcurrentRequests: Int = 5,
     private val perCandidateTimeoutMillis: Long = 12_000L,
     private val maxAttempts: Int = 2,
     private val retryDelayMillis: Long = 500L,

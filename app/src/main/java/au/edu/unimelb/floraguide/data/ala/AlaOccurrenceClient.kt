@@ -160,8 +160,9 @@ class AlaOccurrenceClient(
     private fun elapsed(started: Long): Long = (nanoTime() - started).coerceAtLeast(0L) / 1_000_000L
 
     private companion object {
-        // Shared daemon workers avoid a new thread pool for every photo.
-        val networkExecutor: ExecutorService = Executors.newFixedThreadPool(3) { task ->
+        // Shared daemon workers avoid a new thread pool for every photo. Keep at least as many as the
+        // repository's permits, or permitted requests queue here while their timeout is running.
+        val networkExecutor: ExecutorService = Executors.newFixedThreadPool(5) { task ->
             Thread(task, "FloraGuide-ALA-http").apply { isDaemon = true }
         }
     }
