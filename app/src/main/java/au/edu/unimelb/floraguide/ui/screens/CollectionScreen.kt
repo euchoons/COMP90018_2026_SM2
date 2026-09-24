@@ -1,5 +1,7 @@
 package au.edu.unimelb.floraguide.ui.screens
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,6 +56,7 @@ fun CollectionScreen(
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var mapGestureActive by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Observation?>(null) }
     deleting?.let { observation ->
         AlertDialog(
@@ -64,6 +69,7 @@ fun CollectionScreen(
     }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        userScrollEnabled = !mapGestureActive,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp),
     ) {
@@ -83,7 +89,21 @@ fun CollectionScreen(
                 observations = state.observations,
                 location = state.location,
                 usingDemo = state.usingDemoLocation,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
+                    // Observe without consuming: Maps handles the touch sequence, while the
+                    // surrounding list waits until all fingers are lifted (including pinch zoom).
+                    awaitEachGesture {
+                        try {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            mapGestureActive = true
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                            } while (event.changes.any { it.pressed })
+                        } finally {
+                            mapGestureActive = false
+                        }
+                    }
+                },
             )
         }
 

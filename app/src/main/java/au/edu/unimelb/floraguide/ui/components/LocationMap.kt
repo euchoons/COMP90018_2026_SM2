@@ -8,12 +8,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
@@ -50,11 +53,19 @@ fun LocationMap(location: GeoPoint, usingDemo: Boolean, modifier: Modifier = Mod
         this.position = CameraPosition.fromLatLngZoom(position, 16f)
     }
     var mapLoaded by remember { mutableStateOf(false) }
+    var followLocation by remember { mutableStateOf(true) }
+
+    LaunchedEffect(cameraState) {
+        snapshotFlow { cameraState.isMoving to cameraState.cameraMoveStartedReason }
+            .collect { (moving, reason) ->
+                if (moving && reason == CameraMoveStartedReason.GESTURE) followLocation = false
+            }
+    }
 
     // Wait for the map before animating; key by coordinates so every new fix moves the camera.
     // Preserve the user's zoom while following their location.
-    LaunchedEffect(mapLoaded, position) {
-        if (mapLoaded) cameraState.animate(CameraUpdateFactory.newLatLng(position), 600)
+    LaunchedEffect(mapLoaded, position, followLocation) {
+        if (mapLoaded && followLocation) cameraState.animate(CameraUpdateFactory.newLatLng(position), 600)
     }
 
     Box(modifier = modifier.height(220.dp).clip(RoundedCornerShape(10.dp))) {
@@ -65,7 +76,7 @@ fun LocationMap(location: GeoPoint, usingDemo: Boolean, modifier: Modifier = Mod
             uiSettings = MapUiSettings(
                 mapToolbarEnabled = false,
                 myLocationButtonEnabled = false,
-                scrollGesturesEnabled = false,
+                scrollGesturesEnabled = true,
                 rotationGesturesEnabled = false,
                 tiltGesturesEnabled = false,
             ),
@@ -91,11 +102,17 @@ fun LocationMap(location: GeoPoint, usingDemo: Boolean, modifier: Modifier = Mod
             modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
             shape = RoundedCornerShape(6.dp),
         ) {
-            Text(
-                text = if (usingDemo) "Demo location" else "Following your location",
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelSmall,
-            )
+            if (followLocation) {
+                Text(
+                    text = if (usingDemo) "Demo location" else "Following your location",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            } else {
+                TextButton(onClick = { followLocation = true }) {
+                    Text(if (usingDemo) "Show demo location" else "Follow my location")
+                }
+            }
         }
     }
 }

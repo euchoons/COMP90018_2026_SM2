@@ -3,7 +3,6 @@ package au.edu.unimelb.floraguide.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -96,6 +96,7 @@ fun ObservationMap(
             cameraPositionState = cameraState,
             onMapLoaded = { mapLoaded = true },
             uiSettings = MapUiSettings(
+                scrollGesturesEnabled = true,
                 mapToolbarEnabled = false,
                 myLocationButtonEnabled = false,
                 rotationGesturesEnabled = false,
@@ -117,16 +118,17 @@ fun ObservationMap(
                         },
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 0.dp),
+                            modifier = Modifier.size(if (plants.size > 1) 56.dp else 44.dp),
+                            shape = CircleShape,
                             color = Color(0xFF166534),
                             contentColor = Color.White,
                         ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
                             ) {
-                                Icon(Icons.Default.Park, contentDescription = null, modifier = Modifier.size(24.dp))
+                                Icon(Icons.Default.LocalFlorist, contentDescription = null, modifier = Modifier.size(24.dp))
                                 if (plants.size > 1) Text("${plants.size}", style = MaterialTheme.typography.labelLarge)
                             }
                         }
