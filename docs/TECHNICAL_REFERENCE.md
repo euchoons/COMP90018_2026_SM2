@@ -35,13 +35,15 @@ Only `results[].score` and `results[].species.scientificNameWithoutAuthor` (plus
 `commonNames`) are consumed. Scores are per-species confidences and do **not** sum to 1;
 normalisation is the ranking use case's job.
 
-`nb-results=8` bounds the downstream ALA fan-out, because one occurrence request is issued per
-candidate. A free key allows 500 identifications a day; `remainingIdentificationRequests` is
+The API requests eight results; the current ViewModel keeps the first five for both image-only
+and live ranking. Each candidate requires a name-match request followed by an occurrence
+request when resolved (before retries). `remainingIdentificationRequests` is
 logged after every call so the team can see the budget before a demo.
 
 The key is read from `plantnet.api.key` in the git-ignored `local.properties` and exposed through
 `BuildConfig`. It is therefore present inside the APK: acceptable for coursework, not secret
-storage. Without a key the app builds and runs on the labelled demo adapter instead.
+storage. Without a key the app builds, but live identification reports the missing key;
+the explicit guided demo remains available.
 
 Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.
 
@@ -51,11 +53,18 @@ Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.
 
 ## ALA occurrence request
 
-The baseline client performs a read-only count query:
+The client first resolves an exact species-level match:
+
+```text
+GET https://api.ala.org.au/namematching/api/searchByClassification
+    ?scientificName=<candidate scientific name>
+```
+
+It then performs a read-only count query with the resolved ID:
 
 ```text
 GET https://api.ala.org.au/occurrences/occurrences/search
-    ?q=scientificName:"<candidate scientific name>"
+    ?q=taxonConceptID:"<resolved taxon ID>"
     &lat=<latitude>
     &lon=<longitude>
     &radius=8
@@ -63,11 +72,17 @@ GET https://api.ala.org.au/occurrences/occurrences/search
     &facet=false
 ```
 
-Only `totalRecords` is required. `pageSize=0` avoids downloading occurrence rows. Requests use connection/read timeouts and run concurrently for the candidate set.
+Only `totalRecords` is required from the occurrence response. `pageSize=0` avoids downloading
+occurrence rows. Both requests share cancellable transport, size limits, no redirects and
+connection/read timeouts. Candidate lookups run concurrently with a shared per-candidate
+timeout/retry budget. `UNRESOLVED_TAXON` is not retried and never becomes a zero count.
 
-The exact endpoint, accepted parameters and taxonomy behaviour must be reverified against the current ALA documentation before final submission. A successful exact-name query does not guarantee that the name is the accepted taxon; a zero result may indicate a synonym or mapping problem rather than absence.
+Exact matching deliberately excludes fuzzy, higher-rank and differing accepted-name results.
+It is not complete synonym resolution. A successful zero is a zero occurrence-query result,
+not proof of ecological absence. See [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
-The optional script below checks three representative names and requires `curl` and `jq`:
+The optional diagnostic script below uses the older scientific-name text queries, not the
+app's full name-resolution path. It checks three names and requires `curl` and `jq`:
 
 ```bash
 ./tools/verify-ala.sh
@@ -75,14 +90,30 @@ The optional script below checks three representative names and requires `curl` 
 
 ## Fusion formula
 
+### Current live rule (provisional)
+
 ```text
-raw(s) = α log(Pimage(s) + ε)
-       + β log(Plocation(s) + ε)
-       + γ log(Pseason(s) + ε)
-       + δ log(Phabitat(s) + ε)
+support(s) = ln(1 + min(count(s), 50)) / ln(51)
+weight(s) = imageScore(s) * (1 + 0.15 * support(s))
+relativeScore(s) = weight(s) / sum(weight)
 ```
 
-Current weights are `1.00`, `0.75`, `0.35` and `0.45`. Nearby records use additive smoothing with `λ = 3`, followed by a numerically stable softmax across the candidate set.
+Geographic support is enabled only for complete live counts. Otherwise retain image-only
+scores/order for every candidate. Zero counts give a neutral multiplier of 1; the maximum
+is 1.15. These bounds are coursework heuristics, not tuned values or evidence of superiority.
+Season/habitat are not inputs to `live()` yet. #16/#17 supply data and definitions; #18 must
+explicitly integrate eligible cues. #20 evaluates alternatives before selecting parameters.
+
+### Synthetic guided demo only
+
+```text
+raw(s) = α log(max(Pimage(s), ε))
+       + β log(max(Plocation(s), ε))
+       + γ log(max(Pseason(s), ε))
+       + δ log(max(Phabitat(s), ε))
+```
+
+Demo weights are `1.00`, `0.75`, `0.35` and `0.45`. Nearby records use additive smoothing with `λ = 3`, followed by a numerically stable softmax across the candidate set. This is not the current live formula.
 
 These constants are prototype values. The final report should explain how weights were selected, report sensitivity or validation results, and avoid calling the output calibrated confidence unless calibration is actually performed.
 
@@ -94,11 +125,15 @@ These constants are prototype values. The final report should explain how weight
 - image-only Top-1 and Top-3 accuracy;
 - fused Top-1 and Top-3 accuracy;
 - confusion by species;
-- unknown/genus fallback performance.
+- unknown/genus fallback performance;
+- share of live captures with complete ALA context, where the geographic boost was
+  applied at all (one unresolved or failed candidate disables it for the capture).
 
 ### Ablation
 
-Compare the full model with:
+Compare the current live model with image-only and any agreed geographic-support variants.
+Season/habitat ablations are future work after #18 actually integrates those cues; changing
+their demo weights does not evaluate live behaviour. Once integrated, compare with:
 
 - no location prior;
 - no season prior;

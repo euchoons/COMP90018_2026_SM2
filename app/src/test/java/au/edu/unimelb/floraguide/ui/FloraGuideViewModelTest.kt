@@ -92,6 +92,10 @@ class FloraGuideViewModelTest {
         assertEquals("stable-id", model.uiState.value.fusedRanking.single().species.id)
         assertEquals(10, model.uiState.value.fusedRanking.single().nearbyRecordCount)
         coVerify(exactly = 1) { container.speciesContextRepository.nearbyOccurrenceCounts(listOf(species), any(), 8, false) }
+        model.retryContextLookup()
+        runCurrent()
+        val contextRepository = container.speciesContextRepository
+        coVerify(exactly = 0) { contextRepository.nearbyOccurrenceCounts(any(), any(), any(), true) }
         state.value = AuthState.Unauthenticated
         runCurrent()
     }
@@ -157,5 +161,77 @@ class FloraGuideViewModelTest {
         assertEquals(45f, capture.headingDegrees)
         state.value = AuthState.Unauthenticated
         runCurrent()
+    }
+
+    @Test fun `denied or unavailable location skips ALA and never substitutes demo evidence`() = runTest(dispatcher) {
+        val predictions = prepareLiveIdentification()
+        every { container.locationTracker.snapshotForObservation() } returns null
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.onLocationPermissionResult(false)
+        model.beginCapture()
+        model.analyzeCapturedPhoto("/capture.jpg", null)
+        runCurrent()
+        assertEquals(CaptureLocationSource.UNAVAILABLE, model.uiState.value.capture?.locationSource)
+        assertEquals(ContextDataSource.NOT_REQUESTED, model.uiState.value.nearbyContext?.source)
+        assertEquals(container.rankCandidates.imageOnly(predictions).map { it.relativeScore },
+            model.uiState.value.fusedRanking.map { it.relativeScore })
+        val warning = model.uiState.value.nearbyContext?.warning
+        assertNotNull(warning)
+        model.clearMessage()
+        model.retryContextLookup()
+        runCurrent()
+        assertEquals(warning, model.uiState.value.nearbyContext?.warning)
+        val contextRepository = container.speciesContextRepository
+        coVerify(exactly = 0) { contextRepository.nearbyOccurrenceCounts(any(), any(), any(), any()) }
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `unresolved retry removes prior boost keeps capture and preserves warning across habitat edits`() = runTest(dispatcher) {
+        val predictions = prepareLiveIdentification()
+        val location = GeoPoint(-37.7963, 144.9614, 12f)
+        every { container.locationTracker.snapshotForObservation() } returns location
+        val contextRepository = container.speciesContextRepository
+        coEvery { contextRepository.nearbyOccurrenceCounts(any(), location, 8, true) } returns
+            NearbyContext(mapOf("live0" to 0, "live1" to 50), ContextDataSource.ALA_LIVE, 8)
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.beginCapture()
+        model.analyzeCapturedPhoto("/capture.jpg", null)
+        runCurrent()
+        assertEquals("live1", model.uiState.value.fusedRanking.first().species.id)
+        val capture = model.uiState.value.capture
+        every { container.locationTracker.snapshotForObservation() } returns location.copy(latitude = -38.0)
+        val warning = "1 taxon unresolved; image-only ranking retained."
+        coEvery { contextRepository.nearbyOccurrenceCounts(any(), location, 8, true) } returns NearbyContext(
+            mapOf("live0" to 0), ContextDataSource.ALA_PARTIAL, 8,
+            warning = warning, failuresBySpeciesId = mapOf("live1" to "UNRESOLVED_TAXON"),
+        )
+        model.retryContextLookup()
+        runCurrent()
+        assertEquals(container.rankCandidates.imageOnly(predictions).map { it.relativeScore },
+            model.uiState.value.fusedRanking.map { it.relativeScore })
+        assertEquals(capture, model.uiState.value.capture)
+        model.clearMessage()
+        model.setHabitat(Habitat.LAWN)
+        assertEquals(warning, model.uiState.value.nearbyContext?.warning)
+        assertTrue(model.uiState.value.fusedRanking.all { it.evidence.locationMultiplier == 1.0 })
+        coVerify(exactly = 2) { contextRepository.nearbyOccurrenceCounts(any(), location, 8, true) }
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    private fun prepareLiveIdentification(): List<ImagePrediction> {
+        state.value = AuthState.OfflineGuest
+        val predictions = (0..1).map { index -> ImagePrediction(
+            Species("live$index", "Plant", "Test plant$index", emptySet(), emptyMap(), 0),
+            if (index == 0) 0.51 else 0.49, index + 1,
+        ) }
+        every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
+        every { container.isPlantNetConfigured } returns true
+        coEvery { container.identifyStoredPhoto.invoke(any(), any(), any(), any()) } returns
+            ImageClassification(predictions, ImageSource.PLANTNET_LIVE)
+        return predictions
     }
 }
