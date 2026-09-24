@@ -167,7 +167,7 @@ fun CollectionScreen(
 private fun CollectionMissionCard(uniqueSpecies: Int) {
     val progress = (uniqueSpecies / 3f).coerceIn(0f, 1f)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         shape = RoundedCornerShape(10.dp),
     ) {
         Column(
@@ -180,17 +180,23 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    Text("Campus discovery mission", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = "Campus discovery mission",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                     Text(
                         "Record 3 unique species",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
                 Text(
                     text = "$uniqueSpecies / 3",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
