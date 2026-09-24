@@ -141,6 +141,8 @@ fun ObservationMap(
     if (selectedObservations.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = { selectedPoint = null },
+            shape = RoundedCornerShape(10.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
             title = { Text(if (selectedObservations.size == 1) "Plant observation" else "Plants at this location") },
             text = {
                 LazyColumn(
