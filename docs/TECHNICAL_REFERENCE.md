@@ -94,15 +94,18 @@ app's full name-resolution path. It checks three names and requires `curl` and `
 
 ```text
 support(s) = ln(1 + min(count(s), 50)) / ln(51)
-weight(s) = imageScore(s) * (1 + 0.15 * support(s))
+season(s) = 0.85 if the photo is a flower and every documented flowering month of s
+            is more than one month from the capture month, otherwise 1
+weight(s) = imageScore(s) * (1 + 0.15 * support(s)) * season(s)
 relativeScore(s) = weight(s) / sum(weight)
 ```
 
-Geographic support is enabled only for complete live counts. Otherwise retain image-only
-scores/order for every candidate. Zero counts give a neutral multiplier of 1; the maximum
-is 1.15. These bounds are coursework heuristics, not tuned values or evidence of superiority.
-Season/habitat are not inputs to `live()` yet. #16/#17 supply data and definitions; #18 must
-explicitly integrate eligible cues. #20 evaluates alternatives before selecting parameters.
+Geographic support is enabled only for complete live counts; otherwise it is neutral for
+every candidate. Zero counts give a neutral multiplier of 1; the maximum is 1.15. The
+flowering cue needs Pl@ntNet's predicted organ to be a flower with a score of at least 0.5,
+and species without documented months stay at 1. Its table is empty until #16 supplies
+sourced months. Habitat is not an input to `live()`. These bounds are coursework heuristics,
+not tuned values or evidence of superiority; #20 evaluates alternatives before selecting parameters.
 
 ### Synthetic guided demo only
 
@@ -127,16 +130,18 @@ These constants are prototype values. The final report should explain how weight
 - confusion by species;
 - unknown/genus fallback performance;
 - share of live captures with complete ALA context, where the geographic boost was
-  applied at all (one unresolved or failed candidate disables it for the capture).
+  applied at all (one unresolved or failed candidate disables it for the capture);
+- share of flower photos where the flowering cue changed a multiplier, with the cases it
+  helped or harmed.
 
 ### Ablation
 
 Compare the current live model with image-only and any agreed geographic-support variants.
-Season/habitat ablations are future work after #18 actually integrates those cues; changing
-their demo weights does not evaluate live behaviour. Once integrated, compare with:
+The flowering cue can be ablated once #16 supplies data; habitat ablation waits until a
+habitat cue is integrated. Changing demo weights does not evaluate live behaviour. Compare with:
 
 - no location prior;
-- no season prior;
+- no flowering cue;
 - no habitat prior;
 - different search radii;
 - different fusion weights.

@@ -75,11 +75,11 @@ A future `TfliteImageClassifier` implements the same interface, performs bitmap 
 
 ### `data/plantnet`
 
-`PlantNetClient` uploads the captured JPEG to the Pl@ntNet v2 API as a streamed multipart request, enforces timeouts, parses candidates strictly and records telemetry. The API key is a query parameter and is never logged.
+`PlantNetClient` uploads the captured JPEG to the Pl@ntNet v2 API as a streamed multipart request, enforces timeouts, parses candidates strictly and records telemetry. The API key is a query parameter and is never logged. It also keeps Pl@ntNet's predicted photo organ, which gates the flowering cue; a missing or malformed organ never fails identification.
 
 `PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves an exact species-level taxon ID before querying occurrences.
 
-Season and habitat affinities are deliberately left empty for these species. The current live ranker does not consume either field, even if populated. It uses bounded geographic support only when every candidate lookup succeeds; otherwise the image-only scores/order remain. #18 must explicitly integrate future source-backed ecology data from #16/#17.
+Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses bounded geographic support only when every candidate lookup succeeds, and lowers the out-of-season candidates of a flower photo using a separate flowering table that stays empty until #16 supplies sourced months. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
 When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so the guided demo stays offline and repeatable.
 
@@ -87,7 +87,7 @@ When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so t
 
 `AlaOccurrenceClient` resolves names, then performs count-only, read-only occurrence searches by taxon ID. Both calls share bounded, cancellable transport. Unresolved names and malformed/failed requests remain distinct from successful zero counts.
 
-`ReliableAlaSpeciesContextRepository` requests every candidate count concurrently (at most 5), retrying timeouts and HTTP 408/429/5xx once while honouring `Retry-After`. It preserves coroutine cancellation and never substitutes demo counts: a failed candidate has no count, and the source is reported as live, partial or unavailable. Ranking applies ALA only when every lookup succeeds; otherwise the image-only order is kept.
+`ReliableAlaSpeciesContextRepository` requests every candidate count concurrently (at most 5), retrying timeouts and HTTP 408/429/5xx once while honouring `Retry-After`. It preserves coroutine cancellation and never substitutes demo counts: a failed candidate has no count, and the source is reported as live, partial or unavailable. Ranking applies ALA only when every lookup succeeds; otherwise geographic support is neutral.
 
 ### `data/observation`
 
@@ -110,7 +110,7 @@ User captures a photo
   -> image-only ranking is exposed immediately
   -> SpeciesContextRepository requests nearby counts concurrently
   -> result is labelled live, partial or fallback
-  -> RankSpeciesCandidatesUseCase applies location, season and habitat
+  -> RankSpeciesCandidatesUseCase applies location and flowering season (habitat: guided demo only)
   -> fused Top 3 and evidence are displayed
   -> user changes habitat, causing a local rerank without another request
   -> user confirms a candidate
@@ -146,7 +146,9 @@ Both adapters, and the behaviour when a sensor is missing, are documented in [`H
 
 Live ranking uses `imageScore * (1 + 0.15 * support)`, normalised over the candidate set,
 where `support = ln(1 + min(count, 50)) / ln(51)`. This provisional rule requires complete
-live counts; otherwise geographic support is neutral for every candidate. The image-only
+live counts; otherwise geographic support is neutral for every candidate. When Pl@ntNet
+reports a flower, a candidate whose documented flowering months are all more than a month
+from the capture month is also multiplied by 0.85; unlisted species stay neutral. The image-only
 and final lists use the same first-five candidate set. See [missing-context policy](MISSING_CONTEXT_POLICY.md)
 for the trade-off, source states and remaining work; neither this heuristic nor its constants
 have been established as optimal.
