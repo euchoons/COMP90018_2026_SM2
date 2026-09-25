@@ -14,9 +14,9 @@ class LiveRankingTest {
         ImagePrediction(species, if (index == 0) 0.9 else 0.1, index + 1)
     }
     // Fixture months for London plane and river red gum, not sourced flowering data.
-    private val seasonal = RankSpeciesCandidatesUseCase(floweringMonths = mapOf(
-        predictions[0].species.scientificName to setOf(12, 1, 2),
-        predictions[1].species.scientificName to setOf(9, 10),
+    private val seasonal = RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
+        predictions[0].species.scientificName to FloweringRecord(setOf(12, 1, 2), "Flowers summer.", "https://example.org/a"),
+        predictions[1].species.scientificName to FloweringRecord(setOf(9, 10), "Flowers Sep.–Oct.", "https://example.org/b"),
     ))
     private val flower = PredictedOrgan("flower", 0.9)
     private fun context(counts: List<Int>, source: ContextDataSource = ContextDataSource.ALA_LIVE) =
@@ -109,6 +109,18 @@ class LiveRankingTest {
         assertEquals("london_plane", seasonal.live(predictions, context(listOf(0, 0)), 9, flower).first().species.id)
     }
 
+    @Test fun floweringCheckExplainsEveryFactor() {
+        fun checks(organ: PredictedOrgan?, ranker: RankSpeciesCandidatesUseCase = seasonal) =
+            ranker.live(predictions, context(listOf(0, 0)), 1, organ).associate { it.species.id to it.evidence.floweringCheck }
+        assertEquals(mapOf("london_plane" to FloweringCheck.IN_SEASON, "river_red_gum" to FloweringCheck.OUT_OF_SEASON),
+            checks(flower))
+        assertEquals(setOf(FloweringCheck.NOT_APPLIED), checks(PredictedOrgan("leaf", 0.9)).values.toSet())
+        assertEquals(setOf(FloweringCheck.NO_DATA), checks(flower, ranker).values.toSet())
+        // The statement stays with the candidate even when a leaf photo leaves it unused.
+        assertEquals("Flowers summer.",
+            seasonal.live(predictions, context(listOf(0, 0)), 1, null).first().evidence.flowering?.statement)
+    }
+
     @Test fun seasonOnlyAdjustmentIsSavedUnderTheLiveRule() {
         val unavailable = context(emptyList(), ContextDataSource.ALA_UNAVAILABLE)
         val capture = CaptureSnapshot("id", Instant.EPOCH, GeoPoint(-37.8, 144.96), CaptureLocationSource.DEVICE, null)
@@ -122,7 +134,7 @@ class LiveRankingTest {
     @Test fun invalidFloweringMonthsAndCaptureMonthsAreRejected() {
         for (months in listOf(emptySet(), setOf(0), setOf(13))) {
             assertThrows(IllegalArgumentException::class.java) {
-                RankSpeciesCandidatesUseCase(floweringMonths = mapOf("Acacia dealbata" to months))
+                RankSpeciesCandidatesUseCase(floweringRecords = mapOf("Acacia dealbata" to FloweringRecord(months, "", "")))
             }
         }
         assertThrows(IllegalArgumentException::class.java) { ranker.live(predictions, context(listOf(0, 0)), 13, flower) }

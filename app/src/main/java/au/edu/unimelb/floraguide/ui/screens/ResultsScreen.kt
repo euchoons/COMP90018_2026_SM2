@@ -26,14 +26,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.domain.model.CaptureLocationSource
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
+import au.edu.unimelb.floraguide.domain.model.FloweringCheck
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
@@ -48,6 +51,7 @@ import au.edu.unimelb.floraguide.ui.components.RelativeScoreLabel
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.SelectableCard
 import au.edu.unimelb.floraguide.ui.components.StatusPill
+import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
@@ -141,9 +145,15 @@ fun ResultsScreen(
                         EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
                     } else {
                         Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
-                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx (photo organ: %s)",
-                            selected.evidence.seasonMultiplier,
-                            state.predictedOrgan?.let { String.format(Locale.US, "%s %.0f%%", it.organ, it.score * 100) } ?: "unknown"))
+                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx", selected.evidence.seasonMultiplier))
+                        Text(floweringLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
+                        selected.evidence.flowering?.let { record ->
+                            val uriHandler = LocalUriHandler.current
+                            // CC BY 4.0 needs the attribution wherever VicFlora's wording is shown.
+                            TextButton(onClick = { runCatching { uriHandler.openUri(record.sourceUrl) } }) {
+                                Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
+                            }
+                        }
                         Text("For complete ALA results: image score x (1 + 0.15 x support), then normalise. " +
                             "Support uses capped log-counts; the maximum multiplier is 1.15x.",
                             style = MaterialTheme.typography.bodySmall)
@@ -243,6 +253,24 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
         else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km"
     }
 }
+/** The documented statement behind the flowering factor, or why none was applied. */
+private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState): String {
+    if (state.isContextLoading) return "Checked when the ALA lookup finishes."
+    val evidence = candidate.evidence
+    val month = state.analysisDate.month.getDisplayName(TextStyle.FULL, Locale.US)
+    val statement = evidence.flowering?.let { "VicFlora: \"${it.statement}\" " }.orEmpty()
+    return when (evidence.floweringCheck) {
+        FloweringCheck.OUT_OF_SEASON -> "$statement$month is more than a month outside this period."
+        FloweringCheck.IN_SEASON -> statement +
+            if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month is within this period."
+            else "$month is within a month of this period."
+        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table, so it is not lowered."
+        FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
+            (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
+            ". Flowering months apply only to a confidently recognised flower."
+    }
+}
+
 private fun rankingExplanation(state: FloraGuideUiState): String {
     val season = if (state.fusedRanking.any { it.evidence.seasonMultiplier < 1.0 }) {
         " This flower photo lowered candidates documented to flower at other times of year."

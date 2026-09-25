@@ -263,7 +263,9 @@ class FloraGuideViewModelTest {
         val predictions = prepareLiveIdentification()
         val offSeason = (LocalDate.now().monthValue + 5) % 12 + 1
         every { container.rankCandidates } returns
-            RankSpeciesCandidatesUseCase(floweringMonths = mapOf("Test plant0" to setOf(offSeason)))
+            RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
+                "Test plant0" to FloweringRecord(setOf(offSeason), "Flowers once a year.", "https://example.org"),
+            ))
         val flower = PredictedOrgan("flower", 0.9)
         coEvery { container.identifyStoredPhoto.invoke(any(), any(), any(), any()) } returns
             ImageClassification(predictions, ImageSource.PLANTNET_LIVE, predictedOrgan = flower)

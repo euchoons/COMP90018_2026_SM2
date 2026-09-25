@@ -173,6 +173,16 @@ data class NearbyContext(
     val retryNotBefore: Instant? = null,
 )
 
+/** A documented flowering statement, e.g. VicFlora's "Flowers summer.", and the months it names. */
+data class FloweringRecord(
+    val months: Set<Int>,
+    val statement: String,
+    val sourceUrl: String,
+)
+
+/** Why a live candidate's flowering-season factor has its value. */
+enum class FloweringCheck { NOT_APPLIED, NO_DATA, IN_SEASON, OUT_OF_SEASON }
+
 data class EvidenceBreakdown(
     val imagePrior: Double,
     val locationPrior: Double,
@@ -181,6 +191,8 @@ data class EvidenceBreakdown(
     val locationMultiplier: Double = 1.0,
     /** Live flowering-season factor; the guided demo uses [seasonalPrior] instead. */
     val seasonMultiplier: Double = 1.0,
+    val flowering: FloweringRecord? = null,
+    val floweringCheck: FloweringCheck = FloweringCheck.NOT_APPLIED,
 )
 
 data class RankedCandidate(

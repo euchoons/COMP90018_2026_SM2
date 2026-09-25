@@ -2,6 +2,8 @@ package au.edu.unimelb.floraguide.domain.usecase
 
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.EvidenceBreakdown
+import au.edu.unimelb.floraguide.domain.model.FloweringCheck
+import au.edu.unimelb.floraguide.domain.model.FloweringRecord
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
@@ -22,8 +24,8 @@ class RankSpeciesCandidatesUseCase(
     private val locationSmoothing: Double = 3.0,
     private val maximumLiveBoost: Double = 0.15,
     private val liveCountSaturation: Int = 50,
-    /** Documented flowering months by exact scientific name; the app passes the bundled VicFlora table. */
-    private val floweringMonths: Map<String, Set<Int>> = emptyMap(),
+    /** Documented flowering by exact scientific name; the app passes the bundled VicFlora table. */
+    private val floweringRecords: Map<String, FloweringRecord> = emptyMap(),
     private val outOfSeasonMultiplier: Double = 0.85,
     private val minimumFlowerScore: Double = 0.5,
 ) {
@@ -32,7 +34,7 @@ class RankSpeciesCandidatesUseCase(
         require(locationSmoothing > 0.0)
         require(outOfSeasonMultiplier in 0.5..1.0 && minimumFlowerScore in 0.0..1.0)
         // An empty set would read as "never flowers" and lower every flower photo.
-        require(floweringMonths.values.all { months -> months.isNotEmpty() && months.all { it in 1..12 } })
+        require(floweringRecords.values.all { record -> record.months.isNotEmpty() && record.months.all { it in 1..12 } })
     }
 
     /**
@@ -66,7 +68,9 @@ class RankSpeciesCandidatesUseCase(
                 ln1p(count.coerceAtMost(liveCountSaturation).toDouble()) / ln1p(liveCountSaturation.toDouble())
             } else 0.0
             val multiplier = 1.0 + maximumLiveBoost * support
-            val season = seasonMultiplier(candidate.species.scientificName, flowerMonth)
+            val flowering = floweringRecords[candidate.species.scientificName]
+            val check = floweringCheck(flowering, flowerMonth)
+            val season = if (check == FloweringCheck.OUT_OF_SEASON) outOfSeasonMultiplier else 1.0
             val value = candidate.evidence.imagePrior * multiplier * season
             candidate.copy(
                 nearbyRecordCount = count,
@@ -74,6 +78,8 @@ class RankSpeciesCandidatesUseCase(
                     locationPrior = support,
                     locationMultiplier = multiplier,
                     seasonMultiplier = season,
+                    flowering = flowering,
+                    floweringCheck = check,
                 ),
             ) to value
         }
@@ -86,10 +92,11 @@ class RankSpeciesCandidatesUseCase(
     }
 
     /** Only a documented mismatch lowers a candidate; unlisted species count the same as in season. */
-    private fun seasonMultiplier(scientificName: String, flowerMonth: Int?): Double {
-        val months = floweringMonths[scientificName] ?: return 1.0
-        if (flowerMonth == null || months.any { circularMonthDistance(flowerMonth, it) <= 1 }) return 1.0
-        return outOfSeasonMultiplier
+    private fun floweringCheck(record: FloweringRecord?, flowerMonth: Int?): FloweringCheck = when {
+        flowerMonth == null -> FloweringCheck.NOT_APPLIED
+        record == null -> FloweringCheck.NO_DATA
+        record.months.any { circularMonthDistance(flowerMonth, it) <= 1 } -> FloweringCheck.IN_SEASON
+        else -> FloweringCheck.OUT_OF_SEASON
     }
 
     fun imageOnly(predictions: List<ImagePrediction>): List<RankedCandidate> {

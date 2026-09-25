@@ -1,6 +1,7 @@
 package au.edu.unimelb.floraguide.data.catalog
 
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
+import au.edu.unimelb.floraguide.domain.model.FloweringRecord
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
@@ -17,17 +18,21 @@ class VicFloraFloweringTest {
 
     @Test fun bundledTableKeepsOnlyDocumentedMonths() {
         val table = parseFloweringTable(tsv)
-        assertEquals(setOf(12, 1, 2), table["Eucalyptus camaldulensis"]) // "Flowers summer."
-        assertEquals(setOf(8, 9, 10), table["Acacia pycnantha"]) // "Flowers Aug.–Oct."
+        assertEquals(
+            FloweringRecord(setOf(12, 1, 2), "Flowers summer.",
+                "https://vicflora.rbg.vic.gov.au/flora/taxon/b81ef7c6-89a0-45d7-9b2b-cebb16c7033a"),
+            table["Eucalyptus camaldulensis"],
+        )
+        assertEquals(setOf(8, 9, 10), table["Acacia pycnantha"]?.months) // "Flowers Aug.–Oct."
         // No VicFlora flowering statement, or no VicFlora taxon: unknown, never "out of season".
         assertNull(table["Acacia dealbata"])
         assertNull(table["Platanus × acerifolia"])
         // The ranker rejects empty or impossible months, so bad data fails here rather than at app start.
-        RankSpeciesCandidatesUseCase(floweringMonths = table)
+        RankSpeciesCandidatesUseCase(floweringRecords = table)
     }
 
     @Test fun februaryWattleFlowerKeepsTheSummerSpeciesAndLowersASpringOne() {
-        val ranker = RankSpeciesCandidatesUseCase(floweringMonths = parseFloweringTable(tsv))
+        val ranker = RankSpeciesCandidatesUseCase(floweringRecords = parseFloweringTable(tsv))
         val wattles = listOf("Acacia implexa", "Acacia mearnsii", "Acacia dealbata").mapIndexed { index, name ->
             ImagePrediction(Species(name, name, name, emptySet(), emptyMap(), 0), 0.3, index + 1)
         }
