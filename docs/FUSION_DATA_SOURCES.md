@@ -15,7 +15,7 @@ measurements were taken on 2026-09-25. ALA queries use the app's Parkville point
 | ALA `reproductiveCondition` | Season | Rejected | 98% of records leave it empty |
 | AusTraits `flowering_time` | Season | Not used yet | Combines many datasets and regions; Victorian applicability would need checking per source |
 | City of Melbourne tree inventory | Location | Not adopted | Council trees only; none inside the campus |
-| VicFlora habitat prose | Habitat | Not adopted, pending the #17 decision | Describes associations, not the app's four categories |
+| VicFlora habitat prose | Habitat | Not adopted (#17 decision) | Describes associations, not the app's four categories |
 
 ## Season (#16)
 
@@ -90,8 +90,10 @@ map onto them:
   largely a planting decision rather than ecology.
 - No source found gives values for the four categories; any numbers would be invented.
 
-Recommendation, pending the team's scope decision (#15 requires one before habitat is
-dropped for good): keep habitat as observation metadata and do not rank with it.
+Decision (2026-09-25, the scope decision #15 requires): habitat is observation metadata only
+and does not affect live ranking. Users still choose it and it is saved with each
+observation; the guided demo keeps its labelled synthetic habitat prior. Revisit only if a
+source maps species onto these categories.
 
 ## Reproducing the measurements
 

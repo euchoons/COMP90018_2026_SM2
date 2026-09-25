@@ -171,7 +171,7 @@ private fun HeroCard(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Photograph a campus plant, then let place, season and microhabitat challenge the camera model.",
+                text = "Photograph a campus plant, then let place and flowering season challenge the camera model.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.90f),
                 modifier = Modifier.padding(bottom = 42.dp),

@@ -2,7 +2,7 @@
 
 ## One-sentence concept
 
-FloraGuide is a campus biodiversity observation app that provides an explainable species shortlist by combining camera-derived candidates with location, season, nearby occurrence history and the user's observed microhabitat.
+FloraGuide is a campus biodiversity observation app that provides an explainable species shortlist by combining camera-derived candidates with location, flowering season and nearby occurrence history, and records the user's observed microhabitat with each observation.
 
 ## Problem
 
@@ -24,7 +24,7 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 4. An on-device model produces a Top-K candidate list.
 5. The app immediately shows an image-only shortlist.
 6. The app retrieves nearby Atlas of Living Australia occurrence counts for the candidates.
-7. Image, location, season and microhabitat evidence are fused and the Top 3 is reranked.
+7. Image, location and flowering-season evidence are fused and the Top 3 is reranked; the microhabitat is recorded, not ranked.
 8. The user opens **Why this species?** to inspect the evidence.
 9. The user confirms, corrects or rejects the suggestion.
 10. The observation is stored in a personal field guide and, in the final system, synchronised to the team's cloud backend.
@@ -39,7 +39,7 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 | Heading | Accelerometer + magnetometer | Records observation direction as optional metadata. |
 | Location | GPS/network provider | Selects geographically relevant occurrence history. |
 | Date/season | System clock | Adjusts compatibility with seasonal patterns. |
-| Microhabitat | Explicit user input | Adds local ecological context that GPS alone cannot provide. |
+| Microhabitat | Explicit user input | Recorded with the observation; not used for ranking because no source maps species onto the four categories (#17). |
 | Nearby records | Atlas of Living Australia | Supplies an Internet-derived location prior. |
 
 ## Innovation position
@@ -47,7 +47,7 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 The project should not claim that image identification, location weighting, badges or field guides are individually new. The stronger and more defensible innovation is the combination of:
 
 - sensor-guided capture;
-- campus-scale microhabitat context;
+- flowering-season evidence applied only to photographed flowers;
 - visible image-only versus fused ranking;
 - cue-level explanation and user control;
 - explicit live, partial and offline behaviour;

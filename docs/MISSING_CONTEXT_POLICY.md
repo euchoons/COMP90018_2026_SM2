@@ -68,7 +68,12 @@ Example with the bundled data: for a wattle flower photographed in February, *Ac
 implexa* (flowers Dec.–Mar.) stays at 1.0, *Acacia mearnsii* (Sep.–Nov.) drops to 0.85, and
 *Acacia dealbata* (no VicFlora statement) stays at 1.0. A leaf photo leaves all three at 1.0.
 
-Habitat does not participate in `live()`; #17 owns that decision. Merely filling Species
+The results card shows the check for the selected candidate: the VicFlora statement and how
+the capture month relates to it, or why the cue did not apply, with a link to VicFlora and
+its CC BY 4.0 attribution.
+
+Habitat does not participate in `live()`: by the #17 decision it is observation metadata only
+(see [data sources](FUSION_DATA_SOURCES.md#habitat-17)). Merely filling Species
 fields changes nothing. The old log-linear formula and synthetic priors remain confined to
 the explicit guided demo; demo evidence must never enter live ranking.
 

@@ -137,12 +137,11 @@ These constants are prototype values. The final report should explain how weight
 ### Ablation
 
 Compare the current live model with image-only and any agreed geographic-support variants.
-The flowering cue can be ablated with the bundled VicFlora table; habitat ablation waits
-until a habitat cue is integrated. Changing demo weights does not evaluate live behaviour. Compare with:
+The flowering cue can be ablated with the bundled VicFlora table. Habitat is not a live cue
+(#17), so there is nothing to ablate. Changing demo weights does not evaluate live behaviour. Compare with:
 
 - no location prior;
 - no flowering cue;
-- no habitat prior;
 - different search radii;
 - different fusion weights.
 
