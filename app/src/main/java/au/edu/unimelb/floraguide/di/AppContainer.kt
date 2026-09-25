@@ -4,6 +4,8 @@ import android.content.Context
 import au.edu.unimelb.floraguide.BuildConfig
 import au.edu.unimelb.floraguide.data.ala.AlaOccurrenceClient
 import au.edu.unimelb.floraguide.data.ala.ReliableAlaSpeciesContextRepository
+import au.edu.unimelb.floraguide.data.catalog.FLOWERING_TABLE_ASSET
+import au.edu.unimelb.floraguide.data.catalog.parseFloweringTable
 import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
@@ -45,7 +47,9 @@ class AppContainer(context: Context) {
         dao = database.observationDao(),
     )
 
-    val rankCandidates = RankSpeciesCandidatesUseCase()
+    val rankCandidates = RankSpeciesCandidatesUseCase(
+        floweringMonths = appContext.assets.open(FLOWERING_TABLE_ASSET).bufferedReader().use { parseFloweringTable(it.readText()) },
+    )
     val sensorMonitor = SensorMonitor(appContext)
     val locationTracker = LocationTracker(appContext)
 }

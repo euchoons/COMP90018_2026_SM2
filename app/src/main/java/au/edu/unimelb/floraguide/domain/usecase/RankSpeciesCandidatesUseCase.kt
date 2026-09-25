@@ -22,7 +22,7 @@ class RankSpeciesCandidatesUseCase(
     private val locationSmoothing: Double = 3.0,
     private val maximumLiveBoost: Double = 0.15,
     private val liveCountSaturation: Int = 50,
-    /** Documented flowering months by exact scientific name; empty until #16 supplies sourced data. */
+    /** Documented flowering months by exact scientific name; the app passes the bundled VicFlora table. */
     private val floweringMonths: Map<String, Set<Int>> = emptyMap(),
     private val outOfSeasonMultiplier: Double = 0.85,
     private val minimumFlowerScore: Double = 0.5,
@@ -145,7 +145,8 @@ class RankSpeciesCandidatesUseCase(
 
     companion object {
         const val LIVE_RULE_VERSION =
-            "ala-positive-support-v1-cap0.15-saturation50+flowering-mismatch-v1-x0.85-tolerance1-flower0.5"
+            "ala-positive-support-v1-cap0.15-saturation50+flowering-mismatch-v1-x0.85-tolerance1-flower0.5" +
+                "+vicflora-2026-09-25"
         const val IMAGE_ONLY_RULE_VERSION = "image-only-normalised-v1"
         const val DEMO_RULE_VERSION = "synthetic-ecology-demo-v1"
     }
