@@ -151,7 +151,7 @@ enum class LightCondition {
 enum class ContextDataSource(val label: String) {
     ALA_LIVE("Live ALA records"),
     ALA_PARTIAL("Partial ALA results; missing counts unknown"),
-    ALA_UNAVAILABLE("ALA unavailable; image-only ranking"),
+    ALA_UNAVAILABLE("ALA unavailable; no geographic adjustment"),
     NOT_REQUESTED("ALA not queried"),
     LEGACY_UNVERIFIED("Legacy context; provenance unverified"),
     DEMO_FALLBACK("Explicit offline demo records"),

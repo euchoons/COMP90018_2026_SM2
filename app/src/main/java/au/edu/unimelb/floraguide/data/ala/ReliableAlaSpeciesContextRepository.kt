@@ -78,7 +78,7 @@ class ReliableAlaSpeciesContextRepository(
                     "ALA context unavailable. Pl@ntNet results are retained; no demo evidence is used."
                 ContextDataSource.ALA_PARTIAL ->
                     "${successes.size}/${unique.size} ALA lookups succeeded. Missing counts are unknown; " +
-                        "the image-only order is retained to avoid rewarding selective availability."
+                        "geographic support is withheld to avoid rewarding selective availability."
                 else -> null
             }?.let { warning ->
                 if (unresolved > 0) "$warning $unresolved taxon name(s) unresolved; not treated as zero records." else warning
