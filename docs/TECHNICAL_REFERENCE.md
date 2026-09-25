@@ -103,8 +103,8 @@ relativeScore(s) = weight(s) / sum(weight)
 Geographic support is enabled only for complete live counts; otherwise it is neutral for
 every candidate. Zero counts give a neutral multiplier of 1; the maximum is 1.15. The
 flowering cue needs Pl@ntNet's predicted organ to be a flower with a score of at least 0.5,
-and species without documented months stay at 1. Its table is empty until #16 supplies
-sourced months. Habitat is not an input to `live()`. These bounds are coursework heuristics,
+and species without documented months stay at 1. The months come from VicFlora flowering
+statements for 75 common Parkville species (see the missing-context policy). Habitat is not an input to `live()`. These bounds are coursework heuristics,
 not tuned values or evidence of superiority; #20 evaluates alternatives before selecting parameters.
 
 ### Synthetic guided demo only
@@ -137,8 +137,8 @@ These constants are prototype values. The final report should explain how weight
 ### Ablation
 
 Compare the current live model with image-only and any agreed geographic-support variants.
-The flowering cue can be ablated once #16 supplies data; habitat ablation waits until a
-habitat cue is integrated. Changing demo weights does not evaluate live behaviour. Compare with:
+The flowering cue can be ablated with the bundled VicFlora table; habitat ablation waits
+until a habitat cue is integrated. Changing demo weights does not evaluate live behaviour. Compare with:
 
 - no location prior;
 - no flowering cue;

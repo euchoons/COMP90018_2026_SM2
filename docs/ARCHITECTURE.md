@@ -79,7 +79,7 @@ A future `TfliteImageClassifier` implements the same interface, performs bitmap 
 
 `PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves an exact species-level taxon ID before querying occurrences.
 
-Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses bounded geographic support only when every candidate lookup succeeds, and lowers the out-of-season candidates of a flower photo using a separate flowering table that stays empty until #16 supplies sourced months. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
+Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses bounded geographic support only when every candidate lookup succeeds, and lowers the out-of-season candidates of a flower photo using a separate flowering table: `assets/vicflora-flowering.tsv`, generated from VicFlora by `tools/build-flowering-table.py` and loaded by `AppContainer`. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
 When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so the guided demo stays offline and repeatable.
 
