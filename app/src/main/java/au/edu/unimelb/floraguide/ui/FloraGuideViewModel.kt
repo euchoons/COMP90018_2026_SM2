@@ -14,6 +14,7 @@ import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.Observation
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import au.edu.unimelb.floraguide.domain.repository.AuthState
@@ -60,6 +61,7 @@ data class FloraGuideUiState(
     val imagePredictions: List<ImagePrediction> = emptyList(),
     val imageSource: ImageSource? = null,
     val imageElapsedMillis: Long? = null,
+    val predictedOrgan: PredictedOrgan? = null,
     val imageOnlyRanking: List<RankedCandidate> = emptyList(),
     val fusedRanking: List<RankedCandidate> = emptyList(),
     val nearbyContext: NearbyContext? = null,
@@ -477,6 +479,7 @@ class FloraGuideViewModel(
                     imagePredictions = emptyList(),
                     imageSource = null,
                     imageElapsedMillis = null,
+                    predictedOrgan = null,
                     imageOnlyRanking = emptyList(),
                     fusedRanking = emptyList(),
                     nearbyContext = null,
@@ -524,6 +527,7 @@ class FloraGuideViewModel(
                         analysisError = null,
                         imageSource = classification.source,
                         imageElapsedMillis = classification.elapsedMillis,
+                        predictedOrgan = classification.predictedOrgan,
                         imageOnlyRanking = imageOnly,
                         fusedRanking = imageOnly,
                         isClassifying = false,
@@ -589,7 +593,7 @@ class FloraGuideViewModel(
                     date = latest.analysisDate,
                 )
             } else {
-                container.rankCandidates.live(candidates, nearby)
+                container.rankCandidates.live(candidates, nearby, latest.analysisDate.monthValue, latest.predictedOrgan)
             }
 
             _uiState.update {
@@ -633,7 +637,7 @@ class FloraGuideViewModel(
                 date = current.analysisDate,
             )
         } else {
-            container.rankCandidates.live(candidates, context)
+            container.rankCandidates.live(candidates, context, current.analysisDate.monthValue, current.predictedOrgan)
         }
         _uiState.update {
             it.copy(fusedRanking = fused)

@@ -5,6 +5,7 @@ import au.edu.unimelb.floraguide.domain.model.*
 import au.edu.unimelb.floraguide.domain.repository.*
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
 import io.mockk.*
+import java.time.LocalDate
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
@@ -218,6 +219,31 @@ class FloraGuideViewModelTest {
         assertEquals(warning, model.uiState.value.nearbyContext?.warning)
         assertTrue(model.uiState.value.fusedRanking.all { it.evidence.locationMultiplier == 1.0 })
         coVerify(exactly = 2) { contextRepository.nearbyOccurrenceCounts(any(), location, 8, true) }
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `a flower photo lowers candidates outside their flowering months even after reranking`() = runTest(dispatcher) {
+        val predictions = prepareLiveIdentification()
+        // Six months from the capture month, so the image leader is out of season whenever this runs.
+        val offSeason = (LocalDate.now().monthValue + 5) % 12 + 1
+        every { container.rankCandidates } returns
+            RankSpeciesCandidatesUseCase(floweringMonths = mapOf("Test plant0" to setOf(offSeason)))
+        val flower = PredictedOrgan("flower", 0.9)
+        coEvery { container.identifyStoredPhoto.invoke(any(), any(), any(), any()) } returns
+            ImageClassification(predictions, ImageSource.PLANTNET_LIVE, predictedOrgan = flower)
+        every { container.locationTracker.snapshotForObservation() } returns null
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.beginCapture()
+        model.analyzeCapturedPhoto("/capture.jpg", null)
+        runCurrent()
+        assertEquals(flower, model.uiState.value.predictedOrgan)
+        assertEquals(listOf("live1", "live0"), model.uiState.value.fusedRanking.map { it.species.id })
+        assertEquals(0.85, model.uiState.value.fusedRanking.last().evidence.seasonMultiplier, 0.0)
+        // A habitat edit reranks with the stored capture month and organ.
+        model.setHabitat(Habitat.LAWN)
+        assertEquals(listOf("live1", "live0"), model.uiState.value.fusedRanking.map { it.species.id })
         state.value = AuthState.Unauthenticated
         runCurrent()
     }

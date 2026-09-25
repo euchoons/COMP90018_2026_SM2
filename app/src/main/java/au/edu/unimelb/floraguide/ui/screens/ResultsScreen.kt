@@ -141,11 +141,16 @@ fun ResultsScreen(
                         EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
                     } else {
                         Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
+                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx (photo organ: %s)",
+                            selected.evidence.seasonMultiplier,
+                            state.predictedOrgan?.let { String.format(Locale.US, "%s %.0f%%", it.organ, it.score * 100) } ?: "unknown"))
                         Text("For complete ALA results: image score x (1 + 0.15 x support), then normalise. " +
                             "Support uses capped log-counts; the maximum multiplier is 1.15x.",
                             style = MaterialTheme.typography.bodySmall)
-                        Text("Partial, unavailable or skipped ALA context keeps the image-only order. " +
-                            "Season and habitat do not change live rankings.", style = MaterialTheme.typography.bodySmall)
+                        Text("Partial, unavailable or skipped ALA context adds no geographic adjustment. " +
+                            "A flower photographed more than a month outside a candidate's documented flowering months " +
+                            "multiplies that candidate by 0.85; other photos and species without flowering data are unaffected. " +
+                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
                     HorizontalDivider()
                     Text("Observation habitat", fontWeight = FontWeight.Bold)
@@ -238,9 +243,16 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
         else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km"
     }
 }
-private fun rankingExplanation(state: FloraGuideUiState): String = when {
-    state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
-    state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
-    state.nearbyContext?.source == ContextDataSource.ALA_LIVE -> "All candidate queries succeeded. ALA may add a small, capped positive adjustment."
-    else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+private fun rankingExplanation(state: FloraGuideUiState): String {
+    val season = if (state.fusedRanking.any { it.evidence.seasonMultiplier < 1.0 }) {
+        " This flower photo lowered candidates documented to flower at other times of year."
+    } else ""
+    return when {
+        state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
+        state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
+        state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
+            "All candidate queries succeeded. ALA may add a small, capped positive adjustment.$season"
+        season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
+        else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+    }
 }
