@@ -59,6 +59,7 @@ fun CameraCaptureCard(
     snapshot: SensorSnapshot,
     captureEnabled: Boolean,
     captureHint: String,
+    onCaptureStarted: () -> Unit,
     onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -215,6 +216,7 @@ fun CameraCaptureCard(
                     val capture = imageCapture ?: return@Button
                     // Freeze the shutter-time value; JPEG saving can outlive this sensor reading.
                     val captureHeading = heading
+                    onCaptureStarted()
                     isSaving = true
                     capturePhoto(
                         context = context,

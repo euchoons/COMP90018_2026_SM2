@@ -105,6 +105,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onHabitatSelected = viewModel::setHabitat,
                 onPermissionResult = viewModel::onLocationPermissionResult,
                 onUseDemoLocation = { viewModel.useCampusDemoLocation() },
+                onCaptureStarted = viewModel::beginCapture,
                 onPhotoCaptured = viewModel::analyzeCapturedPhoto,
                 onGuidedDemo = viewModel::runGuidedDemo,
                 onError = viewModel::showMessage,
