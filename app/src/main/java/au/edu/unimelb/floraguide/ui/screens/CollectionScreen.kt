@@ -1,5 +1,7 @@
 package au.edu.unimelb.floraguide.ui.screens
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,6 +44,7 @@ import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.InformationCard
+import au.edu.unimelb.floraguide.ui.components.ObservationMap
 import au.edu.unimelb.floraguide.ui.components.PhotoThumbnail
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.StatusPill
@@ -54,6 +59,7 @@ fun CollectionScreen(
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var mapGestureActive by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Observation?>(null) }
 
     deleting?.let { observation ->
@@ -84,6 +90,7 @@ fun CollectionScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
+        userScrollEnabled = !mapGestureActive,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp),
     ) {
@@ -95,6 +102,29 @@ fun CollectionScreen(
         }
 
         item { CollectionMissionCard(uniqueSpecies = state.uniqueSpeciesCount) }
+
+        item {
+            ObservationMap(
+                observations = state.observations,
+                location = state.location,
+                usingDemo = state.usingDemoLocation,
+                modifier = Modifier.fillMaxWidth().pointerInput(Unit) {
+                    // Observe without consuming: Maps handles the touch sequence, while the
+                    // surrounding list waits until all fingers are lifted (including pinch zoom).
+                    awaitEachGesture {
+                        try {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            mapGestureActive = true
+                            do {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                            } while (event.changes.any { it.pressed })
+                        } finally {
+                            mapGestureActive = false
+                        }
+                    }
+                },
+            )
+        }
 
         if (state.observations.isEmpty()) {
             item {
@@ -161,8 +191,8 @@ fun CollectionScreen(
 private fun CollectionMissionCard(uniqueSpecies: Int) {
     val progress = (uniqueSpecies / 3f).coerceIn(0f, 1f)
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = RoundedCornerShape(10.dp),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -174,17 +204,23 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column {
-                    Text("Campus discovery mission", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        text = "Campus discovery mission",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                     Text(
                         "Record 3 unique species",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
                 Text(
                     text = "$uniqueSpecies / 3",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())

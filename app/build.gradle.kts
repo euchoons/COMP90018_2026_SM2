@@ -65,11 +65,26 @@ android {
         // guided demo still runs offline.
         // ponytail: BuildConfig ships the key inside the APK, which is fine for a coursework
         // prototype but is not secret storage; move it behind a proxy if this is ever published.
-        buildConfigField(
-            "String",
-            "PLANTNET_API_KEY",
-            "\"$escapedPlantNetApiKey\"",
-        )
+        val localProperties = Properties().apply {
+            rootProject.file("local.properties")
+                .takeIf { it.exists() }
+                ?.inputStream()
+                ?.use { stream -> load(stream) }
+        }
+        val plantNetApiKey = listOf(
+            localProperties.getProperty("PLANTNET_API_KEY"),
+            localProperties.getProperty("plantnet.api.key"),
+            System.getenv("PLANTNET_API_KEY"),
+        ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        val escapedKey = plantNetApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "PLANTNET_API_KEY", "\"$escapedKey\"")
+
+        val mapsApiKey = listOf(
+            localProperties.getProperty("MAPS_API_KEY"),
+            System.getenv("MAPS_API_KEY"),
+        ).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("boolean", "MAPS_CONFIGURED", mapsApiKey.isNotEmpty().toString())
     }
 
     buildTypes {
@@ -127,6 +142,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.google.maps.compose)
 
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
