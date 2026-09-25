@@ -1,6 +1,7 @@
 package au.edu.unimelb.floraguide.data.plantnet
 
 import android.util.Log
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -26,6 +27,7 @@ data class PlantNetIdentification(
     val httpStatus: Int,
     val elapsedMillis: Long,
     val remainingRequests: Int?,
+    val predictedOrgan: PredictedOrgan? = null,
 )
 
 interface PlantNetSource {
@@ -133,6 +135,7 @@ class PlantNetClient(
                 httpStatus = status,
                 elapsedMillis = elapsedMillis,
                 remainingRequests = remainingRequests,
+                predictedOrgan = parsePredictedOrgan(body),
             )
         } catch (error: PlantNetRequestException) {
             throw error
@@ -205,6 +208,20 @@ internal fun parsePlantNetResults(body: String, maxResults: Int): List<PlantNetR
         throw PlantNetResponseException("Pl@ntNet returned no candidates for this photo")
     }
     return results
+}
+
+/**
+ * Auxiliary like the quota: a missing or malformed organ never fails identification, it only
+ * leaves organ-gated cues inapplicable. One photo is sent, so keep the most confident guess.
+ */
+internal fun parsePredictedOrgan(body: String): PredictedOrgan? {
+    val organs = runCatching { JSONObject(body).optJSONArray("predictedOrgans") }.getOrNull() ?: return null
+    return (0 until organs.length()).mapNotNull { index ->
+        val entry = organs.optJSONObject(index) ?: return@mapNotNull null
+        val organ = entry.optString("organ").trim()
+        val score = (entry.opt("score") as? Number)?.toDouble()
+        if (organ.isEmpty() || score == null || score !in 0.0..1.0) null else PredictedOrgan(organ, score)
+    }.maxByOrNull { it.score }
 }
 
 /** Free keys allow 500 identifications a day, so the remaining budget is worth logging. */

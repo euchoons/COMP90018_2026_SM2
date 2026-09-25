@@ -51,10 +51,18 @@ enum class ImageSource(val label: String) {
     DEMO_ADAPTER("Prototype image adapter"),
 }
 
+/** Pl@ntNet's guess at the photographed part, e.g. "flower", "leaf", "fruit", "bark" or "habit". */
+data class PredictedOrgan(
+    val organ: String,
+    val score: Double,
+)
+
 data class ImageClassification(
     val predictions: List<ImagePrediction>,
     val source: ImageSource,
     val elapsedMillis: Long? = null,
+    /** Null when the source predicts no organ, such as the guided demo. */
+    val predictedOrgan: PredictedOrgan? = null,
 )
 
 data class GeoPoint(

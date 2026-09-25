@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.plantnet
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImageClassification
 import au.edu.unimelb.floraguide.domain.model.ImageSource
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import au.edu.unimelb.floraguide.domain.repository.ImageClassifier
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
 import java.io.File
@@ -20,6 +21,7 @@ class PlantNetImageClassifierTest {
 
         assertEquals(ImageSource.PLANTNET_LIVE, classification.source)
         assertEquals(120L, classification.elapsedMillis)
+        assertEquals(PredictedOrgan("flower", 0.9), classification.predictedOrgan)
 
         val top = classification.predictions.first()
         // The ALA repository queries by scientific name, so no label mapping table is needed.
@@ -96,6 +98,7 @@ class PlantNetImageClassifierTest {
                 httpStatus = 200,
                 elapsedMillis = 120L,
                 remainingRequests = 499,
+                predictedOrgan = PredictedOrgan("flower", 0.9),
             )
         },
         guidedDemoClassifier = StubClassifier,

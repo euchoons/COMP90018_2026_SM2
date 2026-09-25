@@ -38,6 +38,7 @@ class PlantNetImageClassifier(
             predictions = predictions,
             source = ImageSource.PLANTNET_LIVE,
             elapsedMillis = identification.elapsedMillis,
+            predictedOrgan = identification.predictedOrgan,
         )
     }
 }
