@@ -25,11 +25,12 @@ data class Species(
     }
 
     fun habitatPrior(habitat: Habitat): Double = habitatAffinity[habitat] ?: 0.2
+}
 
-    private fun circularMonthDistance(a: Int, b: Int): Int {
-        val direct = abs(a - b)
-        return min(direct, 12 - direct)
-    }
+/** Months apart around the year, so December and January are one month apart. */
+internal fun circularMonthDistance(a: Int, b: Int): Int {
+    val direct = abs(a - b)
+    return min(direct, 12 - direct)
 }
 
 enum class Habitat(val label: String, val shortLabel: String) {
@@ -178,6 +179,8 @@ data class EvidenceBreakdown(
     val seasonalPrior: Double,
     val habitatPrior: Double,
     val locationMultiplier: Double = 1.0,
+    /** Live flowering-season factor; the guided demo uses [seasonalPrior] instead. */
+    val seasonMultiplier: Double = 1.0,
 )
 
 data class RankedCandidate(
