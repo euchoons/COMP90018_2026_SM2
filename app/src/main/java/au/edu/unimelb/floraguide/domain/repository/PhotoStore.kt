@@ -15,4 +15,6 @@ interface PhotoStore {
     suspend fun uploadPhoto(localPath: String): StoredPhoto
     /** Returns a temporary file downloaded from Storage. The caller must delete it. */
     suspend fun downloadPhoto(photo: StoredPhoto): File
+    /** Deletes the remote image file from Cloud Storage. */
+    suspend fun deletePhoto(gsUri: String)
 }

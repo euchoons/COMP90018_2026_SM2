@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Restrict photo storage strictly to the owning user path
+    match /plant_photos/{userId}/{imageId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size <= 20 * 1024 * 1024
+        && (request.resource.contentType == 'image/jpeg' || request.resource.contentType == 'image/png');
+    }
+
+    // Deny access to all other storage paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
