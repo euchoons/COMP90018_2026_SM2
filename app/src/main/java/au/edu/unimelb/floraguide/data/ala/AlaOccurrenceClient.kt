@@ -55,8 +55,8 @@ class AlaOccurrenceClient(
         }
         val started = nanoTime()
         val taxonId = request(URL("$nameMatchUrl?scientificName=${URLEncoder.encode(name, "UTF-8")}")) { body, status, elapsed ->
-            parseTaxonId(body, name) ?: throw AlaRequestException(
-                "ALA did not resolve an exact species match", status, elapsed, kind = AlaFailureKind.UNRESOLVED_TAXON,
+            parseTaxonId(body) ?: throw AlaRequestException(
+                "ALA did not resolve a valid species taxon", status, elapsed, kind = AlaFailureKind.UNRESOLVED_TAXON,
             )
         }
         // URL encoding alone does not escape Solr query syntax inside a quoted phrase.
@@ -165,25 +165,31 @@ class AlaOccurrenceClient(
     }
 }
 
+
 /** Null means unresolved; malformed success payloads are failures, never ecological evidence. */
-internal fun parseTaxonId(body: String, requestedName: String): String? = try {
+internal fun parseTaxonId(body: String): String? = try {
     val root = JSONObject(body)
     val success = root.opt("success")
     if (success !is Boolean) throw AlaResponseException("ALA name matching omitted boolean success")
     if (!success) null else {
-        val name = root.opt("scientificName") as? String
-            ?: throw AlaResponseException("ALA name matching omitted scientificName")
-        val rank = root.opt("rank") as? String
-            ?: throw AlaResponseException("ALA name matching omitted rank")
-        val match = root.opt("matchType") as? String
-            ?: throw AlaResponseException("ALA name matching omitted matchType")
-        // ponytail: exact species matches only; validate synonym/ambiguous-name handling separately.
-        if (!name.equals(requestedName.trim(), ignoreCase = true) ||
-            !rank.equals("species", ignoreCase = true) || match != "exactMatch"
-        ) null else {
-            val id = root.opt("taxonConceptID") as? String
-            if (id.isNullOrBlank() || id.length > 2_048 || id.any { it.isISOControl() }) {
-                throw AlaResponseException("ALA name matching returned an invalid taxonConceptID")
+        val rank = root.optString("rank", "")
+        val match = root.optString("matchType", "")
+
+        // Accept exact matches, synonyms, and canonical (alternate spelling/authority) matches.
+        val isAcceptedMatch = match.equals("exactMatch", ignoreCase = true) ||
+            match.equals("synonym", ignoreCase = true) ||
+            match.equals("canonicalMatch", ignoreCase = true)
+
+        if (!isAcceptedMatch || !rank.equals("species", ignoreCase = true)) {
+            null
+        } else {
+            // Synonyms provide 'acceptedConceptID' to link back to the authoritative taxon.
+            // Fall back to 'taxonConceptID' for exact or canonical matches.
+            val id = root.optString("acceptedConceptID").takeIf { it.isNotBlank() }
+                ?: root.optString("taxonConceptID").takeIf { it.isNotBlank() }
+
+            if (id == null || id.length > 2_048 || id.any { it.isISOControl() }) {
+                throw AlaResponseException("ALA name matching returned an invalid or missing taxon ID")
             }
             id
         }
