@@ -303,6 +303,33 @@ class FirebasePhotoStorageLocalTest {
         verify(exactly = 1) { uploadTask.cancel() }
     }
 
+
+    // FB-21: Verify Cloud Storage photo deletion
+    @Test fun deletePhotoRemovesRemoteReferenceSuccessfully() = runBlocking<Unit> {
+        val task = mockk<com.google.android.gms.tasks.Task<Void>>()
+        every { task.isComplete } returns true
+        every { task.exception } returns null
+        every { task.isCanceled } returns false
+        every { task.result } returns null
+        every { reference.delete() } returns task
+
+        adapter().deletePhoto("gs://$BUCKET/$objectPath")
+        verify(exactly = 1) { reference.delete() }
+    }
+
+    // FB-22: Verify idempotent handling when deleting an already deleted object
+    @Test fun deletePhotoIgnoresObjectNotFoundException() = runBlocking<Unit> {
+        val task = mockk<com.google.android.gms.tasks.Task<Void>>()
+        val notFoundError = mockk<StorageException>()
+        every { notFoundError.errorCode } returns StorageException.ERROR_OBJECT_NOT_FOUND
+        every { task.isComplete } returns true
+        every { task.exception } returns notFoundError
+        every { task.isCanceled } returns false
+        every { reference.delete() } returns task
+
+        adapter().deletePhoto("gs://$BUCKET/$objectPath")
+        verify(exactly = 1) { reference.delete() }
+    }
     private fun adapter(expectedUserId: String? = null) =
         FirebasePhotoStorage(context, storage, auth, expectedUserId)
 
