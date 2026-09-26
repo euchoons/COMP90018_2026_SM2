@@ -111,14 +111,14 @@ class AlaOccurrenceClientTest {
     }
 
     @Test fun exactMatchesOnlyAndMalformedResponsesStayDistinct() {
-        assertEquals("taxon-123", parseTaxonId(taxonMatch(), NAME))
+        assertEquals("taxon-123", parseTaxonId(taxonMatch()))
         for (body in listOf(
             "{\"success\":false}", taxonMatch().replace("exactMatch", "fuzzyMatch"),
-            taxonMatch().replace("\"species\"", "\"genus\""), taxonMatch().replace(NAME, "Different species"),
-        )) assertNull(parseTaxonId(body, NAME))
-        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}", "{\"success\":true}",
+            taxonMatch().replace("\"species\"", "\"genus\""), "{\"success\":true}",
+        )) assertNull(parseTaxonId(body))
+        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}",
             taxonMatch().replace("taxon-123", ""))) {
-            assertThrows(AlaResponseException::class.java) { parseTaxonId(body, NAME) }
+            assertThrows(AlaResponseException::class.java) { parseTaxonId(body) }
         }
     }
 
@@ -221,7 +221,7 @@ class AlaOccurrenceClientTest {
     }
 
     @Test fun `malformed JSON structure throws AlaResponseException`() {
-        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}", "{\"success\":true}")) {
+        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}")) {
             assertThrows(AlaResponseException::class.java) { parseTaxonId(body) }
         }
     }
