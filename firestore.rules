@@ -12,7 +12,7 @@ service cloud.firestore {
 
     // Deny access to all other collections by default
     match /{document=**} {
-      allow read, write: false;
+      allow read, write: if false;
     }
   }
 }

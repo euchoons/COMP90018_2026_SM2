@@ -13,7 +13,7 @@ service firebase.storage {
 
     // Deny access to all other storage paths
     match /{allPaths=**} {
-      allow read, write: false;
+      allow read, write: if false;
     }
   }
 }
