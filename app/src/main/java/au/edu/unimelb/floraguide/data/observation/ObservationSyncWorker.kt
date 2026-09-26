@@ -69,6 +69,10 @@ open class ObservationSyncWorker(
             }
         }
 
+        // MANDATORY: Ensure the job wasn't cancelled and the account didn't change while waiting for Storage
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        check(getUserId() == uid) { "Account changed during deletion." }
+
         (firestore ?: FirebaseFirestore.getInstance()).collection("users").document(uid)
             .collection("observations").document(item.id).delete().await()
     }

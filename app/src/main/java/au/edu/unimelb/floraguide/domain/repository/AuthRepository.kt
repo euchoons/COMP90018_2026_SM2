@@ -25,5 +25,6 @@ interface AuthRepository {
     suspend fun registerWithEmail(email: String, pass: String, displayName: String): Result<UserProfile>
     suspend fun signOut()
     suspend fun continueOffline()
+    suspend fun deleteAccount(): Result<Unit>
     fun getSessionLogs(): List<String>
 }

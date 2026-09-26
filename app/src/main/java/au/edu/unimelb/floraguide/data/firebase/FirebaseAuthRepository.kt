@@ -99,6 +99,23 @@ class FirebaseAuthRepository(
         )
     }
 
+
+    override suspend fun deleteAccount(): Result<Unit> = operations.withLock {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("No authenticated user to delete."))
+        try {
+            user.delete().await()
+            state.value = AuthState.Unauthenticated
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
+                ?: AuthState.Error(error.localizedMessage ?: "Account deletion failed.")
+            Result.failure(error)
+        }
+    }
+
+
     override fun getSessionLogs(): List<String> = kotlinx.coroutines.runBlocking {
         logger.getLogs()
     }
