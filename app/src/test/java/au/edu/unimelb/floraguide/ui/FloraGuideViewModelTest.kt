@@ -264,7 +264,7 @@ class FloraGuideViewModelTest {
         val offSeason = (LocalDate.now().monthValue + 5) % 12 + 1
         every { container.rankCandidates } returns
             RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
-                "Test plant0" to FloweringRecord(setOf(offSeason), "Flowers once a year.", "https://example.org"),
+                "Test plant0" to FloweringRecord("Test plant0", setOf(offSeason), "Flowers once a year.", "https://example.org"),
             ))
         val flower = PredictedOrgan("flower", 0.9)
         coEvery { container.identifyStoredPhoto.invoke(any(), any(), any(), any()) } returns

@@ -177,6 +177,8 @@ data class NearbyContext(
 
 /** A documented flowering statement, e.g. VicFlora's "Flowers summer.", and the months it names. */
 data class FloweringRecord(
+    /** The source's accepted name, which can differ from the candidate's name when matched as a synonym. */
+    val sourceName: String,
     val months: Set<Int>,
     val statement: String,
     val sourceUrl: String,

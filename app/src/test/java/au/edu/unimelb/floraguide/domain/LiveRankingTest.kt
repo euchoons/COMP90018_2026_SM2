@@ -14,9 +14,11 @@ class LiveRankingTest {
         ImagePrediction(species, if (index == 0) 0.9 else 0.1, index + 1)
     }
     // Fixture months for London plane and river red gum, not sourced flowering data.
+    private val plane = predictions[0].species.scientificName
+    private val redGum = predictions[1].species.scientificName
     private val seasonal = RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
-        predictions[0].species.scientificName to FloweringRecord(setOf(12, 1, 2), "Flowers summer.", "https://example.org/a"),
-        predictions[1].species.scientificName to FloweringRecord(setOf(9, 10), "Flowers Sep.–Oct.", "https://example.org/b"),
+        plane to FloweringRecord(plane, setOf(12, 1, 2), "Flowers summer.", "https://example.org/a"),
+        redGum to FloweringRecord(redGum, setOf(9, 10), "Flowers Sep.–Oct.", "https://example.org/b"),
     ))
     private val flower = PredictedOrgan("flower", 0.9)
     private fun context(counts: List<Int>, source: ContextDataSource = ContextDataSource.ALA_LIVE) =
@@ -134,7 +136,9 @@ class LiveRankingTest {
     @Test fun invalidFloweringMonthsAndCaptureMonthsAreRejected() {
         for (months in listOf(emptySet(), setOf(0), setOf(13))) {
             assertThrows(IllegalArgumentException::class.java) {
-                RankSpeciesCandidatesUseCase(floweringRecords = mapOf("Acacia dealbata" to FloweringRecord(months, "", "")))
+                RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
+                    "Acacia dealbata" to FloweringRecord("Acacia dealbata", months, "", ""),
+                ))
             }
         }
         assertThrows(IllegalArgumentException::class.java) { ranker.live(predictions, context(listOf(0, 0)), 13, flower) }

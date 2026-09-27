@@ -19,7 +19,7 @@ class VicFloraFloweringTest {
     @Test fun bundledTableKeepsOnlyDocumentedMonths() {
         val table = parseFloweringTable(tsv)
         assertEquals(
-            FloweringRecord(setOf(12, 1, 2), "Flowers summer.",
+            FloweringRecord("Eucalyptus camaldulensis", setOf(12, 1, 2), "Flowers summer.",
                 "https://vicflora.rbg.vic.gov.au/flora/taxon/b81ef7c6-89a0-45d7-9b2b-cebb16c7033a"),
             table["Eucalyptus camaldulensis"],
         )
@@ -27,6 +27,9 @@ class VicFloraFloweringTest {
         // No VicFlora flowering statement, or no VicFlora taxon: unknown, never "out of season".
         assertNull(table["Acacia dealbata"])
         assertNull(table["Platanus × acerifolia"])
+        // Pl@ntNet's WCVP name reaches VicFlora's row; ALA calls E. oblonga only a pro parte synonym.
+        assertEquals("Callistemon citrinus", table["Melaleuca citrina"]?.sourceName)
+        assertNull(table["Eucalyptus oblonga"])
         // The ranker rejects empty or impossible months, so bad data fails here rather than at app start.
         RankSpeciesCandidatesUseCase(floweringRecords = table)
     }
@@ -40,6 +43,17 @@ class VicFloraFloweringTest {
             PredictedOrgan("flower", 0.9)).associate { it.species.id to it.evidence.seasonMultiplier }
         // Dec.–Mar. is in season, Sep.–Nov. is not, and no statement is unknown.
         assertEquals(mapOf("Acacia implexa" to 1.0, "Acacia mearnsii" to 0.85, "Acacia dealbata" to 1.0), factors)
+    }
+
+    @Test fun wcvpNamesReachTheSourceRecordButNeverReplaceAnotherSpecies() {
+        val table = parseFloweringTable(listOf(
+            "scientific_name\twcvp_name\tstatus\tflowering_months\tsource_text\tsource_url",
+            "Callistemon citrinus\tMelaleuca citrina\tdocumented\t11,12\tFlowers Nov.–Dec\thttps://example.org/a",
+            "Acacia one\tAcacia two\tdocumented\t1\tFlowers Jan.\thttps://example.org/b",
+            "Acacia two\t\tdocumented\t6\tFlowers Jun.\thttps://example.org/c",
+        ).joinToString("\n"))
+        assertEquals("Callistemon citrinus", table["Melaleuca citrina"]?.sourceName)
+        assertEquals(setOf(6), table["Acacia two"]?.months)
     }
 
     @Test fun savedRuleVersionNamesTheBundledRetrievalDate() {

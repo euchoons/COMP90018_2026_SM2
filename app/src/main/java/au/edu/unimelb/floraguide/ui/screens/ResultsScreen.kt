@@ -259,7 +259,10 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
     if (state.isContextLoading) return "Checked when the ALA lookup finishes."
     val evidence = candidate.evidence
     val month = state.analysisDate.month.getDisplayName(TextStyle.FULL, Locale.US)
-    val statement = evidence.flowering?.let { "VicFlora: \"${it.statement}\" " }.orEmpty()
+    val statement = evidence.flowering?.let { record ->
+        val synonym = if (record.sourceName != candidate.species.scientificName) " (as ${record.sourceName})" else ""
+        "VicFlora$synonym: \"${record.statement}\" "
+    }.orEmpty()
     return when (evidence.floweringCheck) {
         FloweringCheck.OUT_OF_SEASON -> "$statement$month is more than a month outside this period."
         FloweringCheck.IN_SEASON -> statement +
