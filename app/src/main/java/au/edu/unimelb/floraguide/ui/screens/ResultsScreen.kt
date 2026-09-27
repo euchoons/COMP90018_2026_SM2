@@ -184,7 +184,7 @@ fun ResultsScreen(
         item {
             InformationCard("Interpretation and privacy",
                 "ALA counts are historical records, not a count of individual plants and not proof of identity. " +
-                    "Zero records do not prove absence. Exact-name queries can miss synonyms. " +
+                    "Zero records do not prove absence. Only exact names and objective synonyms are matched, so other synonyms can be missed. " +
                     "Saving marks your selection as unverified, stores rounded coordinates locally, and does not submit it to ALA.")
         }
     }
@@ -246,11 +246,12 @@ private fun RankingColumn(title: String, candidates: List<RankedCandidate>, modi
 private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): String {
     val count = candidate.nearbyRecordCount
     if (state.imageSource == ImageSource.DEMO_ADAPTER) return "Synthetic demo count: ${count ?: "pending"}"
+    val synonym = state.nearbyContext?.acceptedNamesBySpeciesId?.get(candidate.species.id)?.let { " (as $it)" }.orEmpty()
     return when {
         state.isContextLoading -> "ALA count: pending"
         count == null -> "ALA count: unknown / not available"
-        count == 0 -> "ALA: 0 matching historical records (not proof of absence)"
-        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km"
+        count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
+        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
     }
 }
 /** The documented statement behind the flowering factor, or why none was applied. */

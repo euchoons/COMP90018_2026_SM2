@@ -110,16 +110,35 @@ class AlaOccurrenceClientTest {
         assertEquals(125L, error.elapsedMillis)
     }
 
-    @Test fun exactMatchesOnlyAndMalformedResponsesStayDistinct() {
-        assertEquals("taxon-123", parseTaxonId(taxonMatch(), NAME))
+    @Test fun exactMatchesAndObjectiveSynonymsOnlyAndMalformedResponsesStayDistinct() {
+        assertEquals(AlaTaxon("taxon-123", NAME), parseTaxon(taxonMatch(), NAME))
+        // Same type specimen, so the same species under ALA's accepted name.
+        val objective = taxonMatch().replace(NAME, "Accepted species").replace("}", ",\"synonymType\":\"OBJECTIVE_SYNONYM\"}")
+        assertEquals(AlaTaxon("taxon-123", "Accepted species"), parseTaxon(objective, NAME))
         for (body in listOf(
             "{\"success\":false}", taxonMatch().replace("exactMatch", "fuzzyMatch"),
             taxonMatch().replace("\"species\"", "\"genus\""), taxonMatch().replace(NAME, "Different species"),
-        )) assertNull(parseTaxonId(body, NAME))
+            objective.replace("OBJECTIVE", "SUBJECTIVE"), objective.replace("OBJECTIVE", "PRO_PARTE"),
+            objective.replace("exactMatch", "fuzzyMatch"),
+        )) assertNull(parseTaxon(body, NAME))
         for (body in listOf("not-json", "{}", "{\"success\":\"true\"}", "{\"success\":true}",
             taxonMatch().replace("taxon-123", ""))) {
-            assertThrows(AlaResponseException::class.java) { parseTaxonId(body, NAME) }
+            assertThrows(AlaResponseException::class.java) { parseTaxon(body, NAME) }
         }
+    }
+
+    @Test fun objectiveSynonymIsCountedUnderTheAcceptedSpecies() = runBlocking {
+        val urls = mutableListOf<URL>()
+        val synonym = """{"success":true,"scientificName":"$NAME","rank":"species","matchType":"exactMatch",""" +
+            """"synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"taxon-123"}"""
+        val client = AlaOccurrenceClient(connectionFactory = { url ->
+            urls += url
+            FakeHttpURLConnection(url, 200, if (url.isNameMatch()) synonym else "{\"totalRecords\":7}")
+        }, logger = {})
+        val response = client.countNearbyOccurrencesAsync("Eucalyptus synonymous", LOCATION, 8)
+        assertEquals(7, response.totalRecords)
+        assertEquals(NAME, response.acceptedName)
+        assertTrue(URLDecoder.decode(urls.last().query, "UTF-8").contains("taxonConceptID:\"taxon-123\""))
     }
 
     @Test fun unresolvedTaxonSkipsOccurrencesAndIsNotRetryable() {

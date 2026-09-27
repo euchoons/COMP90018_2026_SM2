@@ -6,12 +6,15 @@ live ranking rule. Do not restore the older location or storage implementation.
 ## Live lookup
 
 - Resolve the candidate's scientific name to an exact, species-level ALA taxon ID
-  before querying occurrences by `taxonConceptID`.
+  before querying occurrences by `taxonConceptID`. An exact match on an objective
+  synonym (same type as the accepted name, e.g. Pl@ntNet's *Melaleuca citrina* for ALA's
+  *Callistemon citrinus*) is the same species, so it resolves to the accepted taxon and
+  the results show the accepted name.
 - A resolved taxon with a successful count of zero is known zero, not absence of
   the species. Positive counts are occurrence records, not population estimates.
-- No match, fuzzy/higher-rank match, or a different accepted name is
-  `UNRESOLVED_TAXON`: no count and no automatic retry. Exact matching is deliberately
-  conservative; validated synonym support remains separate taxonomy work.
+- No match, a fuzzy or higher-rank match, and subjective, pro parte or misapplied
+  synonyms are `UNRESOLVED_TAXON`: no count and no automatic retry. Those can denote a
+  different plant, so matching stays conservative there.
 - Malformed responses and network/HTTP failures remain distinct from unresolved
   names. Both requests use the same cancellation, size limits, redirect policy,
   timeouts and repository retry budget. A retried attempt starts with name matching.
@@ -28,8 +31,8 @@ The trade-off is losing usable partial evidence rather than favouring candidates
 whose lookups happened to succeed. These constants are provisional, not optimised.
 
 Unresolved names count as missing, so a single unresolved candidate disables geographic
-support for the whole capture. A synonym, an infraspecific name or a species outside the
-Australian name index among the five candidates is enough to disable geographic support,
+support for the whole capture. A subjective or pro parte synonym, an infraspecific name or a
+species outside the Australian name index among the five candidates is enough to disable it,
 which can make the boost rare in practice.
 
 PR #31 deliberately limits both displayed and reranked candidates to the first five
@@ -53,8 +56,7 @@ not validated scientific thresholds. A live capture never uses campus demo coord
 - A candidate drops to 0.85 only when all of its documented flowering months are more
   than one month from the capture month (the device-local date of the shutter press).
   In season, within a month of it, or absent from the flowering table all stay at 1.0.
-- The table is keyed by exact scientific name, like ALA; a synonym is unknown, not out
-  of season.
+- The table is keyed by exact scientific name; a synonym is unknown, not out of season.
 
 Unlike geographic support, this cue is per candidate. Unknown counts as in season, so
 partial coverage cannot favour species that happen to have data: a listed species can only

@@ -168,6 +168,8 @@ data class NearbyContext(
     val httpStatusCodes: Set<Int> = emptySet(),
     val warning: String? = null,
     val failuresBySpeciesId: Map<String, String> = emptyMap(),
+    /** ALA's accepted name where a candidate's name was counted as an objective synonym. */
+    val acceptedNamesBySpeciesId: Map<String, String> = emptyMap(),
     val attemptsBySpeciesId: Map<String, Int> = emptyMap(),
     val queriedAt: Instant? = null,
     val retryNotBefore: Instant? = null,

@@ -97,6 +97,16 @@ class ReliableAlaSpeciesContextRepositoryTest {
         assertTrue(result.warning.orEmpty().contains("1 taxon"))
     }
 
+    @Test fun synonymCountsNameTheAcceptedSpeciesOnlyWhenItDiffers() = runBlocking {
+        val result = lookup(object : AlaOccurrenceSource {
+            override suspend fun countNearbyOccurrencesAsync(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse =
+                AlaOccurrenceResponse(3, 200, 10,
+                    acceptedName = if (scientificName == candidates[0].scientificName) "Accepted name" else scientificName)
+        })
+        assertEquals(ContextDataSource.ALA_LIVE, result.source)
+        assertEquals(mapOf(candidates[0].id to "Accepted name"), result.acceptedNamesBySpeciesId)
+    }
+
     @Test fun oversizedRetryAfterIsReportedWithoutEarlyRetry() = runBlocking {
         val result = lookup(object : AlaOccurrenceSource {
             override suspend fun countNearbyOccurrencesAsync(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse =

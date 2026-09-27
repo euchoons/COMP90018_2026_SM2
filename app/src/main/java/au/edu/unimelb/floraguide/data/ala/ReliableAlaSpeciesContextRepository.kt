@@ -84,6 +84,10 @@ class ReliableAlaSpeciesContextRepository(
                 if (unresolved > 0) "$warning $unresolved taxon name(s) unresolved; not treated as zero records." else warning
             },
             failuresBySpeciesId = outcomes.mapNotNull { it.failure?.let { reason -> it.id to reason } }.toMap(),
+            acceptedNamesBySpeciesId = unique.zip(outcomes).mapNotNull { (species, outcome) ->
+                outcome.acceptedName?.takeUnless { it.equals(species.scientificName, ignoreCase = true) }
+                    ?.let { species.id to it }
+            }.toMap(),
             attemptsBySpeciesId = outcomes.associate { it.id to it.attempts },
             queriedAt = queriedAt,
             retryNotBefore = outcomes.mapNotNull { it.retryNotBefore }.maxOrNull(),
@@ -106,6 +110,7 @@ class ReliableAlaSpeciesContextRepository(
                         statuses += response.httpStatus
                         return@withTimeoutOrNull Outcome(
                             species.id, response.totalRecords, attempts, statuses.toSet(),
+                            acceptedName = response.acceptedName,
                         )
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -145,5 +150,6 @@ class ReliableAlaSpeciesContextRepository(
         val statuses: Set<Int>,
         val failure: String? = null,
         val retryNotBefore: Instant? = null,
+        val acceptedName: String? = null,
     )
 }
