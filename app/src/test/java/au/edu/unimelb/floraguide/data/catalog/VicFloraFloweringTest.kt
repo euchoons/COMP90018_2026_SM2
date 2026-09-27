@@ -1,5 +1,7 @@
 package au.edu.unimelb.floraguide.data.catalog
 
+import au.edu.unimelb.floraguide.data.plantnet.parsePlantNetResults
+import au.edu.unimelb.floraguide.data.plantnet.parsePredictedOrgan
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.FloweringRecord
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
@@ -43,6 +45,15 @@ class VicFloraFloweringTest {
             PredictedOrgan("flower", 0.9)).associate { it.species.id to it.evidence.seasonMultiplier }
         // Dec.–Mar. is in season, Sep.–Nov. is not, and no statement is unknown.
         assertEquals(mapOf("Acacia implexa" to 1.0, "Acacia mearnsii" to 0.85, "Acacia dealbata" to 1.0), factors)
+    }
+
+    @Test fun liveBottlebrushIdentificationFindsVicFloraUnderItsWcvpName() {
+        // Recorded 2026-09-27 for iNaturalist observation 58486559 (photo: Paul Whitington, CC BY).
+        val body = requireNotNull(javaClass.classLoader?.getResource("plantnet/identify-melaleuca-citrina.json")).readText()
+        val top = parsePlantNetResults(body, maxResults = 8).first()
+        assertEquals("Melaleuca citrina", top.scientificName)
+        assertEquals("flower", parsePredictedOrgan(body)?.organ)
+        assertEquals("Callistemon citrinus", parseFloweringTable(tsv)[top.scientificName]?.sourceName)
     }
 
     @Test fun wcvpNamesReachTheSourceRecordButNeverReplaceAnotherSpecies() {

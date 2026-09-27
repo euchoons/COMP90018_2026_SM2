@@ -93,7 +93,13 @@ species under another name. A pro parte synonym covers only part of the plants o
 that name, and a fuzzy match is not a confirmed name. The ALA lookup applies the same rule,
 so Pl@ntNet's *Melaleuca citrina* is now counted as ALA's *Callistemon citrinus* instead of
 being unresolved, which previously withheld geographic support from the whole capture.
-Whether Pl@ntNet returns these exact names has not been confirmed with a live identification.
+
+One live identification on 2026-09-27 confirmed this. A crimson bottlebrush flower photo
+(iNaturalist observation 58486559, photo by Paul Whitington, CC BY) returned *Melaleuca
+citrina* first, then *Melaleuca rugulosa* and *Melaleuca viminalis*. ALA files all three
+under *Callistemon* as objective synonyms, so three of the five candidates used to be
+unresolved and the photo could never receive geographic support; now all five resolve. The
+response is kept as a test fixture.
 
 ## Location
 

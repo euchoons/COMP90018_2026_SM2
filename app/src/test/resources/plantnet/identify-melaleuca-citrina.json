@@ -1,0 +1,265 @@
+{
+  "query": {
+    "project": "all",
+    "images": [
+      "https://inaturalist-open-data.s3.amazonaws.com/photos/93380643/large.jpg"
+    ],
+    "organs": [
+      "auto"
+    ],
+    "includeRelatedImages": false,
+    "noReject": false,
+    "type": null
+  },
+  "predictedOrgans": [
+    {
+      "image": "https://inaturalist-open-data.s3.amazonaws.com/photos/93380643/large.jpg",
+      "organ": "flower",
+      "score": 0.79244
+    }
+  ],
+  "language": "en",
+  "preferedReferential": "k-world-flora",
+  "bestMatch": "Melaleuca citrina (Curtis) Dum.Cours.",
+  "results": [
+    {
+      "score": 0.28397,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca citrina",
+        "scientificNameAuthorship": "(Curtis) Dum.Cours.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Crimson bottlebrush",
+          "Bottlebrush",
+          "Callistemon"
+        ],
+        "scientificName": "Melaleuca citrina (Curtis) Dum.Cours."
+      },
+      "gbif": {
+        "id": "5415487"
+      },
+      "powo": {
+        "id": "77108602-1"
+      }
+    },
+    {
+      "score": 0.22834,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca rugulosa",
+        "scientificNameAuthorship": "(Link) Craven",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Bottlebrush",
+          "Scarlet Bottlebrush"
+        ],
+        "scientificName": "Melaleuca rugulosa (Link) Craven"
+      },
+      "gbif": {
+        "id": "5415477"
+      },
+      "powo": {
+        "id": "77085525-1"
+      }
+    },
+    {
+      "score": 0.0807,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca viminalis",
+        "scientificNameAuthorship": "(Sol. ex Gaertn.) Byrnes",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Red bottlebrush",
+          "Weeping bottlebrush",
+          "Dwarf Bottlebrush"
+        ],
+        "scientificName": "Melaleuca viminalis (Sol. ex Gaertn.) Byrnes"
+      },
+      "gbif": {
+        "id": "5415476"
+      },
+      "powo": {
+        "id": "914221-1"
+      },
+      "iucn": {
+        "id": "177374672",
+        "category": "LC"
+      }
+    },
+    {
+      "score": 0.00719,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca viridiflora",
+        "scientificNameAuthorship": "Sol. ex Gaertn.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Broad leaved paperbark",
+          "Broadleaf paperbark",
+          "Broadleaf teatree"
+        ],
+        "scientificName": "Melaleuca viridiflora Sol. ex Gaertn."
+      },
+      "gbif": {
+        "id": "5416109"
+      },
+      "powo": {
+        "id": "598143-1"
+      },
+      "iucn": {
+        "id": "49278176",
+        "category": "LC"
+      }
+    },
+    {
+      "score": 0.00306,
+      "species": {
+        "scientificNameWithoutAuthor": "Metrosideros polymorpha",
+        "scientificNameAuthorship": "Gaudich.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Metrosideros",
+          "scientificNameAuthorship": "",
+          "scientificName": "Metrosideros"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Ohi'a lehua",
+          "'ohi'a lehua",
+          "Ohi'a"
+        ],
+        "scientificName": "Metrosideros polymorpha Gaudich."
+      },
+      "gbif": {
+        "id": "3185315"
+      },
+      "powo": {
+        "id": "598292-1"
+      },
+      "iucn": {
+        "id": "62779",
+        "category": "VU"
+      }
+    },
+    {
+      "score": 0.00239,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca brachyandra",
+        "scientificNameAuthorship": "(Lindl.) Craven",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Prickly bottlebrush",
+          "Lemon bottlebrush",
+          "Scarlet bottlebrush"
+        ],
+        "scientificName": "Melaleuca brachyandra (Lindl.) Craven"
+      },
+      "gbif": {
+        "id": "5415485"
+      },
+      "powo": {
+        "id": "77085505-1"
+      }
+    },
+    {
+      "score": 0.00188,
+      "species": {
+        "scientificNameWithoutAuthor": "Melaleuca comboynensis",
+        "scientificNameAuthorship": "(Cheel) Craven",
+        "genus": {
+          "scientificNameWithoutAuthor": "Melaleuca",
+          "scientificNameAuthorship": "",
+          "scientificName": "Melaleuca"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Myrtaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Myrtaceae"
+        },
+        "commonNames": [
+          "Cliff bottlebrush"
+        ],
+        "scientificName": "Melaleuca comboynensis (Cheel) Craven"
+      },
+      "gbif": {
+        "id": "5415500"
+      },
+      "powo": {
+        "id": "77085507-1"
+      }
+    },
+    {
+      "score": 0.0017,
+      "species": {
+        "scientificNameWithoutAuthor": "Calliandra dysantha",
+        "scientificNameAuthorship": "Benth.",
+        "genus": {
+          "scientificNameWithoutAuthor": "Calliandra",
+          "scientificNameAuthorship": "",
+          "scientificName": "Calliandra"
+        },
+        "family": {
+          "scientificNameWithoutAuthor": "Fabaceae",
+          "scientificNameAuthorship": "",
+          "scientificName": "Fabaceae"
+        },
+        "commonNames": [],
+        "scientificName": "Calliandra dysantha Benth."
+      },
+      "gbif": {
+        "id": "2982349"
+      },
+      "powo": {
+        "id": "42143-2"
+      }
+    }
+  ],
+  "version": "2026-03-20 (7.5)",
+  "remainingIdentificationRequests": 499
+}
