@@ -1,7 +1,7 @@
 # Fusion data sources (#16, #17)
 
-Which data could back the live context cues, what was measured, and what was adopted. All
-measurements were taken on 2026-09-25. ALA queries use the app's Parkville point
+Which data could back the live context cues, what was measured, and what was adopted.
+Measurements were taken on 2026-09-25, except the name check (2026-09-27). ALA queries use the app's Parkville point
 (-37.7963, 144.9614) and its 8 km radius. The ranking rules themselves are in the
 [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
@@ -14,6 +14,7 @@ measurements were taken on 2026-09-25. ALA queries use the app's Parkville point
 | ALA records per month | Season | Rejected | Single survey days dominate the monthly counts |
 | ALA `reproductiveCondition` | Season | Rejected | 98% of records leave it empty |
 | AusTraits `flowering_time` | Season | Not used yet | Combines many datasets and regions; Victorian applicability would need checking per source |
+| WCVP via GBIF, checked by ALA | Names | Adopted | Pl@ntNet appears to use WCVP names; aliases 2 VicFlora names that both checklists treat as the same species |
 | City of Melbourne tree inventory | Location | Not adopted | Council trees only; none inside the campus |
 | VicFlora habitat prose | Habitat | Not adopted (#17 decision) | Describes associations, not the app's four categories |
 
@@ -65,6 +66,34 @@ checking per source. VicFlora was sufficient for the initial scope.
 |---|---|---|
 | Boost in-season species, only when all five candidates have data (the ALA pattern) | Unknown species are never favoured against, but a small table seldom covers all five world-flora candidates, so the cue would rarely apply | Rejected |
 | Lower documented mismatches only, per candidate | Unknown counts as in season, so partial coverage cannot favour species that have data; bounded at 0.85 | Adopted |
+
+## Names (#18)
+
+Pl@ntNet and VicFlora name some species differently. All eight names in a recorded Pl@ntNet
+response are accepted names in Kew's World Checklist of Vascular Plants (WCVP), with the same
+authorship, so Pl@ntNet appears to follow WCVP; VicFlora follows the Australian Plant Census.
+The 75 documented VicFlora names were checked against WCVP through GBIF's copy (dataset
+`f382f0ce-323a-4091-bb9f-add557f3a9a2`), because POWO's own API blocks scripted access:
+
+- 71 are accepted in WCVP under the same name, so both sides agree.
+- 4 are WCVP synonyms of a single accepted species, the name Pl@ntNet would return instead.
+
+ALA's name matching, which follows the same census as VicFlora, decides whether each WCVP
+name really is the same plant:
+
+| VicFlora name | WCVP name | ALA's view of the WCVP name | Alias |
+|---|---|---|---|
+| *Callistemon citrinus* | *Melaleuca citrina* | Exact match, objective synonym | Kept |
+| *Callistemon sieberi* | *Melaleuca paludicola* | Exact match, objective synonym | Kept |
+| *Rhagodia parabolica* | *Chenopodium parabolicum* | Fuzzy match only | Dropped |
+| *Eucalyptus globoidea* | *Eucalyptus oblonga* | Pro parte synonym | Dropped |
+
+An objective synonym shares its type specimen with the accepted name, so it is the same
+species under another name. A pro parte synonym covers only part of the plants once given
+that name, and a fuzzy match is not a confirmed name. The ALA lookup applies the same rule,
+so Pl@ntNet's *Melaleuca citrina* is now counted as ALA's *Callistemon citrinus* instead of
+being unresolved, which previously withheld geographic support from the whole capture.
+Whether Pl@ntNet returns these exact names has not been confirmed with a live identification.
 
 ## Location
 
