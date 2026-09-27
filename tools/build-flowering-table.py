@@ -3,9 +3,13 @@
 
 Scope: the 100 plant species most recorded in ALA within 8 km of Parkville, plus the guided-demo
 species. Months come only from a VicFlora flowering statement that parses completely; any other
-wording is kept as unparsed or missing, which the app treats as unknown (neutral). Stdlib only:
+wording is kept as unparsed or missing, which the app treats as unknown (neutral). Pl@ntNet
+appears to use WCVP names, so a VicFlora name that WCVP files only as a synonym of one species
+gets that accepted name as an alias, provided ALA (which, like VicFlora, follows the Australian
+Plant Census) confirms it as an exact objective synonym of the same species. Stdlib only:
 
-    python3 tools/build-flowering-table.py
+    python3 tools/build-flowering-table.py          # everything
+    python3 tools/build-flowering-table.py --names  # only the WCVP aliases of the existing table
 """
 import datetime
 import html
@@ -19,7 +23,10 @@ import urllib.request
 
 OUT = "app/src/main/assets/vicflora-flowering.tsv"
 ALA = "https://api.ala.org.au/occurrences/occurrences/search"
+ALA_NAMES = "https://api.ala.org.au/namematching/api/searchByClassification"
 VICFLORA = "https://vicflora.rbg.vic.gov.au/graphql"
+GBIF = "https://api.gbif.org/v1/species"
+WCVP = "f382f0ce-323a-4091-bb9f-add557f3a9a2"  # Kew's World Checklist of Vascular Plants on GBIF
 DEMO_SPECIES = [
     "Platanus × acerifolia", "Eucalyptus camaldulensis", "Acacia melanoxylon", "Acacia dealbata",
     "Trifolium repens", "Taraxacum officinale", "Callistemon citrinus", "Banksia integrifolia",
@@ -31,8 +38,9 @@ BOUNDS = {m: (n, n) for m, n in MONTHS.items()} | {
     "spring": (9, 11), "summer": (12, 2), "autumn": (3, 5), "winter": (6, 8),
 }
 ALL_YEAR = re.compile(r"\b(all year|throughout the year|most of (the )?year)\b")
-COLUMNS = ["scientific_name", "status", "flowering_months", "source_text", "source_url",
+COLUMNS = ["scientific_name", "wcvp_name", "status", "flowering_months", "source_text", "source_url",
            "profile_modified", "event", "region", "license", "retrieved"]
+SYNONYMS = {"SYNONYM", "HOMOTYPIC_SYNONYM", "HETEROTYPIC_SYNONYM"}
 
 
 def request(url, body=None):
@@ -84,11 +92,43 @@ def flowering_statement(profile):
     return statements[-1] if statements else None
 
 
-def row(name, retrieved):
+def accepted_alias(usages, canonical_of):
+    """The one species WCVP files a name under as a synonym; blank if WCVP accepts it or is ambiguous."""
+    if any(u["taxonomicStatus"] == "ACCEPTED" for u in usages):
+        return ""
+    names = {canonical_of(u["acceptedKey"]) for u in usages
+             if u["taxonomicStatus"] in SYNONYMS and u.get("acceptedKey")}
+    return names.pop() if len(names) == 1 else ""
+
+
+def same_species_in_ala(alias, name):
+    """The app's own rule: ALA matches the alias exactly as an objective synonym of this species."""
+    match = request(f"{ALA_NAMES}?{urllib.parse.urlencode({'scientificName': alias})}")
+    return (match.get("success") is True and match.get("matchType") == "exactMatch"
+            and match.get("rank") == "species" and match.get("synonymType") == "OBJECTIVE_SYNONYM"
+            and match.get("scientificName") == name)
+
+
+def wcvp_alias(name):
+    """The WCVP name Pl@ntNet would use instead of VicFlora's, when both checklists agree it is this species."""
+    time.sleep(0.2)
+    query = urllib.parse.urlencode({"datasetKey": WCVP, "q": name, "rank": "SPECIES", "limit": 50})
+    usages = [u for u in request(f"{GBIF}/search?{query}")["results"] if u.get("canonicalName") == name]
+    alias = accepted_alias(usages, lambda key: request(f"{GBIF}/{key}")["canonicalName"])
+    # Fuzzy, pro parte or subjective in the Australian census: possibly another plant.
+    return alias if alias and same_species_in_ala(alias, name) else ""
+
+
+def vicflora_concept(name):
+    """The ID of VicFlora's accepted species with exactly this name, if there is one."""
     docs = vicflora('{ search(input: {q: %s, rows: 5}) { docs { id scientificName taxonRank taxonomicStatus } } }'
                     % json.dumps(f'scientific_name:"{name}"'))["search"]["docs"]
-    concept = next((d["id"] for d in docs if d["scientificName"] == name
-                    and d["taxonRank"] == "species" and d["taxonomicStatus"] == "accepted"), None)
+    return next((d["id"] for d in docs if d["scientificName"] == name
+                 and d["taxonRank"] == "species" and d["taxonomicStatus"] == "accepted"), None)
+
+
+def row(name, retrieved):
+    concept = vicflora_concept(name)
     status, months, statement, url, modified = "not_in_vicflora", None, "", "", ""
     if concept:
         url = f"https://vicflora.rbg.vic.gov.au/flora/taxon/{concept}"
@@ -98,7 +138,8 @@ def row(name, retrieved):
         statement = flowering_statement(profile.get("profile") or "") or ""
         months = months_of(statement) if statement else None
         status = "documented" if months else "unparsed" if statement else "no_statement"
-    return [name, status, ",".join(map(str, sorted(months or []))), statement, url, modified,
+    alias = wcvp_alias(name) if status == "documented" else ""
+    return [name, alias, status, ",".join(map(str, sorted(months or []))), statement, url, modified,
             "flowering", "Victoria", "CC BY 4.0, Royal Botanic Gardens Victoria (VicFlora)", retrieved]
 
 
@@ -107,11 +148,30 @@ def main():
               "radius": 8, "pageSize": 0, "facets": "species", "flimit": 100, "fsort": "count"}
     facet = request(ALA + "?" + urllib.parse.urlencode(params, doseq=True))["facetResults"][0]["fieldResult"]
     retrieved = datetime.date.today().isoformat()
-    rows = [row(name, retrieved) for name in sorted(set([f["label"] for f in facet] + DEMO_SPECIES))]
+    write([row(name, retrieved) for name in sorted(set([f["label"] for f in facet] + DEMO_SPECIES))])
+
+
+def refresh_names():
+    """Recompute only the WCVP aliases of the existing table, e.g. while VicFlora is unavailable."""
+    with open(OUT, encoding="utf-8") as table:
+        header, *lines = [line.rstrip("\n").split("\t") for line in table]
+    rows = [[dict(zip(header, line)).get(column, "") for column in COLUMNS] for line in lines]
+    for r in rows:
+        r[1] = wcvp_alias(r[0]) if r[2] == "documented" else ""
+    write(rows)
+
+
+def write(rows):
+    names, aliases = {r[0] for r in rows}, [r[1] for r in rows if r[1]]
+    for r in rows:
+        # An alias must never take over another species' own row, nor stand for two species.
+        if r[1] in names or aliases.count(r[1]) > 1:
+            r[1] = ""
     with open(OUT, "w", encoding="utf-8", newline="\n") as out:
         out.writelines("\t".join(r) + "\n" for r in [COLUMNS] + rows)
     for status in ("documented", "unparsed", "no_statement", "not_in_vicflora"):
-        print(f"{status}: {sum(r[1] == status for r in rows)}", file=sys.stderr)
+        print(f"{status}: {sum(r[2] == status for r in rows)}", file=sys.stderr)
+    print("wcvp aliases:", ", ".join(f"{r[0]} -> {r[1]}" for r in rows if r[1]), file=sys.stderr)
 
 
 def check():
@@ -127,8 +187,14 @@ def check():
     assert months_of("Flowers 5-merous") is None
     assert flowering_statement("<p>Flowers 5-merous, long description of the petals and sepals and more. "
                                "Pod straight. Flowers Aug.–Oct.</p>") == "Flowers Aug.–Oct."
+    canonical = {1: "Melaleuca citrina", 2: "Chenopodium parabolicum"}.get
+    usage = lambda status, key=None: {"taxonomicStatus": status, "acceptedKey": key}
+    assert accepted_alias([usage("SYNONYM", 1)], canonical) == "Melaleuca citrina"
+    assert accepted_alias([usage("ACCEPTED"), usage("SYNONYM", 2)], canonical) == ""  # an accepted homonym
+    assert accepted_alias([usage("SYNONYM", 1), usage("SYNONYM", 2)], canonical) == ""  # ambiguous
+    assert accepted_alias([usage("MISAPPLIED", 2)], canonical) == ""
 
 
 if __name__ == "__main__":
     check()
-    main()
+    refresh_names() if "--names" in sys.argv[1:] else main()
