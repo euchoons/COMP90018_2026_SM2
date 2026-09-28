@@ -30,6 +30,7 @@ class FirebasePhotoStorage(
     override suspend fun uploadPhoto(localPath: String): StoredPhoto {
         val uid = ensureUser()
         return withContext(Dispatchers.IO) {
+            cleanStaleCache()
             val file = File(localPath)
             require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
             require(file.length() in 1L..MAX_IMAGE_BYTES) {
@@ -39,7 +40,6 @@ class FirebasePhotoStorage(
             val digest = sha256(file)
             check(ensureUser() == uid) { "Account changed before upload." }
             val extension = if (contentType == "image/png") "png" else "jpg"
-            // Content-based names avoid duplicate objects when retrying the same photo.
             val reference = storage.reference.child("plant_photos/$uid/$digest.$extension")
             val metadata = StorageMetadata.Builder()
                 .setContentType(contentType)
@@ -68,10 +68,10 @@ class FirebasePhotoStorage(
     }
 
     override suspend fun downloadPhoto(photo: StoredPhoto): File {
-        // Cleanup surrounds withContext so cancellation at dispatcher hand-off also cleans up.
         var temporary: File? = null
         try {
             return withContext(Dispatchers.IO) {
+                cleanStaleCache()
                 val uid = ensureUser()
                 val reference = storage.getReferenceFromUrl(photo.gsUri)
                 require(reference.bucket == storage.reference.bucket) { "Unexpected Storage bucket." }
@@ -110,6 +110,41 @@ class FirebasePhotoStorage(
         } catch (error: Exception) {
             temporary?.delete()
             throw error
+        }
+    }
+
+    override suspend fun deletePhoto(gsUri: String) {
+        if (gsUri.isBlank()) return
+        val uid = ensureUser()
+        withContext(Dispatchers.IO) {
+            val reference = storage.getReferenceFromUrl(gsUri)
+            require(reference.bucket == storage.reference.bucket) { "Unexpected Storage bucket." }
+            require(reference.path.trimStart('/').startsWith("plant_photos/$uid/")) {
+                "This photo does not belong to the signed-in user."
+            }
+            try {
+                reference.delete().await()
+                Log.i(TAG, "stage=delete outcome=success uri=$gsUri")
+            } catch (error: StorageException) {
+                if (error.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND) {
+                    Log.i(TAG, "stage=delete outcome=already_deleted uri=$gsUri")
+                    return@withContext
+                }
+                throw storageError("Delete photo", error)
+            }
+        }
+    }
+
+    /** Evicts temporary files older than 1 hour left behind by crashed processes. */
+    private fun cleanStaleCache() {
+        runCatching {
+            if (!cacheDirectory.exists()) return
+            val threshold = System.currentTimeMillis() - 3_600_000L
+            cacheDirectory.listFiles()?.forEach { file ->
+                if (file.isFile && file.lastModified() < threshold) {
+                    file.delete()
+                }
+            }
         }
     }
 
