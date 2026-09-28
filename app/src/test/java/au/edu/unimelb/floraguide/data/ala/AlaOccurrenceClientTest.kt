@@ -200,7 +200,31 @@ class AlaOccurrenceClientTest {
             } finally { job.cancelAndJoin() }
         }
     }
+    @Test fun `validates and extracts taxon id for exact matches, canonical matches, and synonyms`() {
+        val exactMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"exactMatch","taxonConceptID":"taxon-123"}"""
+        val synonymMatch = """{"success":true,"scientificName":"Eucalyptus rostrata","rank":"species","matchType":"synonym","taxonConceptID":"taxon-synonym","acceptedConceptID":"taxon-123"}"""
+        val synonymMissingAccepted = """{"success":true,"scientificName":"Eucalyptus rostrata","rank":"species","matchType":"synonym","taxonConceptID":"taxon-123"}"""
+        val canonicalMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis Dehnh.","rank":"species","matchType":"canonicalMatch","taxonConceptID":"taxon-123"}"""
 
+        assertEquals("taxon-123", parseTaxonId(exactMatch))
+        assertEquals("taxon-123", parseTaxonId(synonymMatch))
+        assertEquals("taxon-123", parseTaxonId(synonymMissingAccepted)) // Falls back gracefully
+        assertEquals("taxon-123", parseTaxonId(canonicalMatch))
+    }
+
+    @Test fun `rejects higher ranks and fuzzy taxonomy matches`() {
+        val genusMatch = """{"success":true,"scientificName":"Eucalyptus","rank":"genus","matchType":"exactMatch","taxonConceptID":"taxon-genus"}"""
+        val fuzzyMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"fuzzyMatch","taxonConceptID":"taxon-123"}"""
+
+        assertNull(parseTaxonId(genusMatch))
+        assertNull(parseTaxonId(fuzzyMatch))
+    }
+
+    @Test fun `malformed JSON structure throws AlaResponseException`() {
+        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}", "{\"success\":true}")) {
+            assertThrows(AlaResponseException::class.java) { parseTaxonId(body) }
+        }
+    }
     private fun URL.isNameMatch() = path.endsWith("searchByClassification")
     private fun taxonMatch() = """{"success":true,"scientificName":"$NAME","rank":"species","matchType":"exactMatch","taxonConceptID":"taxon-123"}"""
 

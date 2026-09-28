@@ -27,7 +27,12 @@ class AppContainer(context: Context) {
         FloraGuideDatabase.getInstance(appContext)
     }
 
-    val authRepository: AuthRepository = FirebaseAuthRepository()
+    // val authRepository: AuthRepository = FirebaseAuthRepository()
+
+    // In app/src/main/java/au/edu/unimelb/floraguide/di/AppContainer.kt
+    val authRepository: AuthRepository by lazy {
+        FirebaseAuthRepository(context = appContext)
+    }
 
     val isPlantNetConfigured: Boolean = BuildConfig.PLANTNET_API_KEY.isNotBlank()
     val imageClassifier: ImageClassifier = PlantNetImageClassifier(
