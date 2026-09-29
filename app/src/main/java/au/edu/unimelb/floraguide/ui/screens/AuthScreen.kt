@@ -23,8 +23,11 @@ fun AuthScreen(
     onImportLocal: () -> Unit,
     onRetrySync: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
     modifier: Modifier = Modifier,
+
 ) {
+    var confirmAccountDeletion by remember { mutableStateOf(false) }
     var isRegistering by rememberSaveable { mutableStateOf(false) }
     var email by rememberSaveable { mutableStateOf("") }
     // Passwords must not be persisted in the saved-instance-state bundle.
@@ -35,6 +38,7 @@ fun AuthScreen(
     val user = (authState as? AuthState.Authenticated)?.user
     val upgrading = user?.isAnonymous == true
     val registering = upgrading || isRegistering
+
 
     if (confirmImport) {
         AlertDialog(
@@ -53,6 +57,21 @@ fun AuthScreen(
             text = { Text("Without upgrading first, you cannot sign back into this anonymous account. Its observations will not be shown under a different account.") },
             confirmButton = { TextButton(onClick = { confirmGuestSignOut = false; onSignOut() }) { Text("Sign out") } },
             dismissButton = { TextButton(onClick = { confirmGuestSignOut = false }) { Text("Keep guest") } },
+        )
+    }
+
+    if (confirmAccountDeletion) {
+        AlertDialog(
+            onDismissRequest = { confirmAccountDeletion = false },
+            title = { Text("Delete Account?") },
+            text = { Text("This will permanently delete your account, all saved observations, and cloud photos. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmAccountDeletion = false
+                    onDeleteAccount()
+                }) { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmAccountDeletion = false }) { Text("Cancel") } }
         )
     }
 
@@ -78,12 +97,31 @@ fun AuthScreen(
                 Text("Import local guest observations")
             }
             OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Retry cloud sync") }
+
+            OutlinedButton(
+                onClick = { confirmAccountDeletion = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Delete account and all data")
+            }
+
             if (upgrading) {
                 Text("Create an account below to keep this guest's observations under the same account.")
             } else {
                 Button(onClick = onSignOut) { Text("Sign out") }
                 return@Column
             }
+//            OutlinedButton(
+//                onClick = { confirmAccountDeletion = true },
+//                modifier = Modifier.fillMaxWidth(),
+//                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+//            ) {
+//                Text("Delete account and all data")
+//            }
+
+
         }
         if (authState == AuthState.OfflineGuest) {
             Text("Local guest mode · the guided demo works without an internet connection.")

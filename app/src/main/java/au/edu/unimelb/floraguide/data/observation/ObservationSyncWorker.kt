@@ -61,11 +61,9 @@ open class ObservationSyncWorker(
         // Clean up Cloud Storage image if present
         item.remotePhotoUrl?.let { cloudUri ->
             if (cloudUri.startsWith("gs://")) {
-                runCatching {
-                    FirebasePhotoStorage(applicationContext, expectedUserId = uid).deletePhoto(cloudUri)
-                }.onFailure { error ->
-                    Log.w("ObservationSyncWorker", "Failed to delete remote photo $cloudUri: ${error.message}")
-                }
+                // FIX: Remove runCatching wrapper. Propagating exceptions lets the worker
+                // safely reschedule a retry task on a transient storage network drop.
+                FirebasePhotoStorage(applicationContext, expectedUserId = uid).deletePhoto(cloudUri)
             }
         }
 
@@ -76,6 +74,7 @@ open class ObservationSyncWorker(
         (firestore ?: FirebaseFirestore.getInstance()).collection("users").document(uid)
             .collection("observations").document(item.id).delete().await()
     }
+
 
     override suspend fun doWork(): Result {
         val uid = inputData.getString(USER_ID) ?: return Result.failure()
