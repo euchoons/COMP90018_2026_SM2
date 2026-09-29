@@ -25,6 +25,10 @@ import com.google.firebase.storage.StorageReference
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import org.junit.After
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertTrue
+import io.mockk.every
+import android.content.Context
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -261,5 +265,46 @@ class FirebaseAuthRepositoryTest {
 
         val logs = repository.getSessionLogs()
         assertTrue(logs.any { it.contains("DELETE_ACCOUNT") && it.contains("FAILURE") })
+    }
+
+
+
+    @Test
+    fun `auth logs strictly redact emails and hash UIDs to prevent PII leakage`() = runTest {
+        val rawEmail = "student.target@student.unimelb.edu.au"
+        val rawUid = "plain-text-uid-12345"
+
+        // Create a relaxed mock for the Context
+        //val context = mockk<Context>(relaxed = true)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        // 1. Force Firebase to throw an exception that leaks the email in the message
+        every { auth.signInWithEmailAndPassword(any(), any()) } returns Tasks.forException(
+            Exception("Firebase Auth failed for $rawEmail: User disabled")
+        )
+
+        val guestUser = user(rawUid, true)
+        every { auth.currentUser } returns guestUser
+
+        // Pass the mocked context alongside the auth instance
+        val repository = FirebaseAuthRepository(context, auth)
+
+        // 2. Trigger the failure to generate the internal log
+        repository.signInWithEmail(rawEmail, "password")
+
+        val logs = repository.getSessionLogs()
+
+        // 3. Assert absolute absence of raw identifiers in the resulting dataset
+        assertTrue(
+            "Logs must not contain the raw email string",
+            logs.none { it.contains(rawEmail) }
+        )
+        assertTrue(
+            "Logs must not contain the raw UID string",
+            logs.none { it.contains(rawUid) }
+        )
+        assertTrue(
+            "Exceptions must be masked with the redaction placeholder",
+            logs.any { it.contains("[REDACTED_EMAIL]") }
+        )
     }
 }

@@ -20,6 +20,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import java.security.MessageDigest
 
 class FirebaseAuthRepository(
     private val context: Context,
@@ -180,7 +181,7 @@ class FirebaseAuthRepository(
             )
             throw cancelled
         } catch (error: Exception) {
-            val failMsg = error.localizedMessage ?: "Authentication failed."
+            val failMsg = sanitizeAuthError(error)
             state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
                 ?: AuthState.Error(failMsg)
             logger.logEvent(
@@ -196,5 +197,26 @@ class FirebaseAuthRepository(
     private fun currentState(): AuthState = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
         ?: AuthState.Unauthenticated
 
-    private fun FirebaseUser.toDomain() = UserProfile(uid, email, displayName, isAnonymous)
+    //private fun FirebaseUser.toDomain() = UserProfile(uid, email, displayName, isAnonymous)
+
+    // Utility function to one-way hash identifiers for logs
+    private fun hashIdentifier(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }.take(8) // Keep it short for logs
+    }
+
+    // Ensure your user mapping redacts sensitive info before any logging
+    private fun FirebaseUser.toDomain() = UserProfile(
+        uid = uid,
+        email = email, // Pass to domain for UI, but DO NOT log this object raw
+        displayName = displayName,
+        isAnonymous = isAnonymous
+    )
+
+    // If capturing Firebase Exceptions for logs, sanitize the message:
+    private fun sanitizeAuthError(error: Exception): String {
+        val rawMessage = error.localizedMessage ?: "Unknown auth error"
+        // Regex to strip out email addresses from Firebase exception messages
+        return rawMessage.replace(Regex("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"), "[REDACTED_EMAIL]")
+    }
 }

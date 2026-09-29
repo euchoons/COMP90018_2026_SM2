@@ -2,8 +2,12 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="photos/" />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="photos/" />
+        <!-- You can allow device-to-device transfer for DBs, but exclude secure prefs -->
+        <exclude domain="sharedpref" path="." />
     </device-transfer>
 </data-extraction-rules>
