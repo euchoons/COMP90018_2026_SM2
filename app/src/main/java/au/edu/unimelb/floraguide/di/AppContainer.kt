@@ -8,6 +8,7 @@ import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
 import au.edu.unimelb.floraguide.data.observation.OfflineFirstObservationRepository
+import au.edu.unimelb.floraguide.data.photo.CapturedPhotoFiles
 import au.edu.unimelb.floraguide.data.plantnet.PlantNetClient
 import au.edu.unimelb.floraguide.data.plantnet.PlantNetImageClassifier
 import au.edu.unimelb.floraguide.domain.repository.AuthRepository
@@ -19,9 +20,24 @@ import au.edu.unimelb.floraguide.domain.usecase.IdentifyStoredPhotoUseCase
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
 import au.edu.unimelb.floraguide.platform.LocationTracker
 import au.edu.unimelb.floraguide.platform.SensorMonitor
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
+    val capturedPhotoFiles = CapturedPhotoFiles(File(appContext.filesDir, "photos"))
+    // Application-owned cleanup can finish even after the ViewModel is cleared.
+    private val photoCleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun discardUnsentPhoto(localPath: String, onFailure: () -> Unit = {}) {
+        photoCleanupScope.launch {
+            val removed = runCatching { capturedPhotoFiles.discardUnsent(localPath) }.getOrDefault(false)
+            if (!removed) onFailure()
+        }
+    }
 
     val database: FloraGuideDatabase by lazy {
         FloraGuideDatabase.getInstance(appContext)
