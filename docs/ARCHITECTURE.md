@@ -79,15 +79,15 @@ A future `TfliteImageClassifier` implements the same interface, performs bitmap 
 
 `PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves a species-level taxon ID, from an exact or canonical match on the name or an objective synonym of it, before querying occurrences.
 
-Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses bounded geographic support only when every candidate lookup succeeds, and checks a flower photo's candidates against a separate flowering table: `assets/vicflora-flowering.tsv`, generated from VicFlora by `tools/build-flowering-table.py` and loaded by `AppContainer`. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
+Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses geographic support when every candidate lookup completes, counting a name ALA cannot match as zero records, and checks a flower photo's candidates against a separate flowering table: `assets/vicflora-flowering.tsv`, generated from VicFlora by `tools/build-flowering-table.py` and loaded by `AppContainer`. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
 When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so the guided demo stays offline and repeatable.
 
 ### `data/ala`
 
-`AlaOccurrenceClient` resolves names, then performs count-only, read-only occurrence searches by taxon ID. Both calls share bounded, cancellable transport. Unresolved names and malformed/failed requests remain distinct from successful zero counts.
+`AlaOccurrenceClient` resolves names, then performs count-only, read-only occurrence searches by taxon ID. Both calls share bounded, cancellable transport. Unresolved names and malformed/failed requests remain distinct from successful zero counts; ranking counts an unresolved name as zero records, never a failed request.
 
-`ReliableAlaSpeciesContextRepository` requests every candidate count concurrently (at most 5), retrying timeouts and HTTP 408/429/5xx once while honouring `Retry-After`. It preserves coroutine cancellation and never substitutes demo counts: a failed candidate has no count, and the source is reported as live, partial or unavailable. Ranking applies ALA only when every lookup succeeds; otherwise geographic support is neutral.
+`ReliableAlaSpeciesContextRepository` requests every candidate count concurrently (at most 5), retrying timeouts and HTTP 408/429/5xx once while honouring `Retry-After`. It preserves coroutine cancellation and never substitutes demo counts: a failed candidate has no count. The source is live when every candidate has a count or no species match, and partial or unavailable when a lookup failed. Ranking applies ALA only to a live source; otherwise geographic support is neutral.
 
 ### `data/observation`
 
@@ -144,14 +144,14 @@ Both adapters, and the behaviour when a sensor is missing, are documented in [`H
 
 ## Context fusion
 
-Live ranking uses `imageScore * (1 + 0.5 * support)`, normalised over the candidate set,
-where `support = ln(1 + min(count, 50)) / ln(51)`. The rule requires complete live counts;
-otherwise geographic support is neutral for every candidate. When Pl@ntNet reports a flower,
+Live ranking uses `imageScore * (1 + 20.5 * support)`, normalised over the candidate set,
+where `support = ln(1 + min(count, 50)) / ln(51)` and a name ALA cannot match counts as zero
+records. If any lookup failed, geographic support is neutral for every candidate. When Pl@ntNet reports a flower,
 each candidate is checked against its documented flowering months and the result is shown, but
 the trained out-of-season factor is 1.0, so the check does not reorder. The image-only and final
 lists use the same first-five candidate set. See [missing-context policy](MISSING_CONTEXT_POLICY.md)
 for the trade-off and source states, and [fusion training](FUSION_EVALUATION.md) for how the
-parameters were fitted and tested; on held-out photos the rule changed no Top-1 answer.
+parameters were trained and tested; on held-out photos the rule raised Top-1 from 81% to 88%.
 
 The following log-linear formula is retained **only for the synthetic guided demo**.
 For each demo species `s`:

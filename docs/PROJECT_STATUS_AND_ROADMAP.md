@@ -13,7 +13,7 @@ This document is the baseline source of truth for scope. Update it whenever the 
 | Location | Implemented in source | GPS/network location and a visibly labelled campus demo fallback. |
 | Image recognition | Implemented in source (cloud) | Pl@ntNet v2 cloud identification of the captured JPEG, Top-8 candidates. Requires network and an API key; the guided demo and any keyless build stay on the labelled demo adapter. No on-device model yet. |
 | ALA connectivity | Implemented in source | Read-only count requests, concurrent lookups, telemetry and fallback; live behaviour must be rechecked by the team. |
-| Fusion algorithm | Implemented, trained offline | Live: bounded ALA support with parameters fitted in #20; flowering is shown as evidence only. The log-linear formula is demo-only. |
+| Fusion algorithm | Implemented, trained offline | Live: ALA support trained in #20, which raised held-out Top-1 from 81% to 88%; flowering is shown as evidence only. The log-linear formula is demo-only. |
 | Observation storage | Local prototype | App-private photos and preferences; no shared cloud data. |
 | Privacy | Initial measure | Coordinates are rounded before local persistence. |
 | Map/mission | Minimal demonstration only | Field-guide progress exists; final showcase extension is undecided. |

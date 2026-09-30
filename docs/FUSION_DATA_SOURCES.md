@@ -92,13 +92,14 @@ An objective synonym shares its type specimen with the accepted name, so it is t
 species under another name. A pro parte synonym covers only part of the plants once given
 that name, and a fuzzy match is not a confirmed name. The ALA lookup applies the same rule,
 so Pl@ntNet's *Melaleuca citrina* is now counted as ALA's *Callistemon citrinus* instead of
-being unresolved, which previously withheld geographic support from the whole capture.
+being unresolved. Since #20 an unresolved name counts as zero records, so without the synonym the
+correct species would lose to recorded candidates.
 
 One live identification on 2026-09-27 confirmed this. A crimson bottlebrush flower photo
 (iNaturalist observation 58486559, photo by Paul Whitington, CC BY) returned *Melaleuca
 citrina* first, then *Melaleuca rugulosa* and *Melaleuca viminalis*. ALA files all three
 under *Callistemon* as objective synonyms, so three of the five candidates used to be
-unresolved and the photo could never receive geographic support; now all five resolve. The
+unresolved, which then withheld geographic support from the photo; now all five resolve. The
 response is kept as a test fixture.
 
 ## Location

@@ -14,28 +14,33 @@ live ranking rule. Do not restore the older location or storage implementation.
 - A resolved taxon with a successful count of zero is known zero, not absence of
   the species. Positive counts are occurrence records, not population estimates.
 - No match, a fuzzy or higher-rank match, and subjective, pro parte or misapplied
-  synonyms are `UNRESOLVED_TAXON`: no count and no automatic retry. Those can denote a
-  different plant, so matching stays conservative there.
+  synonyms are `UNRESOLVED_TAXON`: no automatic retry, and ranking counts the name as zero
+  records (see below). Those can denote a different plant, so matching stays conservative there.
 - Malformed responses and network/HTTP failures remain distinct from unresolved
   names. Both requests use the same cancellation, size limits, redirect policy,
   timeouts and repository retry budget. A retried attempt starts with name matching.
-- Never fill missing live counts with zero or demo counts. Existing failure details
-  and persistent warnings expose the reason; partial/all failures remain image-only.
+- Never fill a failed lookup with zero or demo counts. Existing failure details and
+  persistent warnings expose the reason; any failed lookup keeps the ranking image-only.
 
 ## Ranking and location
 
-The geographic part of the live rule is `imageScore * (1 + 0.5 * support)`,
+The geographic part of the live rule is `imageScore * (1 + 20.5 * support)`,
 normalised over the candidate set, with `support = ln(1 + min(count, 50)) / ln(51)`.
-Apply it only when every candidate has a successful non-negative live count. Otherwise
-geographic support is neutral for every candidate; available counts remain visible as context.
-The trade-off is losing usable partial evidence rather than favouring candidates
-whose lookups happened to succeed. #20 fitted the cap of 0.5, its design bound, and kept the
-8 km radius ([training](FUSION_EVALUATION.md)); the saturation of 50 was not fitted.
+#20 trained the cap of 20.5 and kept the 8 km radius ([training](FUSION_EVALUATION.md));
+the saturation of 50 was not trained.
 
-Unresolved names count as missing, so a single unresolved candidate disables geographic
-support for the whole capture. A subjective or pro parte synonym, an infraspecific name or a
-species outside the Australian name index among the five candidates is enough to disable it,
-which can make the boost rare in practice.
+Support applies when every candidate lookup has completed, with either a count or a name ALA
+cannot match, which counts as zero records. A failed lookup (network, HTTP or malformed
+response) is unknown, so support is neutral for every candidate; available counts remain
+visible as context. That gives up usable partial evidence rather than favour candidates whose
+lookups happened to succeed.
+
+An unmatched name is an answer, not a failure: ALA has no records under a matching Australian
+species. This policy first treated it as missing, which withheld support from 74% of the #20
+test photos, because Pl@ntNet's world-flora candidates often include foreign species that ALA
+matches only to a genus. The cost is that a correct species ALA cannot match, through a naming
+difference or as a cultivated plant absent from ALA, loses to recorded candidates; both answers
+the rule lost on the #20 test photos were of this kind.
 
 PR #31 deliberately limits both displayed and reranked candidates to the first five
 Pl@ntNet results (the API requests eight). This limit is unchanged here and must be
@@ -120,10 +125,11 @@ The saved rule label ends with the retrieval date, and a unit test keeps it in s
 
 ## Evaluation
 
-[#20](FUSION_EVALUATION.md) fitted the parameters on 339 iNaturalist photos and compared the
-image-only, hand-set and trained rules on 156 held-out ones. No rule changed a Top-1 answer.
-Geographic support applied to 26% of the test photos; an unresolved candidate name blocked the
-rest. The flowering check found an out-of-season candidate in 1 of 156. The scores are not
-calibrated probabilities, and the taxonomy investigation #10 stays open.
+[#20](FUSION_EVALUATION.md) trained the rule on 339 iNaturalist photos and tested it on 156
+others. The first design changed no Top-1 answer. Counting unmatched names as zero records and
+retraining the cap raised Top-1 from 81% to 88% (13 answers gained, 2 lost), and the gain held
+without iNaturalist's records in ALA. The flowering check found an out-of-season candidate in 1 of
+the 156 photos. The scores are not calibrated probabilities, and the taxonomy investigation #10
+stays open.
 
 ALA API reference: https://docs.ala.org.au/ (Namematching and Occurrences).
