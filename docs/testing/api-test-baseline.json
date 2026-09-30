@@ -1,0 +1,272 @@
+{
+  "repository": "euchoons/COMP90018_2026_SM2",
+  "baselineBranch": "main",
+  "baselineCommit": "ad79b69f723868d7079182426a875766c98270c5",
+  "sources": [
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/data/plantnet/PlantNetClient.kt",
+      "gitBlob": "cd9d9fafb530438a1cf82809142eaa23805124e9"
+    },
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/data/plantnet/PlantNetImageClassifier.kt",
+      "gitBlob": "7474e024033c39e141535e5fc166a3c7a4d94771"
+    },
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/data/firebase/FirebasePhotoStorage.kt",
+      "gitBlob": "bcbf1c45a5f581103af38bdc4a1c9f7f8665c403"
+    },
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/data/ala/AlaOccurrenceClient.kt",
+      "gitBlob": "4a2b4264395fdd1213304fbd6ba273e36e9b29b6"
+    },
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/data/ala/ReliableAlaSpeciesContextRepository.kt",
+      "gitBlob": "0ca99c249e2484164f1e9d150038a7ccd96795a0"
+    },
+    {
+      "path": "app/src/main/java/au/edu/unimelb/floraguide/domain/usecase/IdentifyStoredPhotoUseCase.kt",
+      "gitBlob": "1b1473949c52072faaffb41495c165f9b1a2cc52"
+    }
+  ],
+  "newTests": [
+    {
+      "class": "au.edu.unimelb.floraguide.data.ala.AlaOccurrenceClientValidationTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/ala/AlaOccurrenceClientValidationTest.kt",
+      "expectedTests": 8,
+      "cases": [
+        {
+          "id": "ALA-C01",
+          "method": "invalidCoordinatesFailBeforeTransport"
+        },
+        {
+          "id": "ALA-C02",
+          "method": "invalidRadiusFailsBeforeTransport"
+        },
+        {
+          "id": "ALA-C03",
+          "method": "invalidScientificNameFailsBeforeTransport"
+        },
+        {
+          "id": "ALA-C04",
+          "method": "countsRejectNegativeAndOverflowButAcceptLargestInteger"
+        },
+        {
+          "id": "ALA-C05",
+          "method": "retryAfterSupportsSecondsAndHttpDateWithFixedClock"
+        },
+        {
+          "id": "ALA-C06",
+          "method": "invalidRetryAfterIsUnknownAndPastDateHasNoWait"
+        },
+        {
+          "id": "ALA-C07",
+          "method": "offlineTransportDoesNotBecomeZeroRecords"
+        },
+        {
+          "id": "ALA-C08",
+          "method": "exactNameMatchingToleratesCaseAndInputPadding"
+        }
+      ]
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.ala.AlaRepositoryBoundaryTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/ala/AlaRepositoryBoundaryTest.kt",
+      "expectedTests": 8,
+      "cases": [
+        {
+          "id": "ALA-R01",
+          "method": "emptyCandidatesSkipTheService"
+        },
+        {
+          "id": "ALA-R02",
+          "method": "duplicateCandidateIdIsQueriedOnlyOnce"
+        },
+        {
+          "id": "ALA-R03",
+          "method": "transientFailureThenSuccessRetainsAttemptHistory"
+        },
+        {
+          "id": "ALA-R04",
+          "method": "permanentHttpFailuresAreNotRetriedOrConvertedToDemoCounts"
+        },
+        {
+          "id": "ALA-R05",
+          "method": "negativeAdapterCountIsNotAcceptedAsEvidence"
+        },
+        {
+          "id": "ALA-R06",
+          "method": "serverRetryTimeIsExactAndNeverRetriedInsideInsufficientBudget"
+        },
+        {
+          "id": "ALA-R07",
+          "method": "candidateConcurrencyNeverExceedsConfiguredLimit"
+        },
+        {
+          "id": "ALA-R08",
+          "method": "candidateTimeoutCancelsWorkAndReturnsUnknown"
+        }
+      ]
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorageLocalTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/firebase/FirebasePhotoStorageLocalTest.kt",
+      "expectedTests": 20,
+      "cases": [
+        {
+          "id": "FB-01",
+          "method": "signedOutUploadFailsBeforeAnyStorageRequest"
+        },
+        {
+          "id": "FB-02",
+          "method": "expectedAccountMismatchFailsBeforeTransfer"
+        },
+        {
+          "id": "FB-03",
+          "method": "missingLocalFileIsRejectedBeforeUpload"
+        },
+        {
+          "id": "FB-04",
+          "method": "emptyLocalFileIsRejectedBeforeUpload"
+        },
+        {
+          "id": "FB-05",
+          "method": "photoAboveTwentyMiBLimitIsRejectedBeforeUpload"
+        },
+        {
+          "id": "FB-06",
+          "method": "unsupportedHeaderIsRejectedEvenWhenExtensionIsJpeg"
+        },
+        {
+          "id": "FB-07",
+          "method": "jpegUploadUsesUidDigestAndPrivateStorageReference"
+        },
+        {
+          "id": "FB-08",
+          "method": "pngHeaderChoosesPngMetadataAndObjectSuffix"
+        },
+        {
+          "id": "FB-09",
+          "method": "sameContentWithDifferentNamesUsesSameObjectPath"
+        },
+        {
+          "id": "FB-10",
+          "method": "accountChangeAfterUploadIsNotReportedAsSuccess"
+        },
+        {
+          "id": "FB-11",
+          "method": "downloadFromDifferentBucketIsRejectedBeforeMetadata"
+        },
+        {
+          "id": "FB-12",
+          "method": "similarButDifferentUidPathIsRejectedBeforeMetadata"
+        },
+        {
+          "id": "FB-13",
+          "method": "invalidStoredSizeIsRejectedBeforeMetadata"
+        },
+        {
+          "id": "FB-14",
+          "method": "changedRemoteSizeIsRejectedBeforeFileDownload"
+        },
+        {
+          "id": "FB-15",
+          "method": "successfulDownloadReturnsVerifiedTemporaryBytes"
+        },
+        {
+          "id": "FB-16",
+          "method": "checksumMismatchRemovesTemporaryDownload"
+        },
+        {
+          "id": "FB-17",
+          "method": "truncatedDownloadRemovesTemporaryFile"
+        },
+        {
+          "id": "FB-18",
+          "method": "deniedUploadMapsSdkErrorToActionableIOException"
+        },
+        {
+          "id": "FB-19",
+          "method": "failedDownloadMapsErrorAndRemovesTemporaryFile"
+        },
+        {
+          "id": "FB-20",
+          "method": "cancelledSdkUploadPropagatesCancellationAndCallsCancel"
+        }
+      ]
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.plantnet.PlantNetClientRegressionTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/plantnet/PlantNetClientRegressionTest.kt",
+      "expectedTests": 10,
+      "cases": [
+        {
+          "id": "PN-01",
+          "method": "scoreBoundariesArePreservedWithoutNormalisation"
+        },
+        {
+          "id": "PN-02",
+          "method": "negativeAndOverOneScoresAreRejected"
+        },
+        {
+          "id": "PN-03",
+          "method": "commonNameSkipsBlankEntriesAndTrimsNames"
+        },
+        {
+          "id": "PN-04",
+          "method": "pngExtensionProducesPngMultipartWithoutChangingBytes"
+        },
+        {
+          "id": "PN-05",
+          "method": "remainingHttpErrorsPreserveStatusAndActionableMessages"
+        },
+        {
+          "id": "PN-06",
+          "method": "networkFailureDoesNotLeakKeyOrBecomeDemoSuccess"
+        },
+        {
+          "id": "PN-07",
+          "method": "invalidSuccessJsonRemainsAResponseFailureAndDisconnects"
+        },
+        {
+          "id": "PN-08",
+          "method": "successfulUploadUsesExactStreamingLengthAndDisconnects"
+        },
+        {
+          "id": "PN-09",
+          "method": "absentOrNonNumericQuotaIsUnknownNotZero"
+        },
+        {
+          "id": "PN-10",
+          "method": "badCandidateAfterValidCandidateCannotReturnPartialSuccess"
+        }
+      ]
+    }
+  ],
+  "existingTests": [
+    {
+      "class": "au.edu.unimelb.floraguide.data.plantnet.PlantNetClientTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/plantnet/PlantNetClientTest.kt",
+      "expectedTests": 6
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.plantnet.PlantNetImageClassifierTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/plantnet/PlantNetImageClassifierTest.kt",
+      "expectedTests": 4
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.ala.AlaOccurrenceClientTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/ala/AlaOccurrenceClientTest.kt",
+      "expectedTests": 9
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.data.ala.ReliableAlaSpeciesContextRepositoryTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/data/ala/ReliableAlaSpeciesContextRepositoryTest.kt",
+      "expectedTests": 7
+    },
+    {
+      "class": "au.edu.unimelb.floraguide.domain.IdentifyStoredPhotoUseCaseTest",
+      "path": "app/src/test/java/au/edu/unimelb/floraguide/domain/IdentifyStoredPhotoUseCaseTest.kt",
+      "expectedTests": 8
+    }
+  ]
+}

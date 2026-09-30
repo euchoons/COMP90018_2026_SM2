@@ -1,6 +1,7 @@
 package au.edu.unimelb.floraguide.data.observation
 
 import android.content.Context
+import android.util.Log
 import androidx.work.*
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
@@ -54,14 +55,30 @@ open class ObservationSyncWorker(
     }
 
     protected open suspend fun deleteRemote(item: ObservationEntity) {
-        check(getUserId() == item.userId) { "Account changed before deletion." }
-        (firestore ?: FirebaseFirestore.getInstance()).collection("users").document(item.userId)
+        val uid = item.userId
+        check(getUserId() == uid) { "Account changed before deletion." }
+
+        // Clean up Cloud Storage image if present
+        item.remotePhotoUrl?.let { cloudUri ->
+            if (cloudUri.startsWith("gs://")) {
+                // FIX: Remove runCatching wrapper. Propagating exceptions lets the worker
+                // safely reschedule a retry task on a transient storage network drop.
+                FirebasePhotoStorage(applicationContext, expectedUserId = uid).deletePhoto(cloudUri)
+            }
+        }
+
+        // MANDATORY: Ensure the job wasn't cancelled and the account didn't change while waiting for Storage
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        check(getUserId() == uid) { "Account changed during deletion." }
+
+        (firestore ?: FirebaseFirestore.getInstance()).collection("users").document(uid)
             .collection("observations").document(item.id).delete().await()
     }
 
+
     override suspend fun doWork(): Result {
         val uid = inputData.getString(USER_ID) ?: return Result.failure()
-        if (getUserId() != uid) return Result.success() // A future sign-in schedules this UID again.
+        if (getUserId() != uid) return Result.success()
         var retry = false
         for (item in dao.getPendingSync(uid)) {
             currentCoroutineContext().ensureActive()
@@ -85,8 +102,6 @@ open class ObservationSyncWorker(
                 }
             }
         }
-        // A terminal WorkManager failure would cancel already-appended saves. Exhausted uploads
-        // remain FAILED in Room; finish this job successfully so newer queued work can still run.
         return if (retry) Result.retry() else Result.success()
     }
 

@@ -97,6 +97,7 @@ internal object IdentifyStoredPhotoContract {
             val store = object : PhotoStore {
                 override suspend fun uploadPhoto(localPath: String): StoredPhoto = throw cancelled
                 override suspend fun downloadPhoto(photo: StoredPhoto): File = error("Must not download")
+                override suspend fun deletePhoto(gsUri: String) = error("Must not delete")
             }
             val error = runCatching { IdentifyStoredPhotoUseCase(store, f.classifier)(f.original.absolutePath) }
                 .exceptionOrNull()
@@ -154,6 +155,9 @@ internal object IdentifyStoredPhotoContract {
                 check(photo == stored)
                 if (failStage == "download") error("simulated download failure")
                 return downloaded.apply { writeText("cloud-download") }
+            }
+            override suspend fun deletePhoto(gsUri: String) {
+                events += "delete"
             }
         }
         val classifier = object : ImageClassifier {

@@ -77,8 +77,9 @@ occurrence rows. Both requests share cancellable transport, size limits, no redi
 connection/read timeouts. Candidate lookups run concurrently with a shared per-candidate
 timeout/retry budget. `UNRESOLVED_TAXON` is not retried and never becomes a zero count.
 
-Matching accepts the exact name or an exact objective synonym, counted under ALA's accepted
-species, and excludes fuzzy, higher-rank, subjective, pro parte and misapplied matches. It is
+Matching accepts an exact or canonical match (authorship or formatting only) on the queried
+name or an objective synonym of it, counted under ALA's accepted species, and excludes
+fuzzy, higher-rank, subjective, pro parte and misapplied matches. It is
 not complete synonym resolution. A successful zero is a zero occurrence-query result,
 not proof of ecological absence. See [missing-context policy](MISSING_CONTEXT_POLICY.md).
 

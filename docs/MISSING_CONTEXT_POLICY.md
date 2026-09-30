@@ -5,11 +5,12 @@ live ranking rule. Do not restore the older location or storage implementation.
 
 ## Live lookup
 
-- Resolve the candidate's scientific name to an exact, species-level ALA taxon ID
-  before querying occurrences by `taxonConceptID`. An exact match on an objective
-  synonym (same type as the accepted name, e.g. Pl@ntNet's *Melaleuca citrina* for ALA's
-  *Callistemon citrinus*) is the same species, so it resolves to the accepted taxon and
-  the results show the accepted name.
+- Resolve the candidate's scientific name to a species-level ALA taxon ID before
+  querying occurrences by `taxonConceptID`. ALA must match the name exactly, or
+  canonically (differing only in authorship or formatting). An objective synonym (same
+  type as the accepted name, e.g. Pl@ntNet's *Melaleuca citrina* for ALA's *Callistemon
+  citrinus*) is the same species, so it resolves to the accepted taxon, whose ID ALA
+  already returns, and the results show the accepted name.
 - A resolved taxon with a successful count of zero is known zero, not absence of
   the species. Positive counts are occurrence records, not population estimates.
 - No match, a fuzzy or higher-rank match, and subjective, pro parte or misapplied
@@ -105,7 +106,7 @@ the explicit guided demo; demo evidence must never enter live ranking.
 Names (#18): Pl@ntNet appears to follow Kew's World Checklist of Vascular Plants (WCVP),
 while VicFlora follows the Australian Plant Census. When WCVP files a VicFlora name only as a
 synonym of one species, the table adds that accepted name as `wcvp_name`, provided ALA
-confirms it as an exact objective synonym of the same species, the rule the ALA lookup
+confirms it as an objective synonym of the same species, the rule the ALA lookup
 uses. *Callistemon citrinus* is thus found under *Melaleuca citrina*, and the results card
 names the VicFlora taxon the statement belongs to. An alias never replaces another species'
 own row; any other mismatch stays unknown. Evidence and the aliases are in

@@ -219,7 +219,31 @@ class AlaOccurrenceClientTest {
             } finally { job.cancelAndJoin() }
         }
     }
+    @Test fun `validates and extracts taxon id for exact matches, canonical matches, and synonyms`() {
+        val exactMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"exactMatch","taxonConceptID":"taxon-123"}"""
+        // As ALA answers Melaleuca citrina: an exact match plus synonymType, with the accepted taxon's ID.
+        val synonymMatch = """{"success":true,"scientificName":"Callistemon citrinus","rank":"species","matchType":"exactMatch","synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"taxon-456"}"""
+        // A canonical match differs from an exact one only in authorship or formatting.
+        val canonicalMatch = exactMatch.replace("exactMatch", "canonicalMatch")
 
+        assertEquals(AlaTaxon("taxon-123", "Eucalyptus camaldulensis"), parseTaxon(exactMatch, "Eucalyptus camaldulensis"))
+        assertEquals(AlaTaxon("taxon-456", "Callistemon citrinus"), parseTaxon(synonymMatch, "Melaleuca citrina"))
+        assertEquals(AlaTaxon("taxon-123", "Eucalyptus camaldulensis"), parseTaxon(canonicalMatch, "Eucalyptus camaldulensis"))
+    }
+
+    @Test fun `rejects higher ranks and fuzzy taxonomy matches`() {
+        val genusMatch = """{"success":true,"scientificName":"Eucalyptus","rank":"genus","matchType":"exactMatch","taxonConceptID":"taxon-genus"}"""
+        val fuzzyMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"fuzzyMatch","taxonConceptID":"taxon-123"}"""
+
+        assertNull(parseTaxon(genusMatch, "Eucalyptus"))
+        assertNull(parseTaxon(fuzzyMatch, "Eucalyptus camaldulensis"))
+    }
+
+    @Test fun `malformed JSON structure throws AlaResponseException`() {
+        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}")) {
+            assertThrows(AlaResponseException::class.java) { parseTaxon(body, NAME) }
+        }
+    }
     private fun URL.isNameMatch() = path.endsWith("searchByClassification")
     private fun taxonMatch() = """{"success":true,"scientificName":"$NAME","rank":"species","matchType":"exactMatch","taxonConceptID":"taxon-123"}"""
 

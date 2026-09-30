@@ -10,6 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+
 /** Ported from the removed AlaSpeciesContextRepositoryTest, with the partial case inverted. */
 class ReliableAlaSpeciesContextRepositoryTest {
     private val candidates = DemoSpeciesCatalog.all.take(2)
@@ -115,6 +116,40 @@ class ReliableAlaSpeciesContextRepositoryTest {
         assertTrue(result.attemptsBySpeciesId.values.all { it == 1 })
         assertTrue(result.failuresBySpeciesId.values.all { it == "HTTP_429" })
         assertTrue(result.retryNotBefore != null)
+    }
+
+    @Test
+    fun `privacy safeguard coarsens geographic coordinates before ALA network request`() = runBlocking {
+        var interceptedLocation: GeoPoint? = null
+
+        // 1. Create a fake source that traps the exact parameters sent to the network
+        val trappingSource = object : AlaOccurrenceSource {
+            override suspend fun countNearbyOccurrencesAsync(
+                scientificName: String,
+                location: GeoPoint,
+                radiusKm: Int
+            ): AlaOccurrenceResponse {
+                interceptedLocation = location
+                return AlaOccurrenceResponse(totalRecords = 1, httpStatus = 200, elapsedMillis = 10)
+            }
+        }
+
+        val repository = ReliableAlaSpeciesContextRepository(trappingSource, retryDelayMillis = 0)
+
+        // 2. Supply highly precise input simulating raw device GPS (7 decimal places)
+        val preciseLocation = GeoPoint(latitude = -37.7968912, longitude = 144.9614567)
+
+        repository.nearbyOccurrenceCounts(
+            candidates = candidates.take(1),
+            location = preciseLocation,
+            radiusKm = 8,
+            preferLiveData = true
+        )
+
+        // 3. Assert the location was successfully truncated to 3 decimal places (~111m)
+        val actual = requireNotNull(interceptedLocation) { "The network adapter was never called" }
+        assertEquals(-37.797, actual.latitude, 0.00001)
+        assertEquals(144.961, actual.longitude, 0.00001)
     }
 
     private class FakeSource(

@@ -17,7 +17,7 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
-
+import kotlin.math.round
 /** Production adapter selected by AppContainer. Failed live lookups never manufacture demo counts. */
 class ReliableAlaSpeciesContextRepository(
     private val client: AlaOccurrenceSource,
@@ -55,8 +55,15 @@ class ReliableAlaSpeciesContextRepository(
         require(radiusKm in 1..100)
         val started = nanoTime()
         val queriedAt = now()
+        val coarsenedLocation = GeoPoint(
+            latitude = round(location.latitude * 1000.0) / 1000.0,
+            longitude = round(location.longitude * 1000.0) / 1000.0,
+            accuracyMetres = location.accuracyMetres
+        )
+
         val outcomes = supervisorScope {
-            unique.map { species -> async { lookup(species, location, radiusKm) } }.awaitAll()
+            // Pass the coarsened location to the lookup function
+            unique.map { species -> async { lookup(species, coarsenedLocation, radiusKm) } }.awaitAll()
         }
         val successes = outcomes.mapNotNull { item -> item.count?.let { item.id to it } }.toMap()
         val unresolved = outcomes.count { it.failure == AlaFailureKind.UNRESOLVED_TAXON.name }

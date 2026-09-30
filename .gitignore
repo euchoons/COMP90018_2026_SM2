@@ -28,6 +28,13 @@ Desktop.ini
 *.swp
 *~
 
+# Downloaded Firebase installer artifacts
+/curl_response
+/firebase-tools.exe
+
 # Local evidence and recordings
 /docs/evidence/*
 !/docs/evidence/.gitkeep
+
+curl_response
+firebase-tools.exe

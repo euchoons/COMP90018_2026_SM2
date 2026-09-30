@@ -457,7 +457,22 @@ class FloraGuideViewModel(
     fun showMessage(message: String) = _uiState.update { it.copy(message = message) }
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
-
+    fun deleteAccount() {
+        val uid = sessionKey() ?: return
+        viewModelScope.launch {
+            try {
+                container.authRepository.deleteAccount()
+                    .onSuccess {
+                        clearMessage() // AuthState transition will automatically route the user out
+                    }
+                    .onFailure { error ->
+                        showMessage(error.message ?: "Could not delete account. You may need to sign in again to verify your credentials.")
+                    }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            }
+        }
+    }
     private fun startAnalysis(
         photoPath: String?,
         preferLiveData: Boolean,

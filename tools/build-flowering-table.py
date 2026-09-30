@@ -6,7 +6,7 @@ species. Months come only from a VicFlora flowering statement that parses comple
 wording is kept as unparsed or missing, which the app treats as unknown (neutral). Pl@ntNet
 appears to use WCVP names, so a VicFlora name that WCVP files only as a synonym of one species
 gets that accepted name as an alias, provided ALA (which, like VicFlora, follows the Australian
-Plant Census) confirms it as an exact objective synonym of the same species. Stdlib only:
+Plant Census) confirms it as an objective synonym of the same species. Stdlib only:
 
     python3 tools/build-flowering-table.py          # everything
     python3 tools/build-flowering-table.py --names  # only the WCVP aliases of the existing table
@@ -102,9 +102,9 @@ def accepted_alias(usages, canonical_of):
 
 
 def same_species_in_ala(alias, name):
-    """The app's own rule: ALA matches the alias exactly as an objective synonym of this species."""
+    """The app's own rule: ALA matches the alias as an objective synonym of this species."""
     match = request(f"{ALA_NAMES}?{urllib.parse.urlencode({'scientificName': alias})}")
-    return (match.get("success") is True and match.get("matchType") == "exactMatch"
+    return (match.get("success") is True and match.get("matchType") in ("exactMatch", "canonicalMatch")
             and match.get("rank") == "species" and match.get("synonymType") == "OBJECTIVE_SYNONYM"
             and match.get("scientificName") == name)
 

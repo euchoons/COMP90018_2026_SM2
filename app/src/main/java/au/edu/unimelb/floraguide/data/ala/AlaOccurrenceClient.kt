@@ -56,7 +56,7 @@ class AlaOccurrenceClient(
         val started = nanoTime()
         val taxon = request(URL("$nameMatchUrl?scientificName=${URLEncoder.encode(name, "UTF-8")}")) { body, status, elapsed ->
             parseTaxon(body, name) ?: throw AlaRequestException(
-                "ALA did not resolve an exact species match", status, elapsed, kind = AlaFailureKind.UNRESOLVED_TAXON,
+                "ALA did not resolve a valid species taxon", status, elapsed, kind = AlaFailureKind.UNRESOLVED_TAXON,
             )
         }
         // URL encoding alone does not escape Solr query syntax inside a quoted phrase.
@@ -180,11 +180,14 @@ internal fun parseTaxon(body: String, requestedName: String): AlaTaxon? = try {
             ?: throw AlaResponseException("ALA name matching omitted rank")
         val match = root.opt("matchType") as? String
             ?: throw AlaResponseException("ALA name matching omitted matchType")
-        // An objective synonym shares its type with the accepted name, so it is the same species under
-        // another name. Subjective, pro parte and misapplied names can mean a different plant.
+        // ALA reports a synonym as an exact match plus synonymType, with taxonConceptID already the accepted
+        // taxon. An objective synonym shares its type with the accepted name, so it is the same species;
+        // subjective, pro parte and misapplied names can mean a different plant.
         val sameSpecies = name.equals(requestedName.trim(), ignoreCase = true) ||
             root.opt("synonymType") == "OBJECTIVE_SYNONYM"
-        if (!sameSpecies || !rank.equals("species", ignoreCase = true) || match != "exactMatch") null else {
+        // A canonical match differs from an exact one only in authorship or formatting.
+        val nameMatched = match == "exactMatch" || match == "canonicalMatch"
+        if (!sameSpecies || !nameMatched || !rank.equals("species", ignoreCase = true)) null else {
             val id = root.opt("taxonConceptID") as? String
             if (id.isNullOrBlank() || id.length > 2_048 || id.any { it.isISOControl() }) {
                 throw AlaResponseException("ALA name matching returned an invalid taxonConceptID")

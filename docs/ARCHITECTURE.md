@@ -77,7 +77,7 @@ A future `TfliteImageClassifier` implements the same interface, performs bitmap 
 
 `PlantNetClient` uploads the captured JPEG to the Pl@ntNet v2 API as a streamed multipart request, enforces timeouts, parses candidates strictly and records telemetry. The API key is a query parameter and is never logged. It also keeps Pl@ntNet's predicted photo organ, which gates the flowering cue; a missing or malformed organ never fails identification.
 
-`PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves a species-level taxon ID, from the exact name or an exact objective synonym, before querying occurrences.
+`PlantNetImageClassifier` maps each result to a domain `Species` **at request time**. There is no fixed catalogue; `AlaOccurrenceClient` resolves a species-level taxon ID, from an exact or canonical match on the name or an objective synonym of it, before querying occurrences.
 
 Season and habitat affinities are deliberately left empty for these species; the live ranker does not consume either field. It uses bounded geographic support only when every candidate lookup succeeds, and lowers the out-of-season candidates of a flower photo using a separate flowering table: `assets/vicflora-flowering.tsv`, generated from VicFlora by `tools/build-flowering-table.py` and loaded by `AppContainer`. See the [missing-context policy](MISSING_CONTEXT_POLICY.md).
 
@@ -196,7 +196,7 @@ This design supports a responsive interface, but final claims require measured i
 | Ambient light | Low-light and very-bright warnings | Explicit unavailable state; light never blocks capture. |
 | Magnetometer | Heading metadata | Explicit unavailable state; an unreliable compass prompts calibration and is not stored. |
 | Location | Fresh, usable device location frozen at the shutter | Missing/unreliable capture location skips ALA; campus coordinates are demo-only. |
-| ALA | Species resolution (exact names and objective synonyms) and live counts | Unknown counts stay unknown, persistent warning and bounded retry; incomplete context adds no geographic adjustment. |
+| ALA | Species resolution (exact or canonical names and objective synonyms) and live counts | Unknown counts stay unknown, persistent warning and bounded retry; incomplete context adds no geographic adjustment. |
 | Pl@ntNet | Cloud Top-8 candidates | Errors surface verbatim (no match, quota reached, key rejected); guided demo remains available. |
 | Image model | Future on-device TFLite model | Clearly labelled deterministic demo adapter. |
 | Cloud store | Future Firebase implementation | Local observation repository. |
