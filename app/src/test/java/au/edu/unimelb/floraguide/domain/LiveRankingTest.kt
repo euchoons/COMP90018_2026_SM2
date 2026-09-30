@@ -16,6 +16,8 @@ class LiveRankingTest {
     // Fixture months for London plane and river red gum, not sourced flowering data.
     private val plane = predictions[0].species.scientificName
     private val redGum = predictions[1].species.scientificName
+    private val planeId = predictions[0].species.id
+    private val redGumId = predictions[1].species.id
     private val records = mapOf(
         plane to FloweringRecord(plane, setOf(12, 1, 2), "Flowers summer.", "https://example.org/a"),
         redGum to FloweringRecord(redGum, setOf(9, 10), "Flowers Sep.–Oct.", "https://example.org/b"),
@@ -59,12 +61,31 @@ class LiveRankingTest {
         assertImageOnly(ranker.live(predictions, context(listOf(0, -1))))
     }
 
-    @Test fun boostIsCappedAndCannotOverturnStrongImageLeader() {
-        val result = ranker.live(predictions, context(listOf(0, 500)))
+    @Test fun boostSaturatesAtFiftyRecords() {
+        val capped = RankSpeciesCandidatesUseCase(maximumLiveBoost = 0.5)
+        val result = capped.live(predictions, context(listOf(0, 500)))
         assertEquals(predictions.first().species.id, result.first().species.id)
         assertEquals(0.9 / 1.05, result.first().relativeScore, 1e-12)
         assertEquals(1.5, result.last().evidence.locationMultiplier, 1e-12)
-        assertEquals(result.map { it.relativeScore }, ranker.live(predictions, context(listOf(0, 50))).map { it.relativeScore })
+        assertEquals(result.map { it.relativeScore }, capped.live(predictions, context(listOf(0, 50))).map { it.relativeScore })
+    }
+
+    @Test fun trainedDefaultLetsLocalRecordsOvertakeAnUnrecordedLeader() {
+        // #20 fitted a cap of 20.5: 50 or more nearby records multiply a candidate by 21.5.
+        val result = ranker.live(predictions, context(listOf(0, 50)))
+        assertEquals(listOf(redGumId, planeId), result.map { it.species.id })
+        assertEquals(21.5, result.first().evidence.locationMultiplier, 1e-12)
+        assertEquals(0.1 * 21.5 / (0.1 * 21.5 + 0.9), result.first().relativeScore, 1e-12)
+    }
+
+    @Test fun unmatchedNameCountsAsZeroButAFailedLookupWithholdsSupport() {
+        fun lookup(failure: String) = NearbyContext(mapOf(redGumId to 50), ContextDataSource.ALA_LIVE, 8,
+            failuresBySpeciesId = mapOf(planeId to failure))
+        val result = RankSpeciesCandidatesUseCase(maximumLiveBoost = 0.5).live(predictions, lookup(NearbyContext.UNRESOLVED_TAXON))
+        assertEquals(1.5, result.first { it.species.id == redGumId }.evidence.locationMultiplier, 1e-12)
+        assertEquals(1.0, result.first { it.species.id == planeId }.evidence.locationMultiplier, 0.0)
+        assertNull(result.first { it.species.id == planeId }.nearbyRecordCount)
+        assertImageOnly(ranker.live(predictions, lookup("TIMEOUT")))
     }
 
     @Test fun completeContextCanReorderCloseCandidates() {

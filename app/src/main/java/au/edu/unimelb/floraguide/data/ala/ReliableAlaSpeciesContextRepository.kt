@@ -67,9 +67,10 @@ class ReliableAlaSpeciesContextRepository(
         }
         val successes = outcomes.mapNotNull { item -> item.count?.let { item.id to it } }.toMap()
         val unresolved = outcomes.count { it.failure == AlaFailureKind.UNRESOLVED_TAXON.name }
-        val source = when (successes.size) {
-            0 -> ContextDataSource.ALA_UNAVAILABLE
-            unique.size -> ContextDataSource.ALA_LIVE
+        // A name ALA cannot match is an answer (no records under a matching species), not a failed lookup.
+        val source = when {
+            successes.size + unresolved == unique.size -> ContextDataSource.ALA_LIVE
+            successes.isEmpty() -> ContextDataSource.ALA_UNAVAILABLE
             else -> ContextDataSource.ALA_PARTIAL
         }
         return NearbyContext(
@@ -80,16 +81,17 @@ class ReliableAlaSpeciesContextRepository(
             successfulRequestCount = successes.size,
             requestCount = unique.size,
             httpStatusCodes = outcomes.flatMap { it.statuses }.toSet(),
-            warning = when (source) {
-                ContextDataSource.ALA_UNAVAILABLE ->
-                    "ALA context unavailable. Pl@ntNet results are retained; no demo evidence is used."
-                ContextDataSource.ALA_PARTIAL ->
-                    "${successes.size}/${unique.size} ALA lookups succeeded. Missing counts are unknown; " +
-                        "geographic support is withheld to avoid rewarding selective availability."
-                else -> null
-            }?.let { warning ->
-                if (unresolved > 0) "$warning $unresolved taxon name(s) unresolved; not treated as zero records." else warning
-            },
+            warning = listOfNotNull(
+                when (source) {
+                    ContextDataSource.ALA_UNAVAILABLE ->
+                        "ALA context unavailable. Pl@ntNet results are retained; no demo evidence is used."
+                    ContextDataSource.ALA_PARTIAL ->
+                        "${successes.size + unresolved}/${unique.size} ALA lookups completed. Failed lookups are unknown; " +
+                            "geographic support is withheld to avoid rewarding selective availability."
+                    else -> null
+                },
+                "$unresolved taxon name(s) have no species match in ALA and count as zero records.".takeIf { unresolved > 0 },
+            ).joinToString(" ").ifEmpty { null },
             failuresBySpeciesId = outcomes.mapNotNull { it.failure?.let { reason -> it.id to reason } }.toMap(),
             acceptedNamesBySpeciesId = unique.zip(outcomes).mapNotNull { (species, outcome) ->
                 outcome.acceptedName?.takeUnless { it.equals(species.scientificName, ignoreCase = true) }

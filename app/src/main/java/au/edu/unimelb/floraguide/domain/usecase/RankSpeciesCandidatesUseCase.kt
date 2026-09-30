@@ -22,7 +22,7 @@ class RankSpeciesCandidatesUseCase(
     private val seasonWeight: Double = 0.35,
     private val habitatWeight: Double = 0.45,
     private val locationSmoothing: Double = 3.0,
-    private val maximumLiveBoost: Double = 0.5,
+    private val maximumLiveBoost: Double = 20.5,
     private val liveCountSaturation: Int = 50,
     /** Documented flowering by exact scientific name; the app passes the bundled VicFlora table. */
     private val floweringRecords: Map<String, FloweringRecord> = emptyMap(),
@@ -30,8 +30,7 @@ class RankSpeciesCandidatesUseCase(
     private val minimumFlowerScore: Double = 0.5,
 ) {
     init {
-        // 0.5 is a design bound that keeps the image model in charge; #20's fit reached it.
-        require(maximumLiveBoost in 0.0..0.5 && liveCountSaturation > 0)
+        require(maximumLiveBoost >= 0.0 && maximumLiveBoost.isFinite() && liveCountSaturation > 0)
         require(locationSmoothing > 0.0)
         require(outOfSeasonMultiplier in 0.5..1.0 && minimumFlowerScore in 0.0..1.0)
         // An empty set would read as "never flowers" and lower every flower photo.
@@ -42,9 +41,10 @@ class RankSpeciesCandidatesUseCase(
      * Coursework heuristic, not a calibrated probability model. The defaults were fitted in #20
      * (docs/FUSION_EVALUATION.md).
      * support = log(1 + min(count, 50)) / log(51)
-     * weight = originalImageScore * (1 + 0.5 * support) * season
+     * weight = originalImageScore * (1 + 20.5 * support) * season
      * Normalise within the candidate set. Zero records apply no penalty.
-     * Incomplete ALA context disables geographic support for every candidate, not just the failed ones.
+     * A name ALA cannot match to a species counts as zero records. A failed lookup is unknown, so it
+     * disables geographic support for every candidate, not just the failed one.
      * season is outOfSeasonMultiplier only for a photographed flower more than a month outside the
      * candidate's documented flowering months; other organs, a missing date and unlisted species stay
      * neutral. Training set it to 1.0, so the check is reported but does not reorder.
@@ -59,7 +59,7 @@ class RankSpeciesCandidatesUseCase(
         val baseline = imageOnly(predictions)
         if (baseline.isEmpty()) return baseline
         val complete = context.source == ContextDataSource.ALA_LIVE && predictions.all {
-            (context.countsBySpeciesId[it.species.id] ?: -1) >= 0
+            (context.countsBySpeciesId[it.species.id] ?: -1) >= 0 || context.isUnmatched(it.species.id)
         }
         // Flowering months say nothing about a leaf, bark or whole-plant photo.
         val flowerMonth = captureMonth.takeIf {
@@ -67,8 +67,8 @@ class RankSpeciesCandidatesUseCase(
         }
         val components = baseline.map { candidate ->
             val count = context.countsBySpeciesId[candidate.species.id]?.takeIf { it >= 0 }
-            val support = if (complete && count != null) {
-                ln1p(count.coerceAtMost(liveCountSaturation).toDouble()) / ln1p(liveCountSaturation.toDouble())
+            val support = if (complete) {
+                ln1p((count ?: 0).coerceAtMost(liveCountSaturation).toDouble()) / ln1p(liveCountSaturation.toDouble())
             } else 0.0
             val multiplier = 1.0 + maximumLiveBoost * support
             val flowering = floweringRecords[candidate.species.scientificName]
@@ -155,7 +155,7 @@ class RankSpeciesCandidatesUseCase(
 
     companion object {
         const val LIVE_RULE_VERSION =
-            "ala-positive-support-v1-cap0.50-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5" +
+            "ala-positive-support-v2-unmatched-zero-cap20.5-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5" +
                 "+vicflora-2026-09-25"
         const val IMAGE_ONLY_RULE_VERSION = "image-only-normalised-v1"
         const val DEMO_RULE_VERSION = "synthetic-ecology-demo-v1"

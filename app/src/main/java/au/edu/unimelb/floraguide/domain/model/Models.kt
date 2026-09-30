@@ -173,7 +173,15 @@ data class NearbyContext(
     val attemptsBySpeciesId: Map<String, Int> = emptyMap(),
     val queriedAt: Instant? = null,
     val retryNotBefore: Instant? = null,
-)
+) {
+    /** ALA has no species-level match for the name: an answer that counts as zero records, not a failed lookup. */
+    fun isUnmatched(speciesId: String) = failuresBySpeciesId[speciesId] == UNRESOLVED_TAXON
+
+    companion object {
+        /** The failure code ReliableAlaSpeciesContextRepository records for AlaFailureKind.UNRESOLVED_TAXON. */
+        const val UNRESOLVED_TAXON = "UNRESOLVED_TAXON"
+    }
+}
 
 /** A documented flowering statement, e.g. VicFlora's "Flowers summer.", and the months it names. */
 data class FloweringRecord(

@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.ala
 import au.edu.unimelb.floraguide.data.catalog.DemoSpeciesCatalog
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
+import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -91,11 +92,24 @@ class ReliableAlaSpeciesContextRepositoryTest {
         val result = lookup(source)
         assertEquals(ContextDataSource.ALA_UNAVAILABLE, result.source)
         assertTrue(result.countsBySpeciesId.isEmpty())
-        assertEquals("UNRESOLVED_TAXON", result.failuresBySpeciesId[candidates[0].id])
+        assertEquals(NearbyContext.UNRESOLVED_TAXON, result.failuresBySpeciesId[candidates[0].id])
         assertEquals("TIMEOUT", result.failuresBySpeciesId[candidates[1].id])
         assertEquals(1, result.attemptsBySpeciesId[candidates[0].id])
         assertEquals(2, result.attemptsBySpeciesId[candidates[1].id])
         assertTrue(result.warning.orEmpty().contains("1 taxon"))
+    }
+
+    @Test fun unmatchedNameIsAnAnswerSoTheLookupIsComplete() = runBlocking {
+        val result = lookup(object : AlaOccurrenceSource {
+            override suspend fun countNearbyOccurrencesAsync(scientificName: String, location: GeoPoint, radiusKm: Int): AlaOccurrenceResponse =
+                if (scientificName == candidates[0].scientificName) {
+                    throw AlaRequestException("no species match", 200, 0, kind = AlaFailureKind.UNRESOLVED_TAXON)
+                } else AlaOccurrenceResponse(12, 200, 10)
+        })
+        assertEquals(ContextDataSource.ALA_LIVE, result.source)
+        assertEquals(mapOf(candidates[1].id to 12), result.countsBySpeciesId)
+        assertTrue(result.isUnmatched(candidates[0].id))
+        assertTrue(result.warning.orEmpty().contains("count as zero records"))
     }
 
     @Test fun synonymCountsNameTheAcceptedSpeciesOnlyWhenItDiffers() = runBlocking {
