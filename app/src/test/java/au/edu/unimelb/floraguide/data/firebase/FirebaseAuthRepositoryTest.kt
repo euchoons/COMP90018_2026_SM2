@@ -20,8 +20,10 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QueryDocumentSnapshot
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.StorageException
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import org.junit.After
@@ -115,6 +117,17 @@ class FirebaseAuthRepositoryTest {
     }
 
     @Test
+    fun `delayed auth callback preserves offline guest mode`() = runTest {
+        every { auth.currentUser } returns null
+        val listener = slot<FirebaseAuth.AuthStateListener>()
+        every { auth.addAuthStateListener(capture(listener)) } just Runs
+        val repository = FirebaseAuthRepository(app, auth)
+        repository.continueOffline()
+        listener.captured.onAuthStateChanged(auth)
+        assertEquals(AuthState.OfflineGuest, repository.authState.value)
+    }
+
+    @Test
     fun `guest action cannot silently reuse an existing real account`() = runTest {
         every { auth.currentUser } returns user("A", false)
         val repository = FirebaseAuthRepository(app, auth)
@@ -164,6 +177,25 @@ class FirebaseAuthRepositoryTest {
 
     @Test
     fun `deleteAccount successfully wipes firestore data, storage photos, and auth profile`() = runTest {
+        checkDeletion(null)
+    }
+
+    @Test
+    fun `photo deletion failure preserves documents and auth for retry`() = runTest {
+        checkDeletion(IllegalStateException("Storage unavailable"))
+    }
+
+    @Test
+    fun `already deleted photo does not prevent retrying account deletion`() = runTest {
+        checkDeletion(StorageException.fromExceptionAndHttpCode(null, 404))
+    }
+
+    @Test
+    fun `photo deletion cancellation does not continue account deletion`() = runTest {
+        checkDeletion(CancellationException("Cancelled"))
+    }
+
+    private suspend fun checkDeletion(photoError: Exception?) {
         // 1. Mock static Firebase SDK instances
         mockkStatic(FirebaseFirestore::class)
         mockkStatic(FirebaseStorage::class)
@@ -195,15 +227,30 @@ class FirebaseAuthRepositoryTest {
         // Wire up the Firestore collection chain
         every { firestore.collection("users").document("user-123") } returns userDoc
         every { userDoc.collection("observations") } returns obsCollection
-        every { obsCollection.get() } returns Tasks.forResult(querySnapshot)
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
         every { userDoc.delete() } returns Tasks.forResult(null)
 
         // Wire up the Cloud Storage chain
         every { storage.getReferenceFromUrl("gs://test-bucket/plant_photos/user-123/photo.jpg") } returns storageRef
-        every { storageRef.delete() } returns Tasks.forResult(null)
+        every { storage.reference.bucket } returns "test-bucket"
+        every { storageRef.bucket } returns "test-bucket"
+        every { storageRef.path } returns "/plant_photos/user-123/photo.jpg"
+        every { storageRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
 
         val repository = FirebaseAuthRepository(app, auth)
-        val result = repository.deleteAccount()
+        val result = try {
+            repository.deleteAccount()
+        } catch (cancelled: CancellationException) {
+            assertTrue(photoError is CancellationException)
+            Result.failure(cancelled)
+        }
+
+        if (photoError != null && (photoError as? StorageException)?.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND) {
+            assertTrue(result.isFailure)
+            if (photoError is CancellationException) assertTrue(result.exceptionOrNull() is CancellationException)
+            verify(exactly = 0) { docRef.delete(); userDoc.delete(); u.delete() }
+            return
+        }
 
         // 4. Verify cascade execution order and success state
         assertTrue(result.isSuccess)
@@ -252,7 +299,7 @@ class FirebaseAuthRepositoryTest {
         every { querySnapshot.documents } returns emptyList()
         every { firestore.collection("users").document("user-123") } returns userDoc
         every { userDoc.collection("observations") } returns obsCollection
-        every { obsCollection.get() } returns Tasks.forResult(querySnapshot)
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
         every { userDoc.delete() } returns Tasks.forResult(null)
 
         val repository = FirebaseAuthRepository(app, auth)
