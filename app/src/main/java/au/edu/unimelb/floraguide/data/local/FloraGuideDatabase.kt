@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.sqlcipher.database.SupportFactory
 import android.util.Base64
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.security.SecureRandom
@@ -26,45 +27,74 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                     .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                     .build()
 
-                EncryptedSharedPreferences.create(
+                val encryptedPrefs = EncryptedSharedPreferences.create(
                     context,
                     "secure_db_prefs",
                     masterKey,
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
-            }.getOrElse {
-                context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
-            }.let { prefs ->
-                var passphrase = prefs.getString("sqlcipher_passphrase", null)
+
+                var passphrase = encryptedPrefs.getString("sqlcipher_passphrase", null)
                 if (passphrase == null) {
                     val randomBytes = ByteArray(32)
                     SecureRandom().nextBytes(randomBytes)
                     passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
-                    prefs.edit().putString("sqlcipher_passphrase", passphrase).apply()
+                    encryptedPrefs.edit { putString("sqlcipher_passphrase", passphrase) }
+                }
+                passphrase
+            }.getOrElse {
+                val fallbackPrefs = context.getSharedPreferences("secure_db_prefs_fallback", Context.MODE_PRIVATE)
+                var passphrase = runCatching { fallbackPrefs.getString("sqlcipher_passphrase", null) }.getOrNull()
+                if (passphrase == null) {
+                    val randomBytes = ByteArray(32)
+                    SecureRandom().nextBytes(randomBytes)
+                    passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+                    fallbackPrefs.edit { putString("sqlcipher_passphrase", passphrase) }
                 }
                 passphrase
             }
 
             return Base64.decode(keyString, Base64.NO_WRAP)
         }
-        fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
-            instance ?: run {
-                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                    .addMigrations(MIGRATION_1_2)
 
-                val hasSqlCipher = runCatching {
-                    net.sqlcipher.database.SQLiteDatabase.loadLibs(context.applicationContext)
-                    true
-                }.getOrDefault(false)
+        fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
+            instance ?: run { createDatabase(context).also { instance = it } }
+        }
+
+        private fun createDatabase(context: Context): FloraGuideDatabase {
+            val dbName = "floraguide.db"
+            val appContext = context.applicationContext
+
+            val hasSqlCipher = runCatching {
+                net.sqlcipher.database.SQLiteDatabase.loadLibs(appContext)
+                true
+            }.getOrDefault(false)
+
+            fun buildHelper(): FloraGuideDatabase {
+                val builder = Room.databaseBuilder(appContext, FloraGuideDatabase::class.java, dbName)
+                    .addMigrations(MIGRATION_1_2)
+                    .fallbackToDestructiveMigration(true)
 
                 if (hasSqlCipher) {
-                    val passphrase: ByteArray = retrieveOrGenerateSecureKey(context.applicationContext)
-                    val factory = SupportFactory(passphrase)
-                    builder.openHelperFactory(factory)
+                    runCatching {
+                        val passphrase: ByteArray = retrieveOrGenerateSecureKey(appContext)
+                        val factory = SupportFactory(passphrase)
+                        builder.openHelperFactory(factory)
+                    }
                 }
+                return builder.build()
+            }
 
-                builder.build().also { instance = it }
+            return try {
+                val db = buildHelper()
+                db.openHelper.writableDatabase
+                db
+            } catch (_: Exception) {
+                runCatching { appContext.deleteDatabase(dbName) }
+                val cleanDb = buildHelper()
+                runCatching { cleanDb.openHelper.writableDatabase }
+                cleanDb
             }
         }
 

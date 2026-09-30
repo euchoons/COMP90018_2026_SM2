@@ -51,18 +51,21 @@ class LocationTracker(context: Context) {
             onError("Device location is off. Enable it before capture to add ALA context.")
             return
         }
-        fun accept(location: Location) {
-            val point = location.toGeoPoint()
-            val now = SystemClock.elapsedRealtimeNanos()
-            if (!policy.isUsable(point, location.elapsedRealtimeNanos, now)) return
-            val current = lastFix
-            if (current != null && !policy.shouldReplace(
-                    current.toGeoPoint(), current.elapsedRealtimeNanos, point, location.elapsedRealtimeNanos,
-                    sameProvider = current.provider == location.provider, nowElapsedNanos = now,
-                )
-            ) return
-            lastFix = Location(location)
-            onLocation(point)
+        fun accept(location: Location?) {
+            if (location == null) return
+            runCatching {
+                val point = location.toGeoPoint()
+                val now = SystemClock.elapsedRealtimeNanos()
+                if (!policy.isUsable(point, location.elapsedRealtimeNanos, now)) return
+                val current = lastFix
+                if (current != null && !policy.shouldReplace(
+                        current.toGeoPoint(), current.elapsedRealtimeNanos, point, location.elapsedRealtimeNanos,
+                        sameProvider = current.provider == location.provider, nowElapsedNanos = now,
+                    )
+                ) return
+                lastFix = Location(location)
+                onLocation(point)
+            }
         }
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) = accept(location)
@@ -71,8 +74,10 @@ class LocationTracker(context: Context) {
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
             override fun onProviderEnabled(provider: String) = Unit
             override fun onProviderDisabled(provider: String) {
-                if (lastFix?.provider == provider) lastFix = null
-                if (enabledProviders().isEmpty()) onError("Device location is off; no capture location is available.")
+                runCatching {
+                    if (lastFix?.provider == provider) lastFix = null
+                    if (enabledProviders().isEmpty()) onError("Device location is off; no capture location is available.")
+                }
             }
         }
         activeListener = listener

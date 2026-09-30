@@ -130,8 +130,10 @@ class FloraGuideViewModel(
                 }
             }
         }
-        container.sensorMonitor.start { snapshot ->
-            _uiState.update { it.copy(sensorSnapshot = snapshot) }
+        runCatching {
+            container.sensorMonitor.start { snapshot ->
+                _uiState.update { it.copy(sensorSnapshot = snapshot) }
+            }
         }
     }
 

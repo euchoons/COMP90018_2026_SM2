@@ -17,11 +17,11 @@ import kotlin.math.sqrt
  * ambient light and compass heading as independent capture-quality cues.
  */
 class SensorMonitor(context: Context) : SensorEventListener {
-    private val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-    private val accelerometer = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    private val gyroscope = manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-    private val magnetometer = manager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-    private val light = manager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    private val manager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    private val accelerometer = manager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    private val gyroscope = manager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val magnetometer = manager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val light = manager?.getDefaultSensor(Sensor.TYPE_LIGHT)
 
     private val availability = SensorAvailability(
         accelerometer = accelerometer != null,
@@ -43,41 +43,57 @@ class SensorMonitor(context: Context) : SensorEventListener {
 
     fun start(onSnapshot: (SensorSnapshot) -> Unit) {
         listener = onSnapshot
-        listOfNotNull(accelerometer, gyroscope, magnetometer, light).forEach { sensor ->
-            manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI)
+        manager?.let { mgr ->
+            listOfNotNull(accelerometer, gyroscope, magnetometer, light).forEach { sensor ->
+                runCatching { mgr.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI) }
+            }
         }
         publish()
     }
 
     fun stop() {
-        manager.unregisterListener(this)
+        runCatching { manager?.unregisterListener(this) }
         listener = null
     }
 
-    override fun onSensorChanged(event: SensorEvent) {
-        when (event.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> {
-                val values = event.values.copyOf()
-                gravityVector = lowPass(values, gravityVector)
-                val magnitude = vectorMagnitude(values)
-                accelerationDeviation = abs(magnitude - SensorManager.GRAVITY_EARTH)
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event == null || event.values == null) return
+        val sensorType = event.sensor?.type ?: return
+        try {
+            val values = event.values.copyOf()
+            if (values.isEmpty()) return
+
+            when (sensorType) {
+                Sensor.TYPE_ACCELEROMETER -> {
+                    if (values.size >= 3) {
+                        gravityVector = lowPass(values, gravityVector)
+                        val magnitude = vectorMagnitude(values)
+                        accelerationDeviation = abs(magnitude - SensorManager.GRAVITY_EARTH)
+                    }
+                }
+
+                Sensor.TYPE_GYROSCOPE -> {
+                    if (values.size >= 3) {
+                        angularVelocity = vectorMagnitude(values)
+                    }
+                }
+
+                Sensor.TYPE_MAGNETIC_FIELD -> {
+                    if (values.size >= 3) {
+                        magneticVector = lowPass(values, magneticVector)
+                        magnetometerAccuracy = event.accuracy
+                    }
+                }
+
+                Sensor.TYPE_LIGHT -> lightLux = values.firstOrNull()
             }
 
-            Sensor.TYPE_GYROSCOPE -> {
-                angularVelocity = vectorMagnitude(event.values)
-            }
-
-            Sensor.TYPE_MAGNETIC_FIELD -> {
-                magneticVector = lowPass(event.values.copyOf(), magneticVector)
-                magnetometerAccuracy = event.accuracy
-            }
-
-            Sensor.TYPE_LIGHT -> lightLux = event.values.firstOrNull()
+            updateHeading()
+            stabilityEstimator.update(accelerationDeviation, angularVelocity)
+            publish()
+        } catch (_: Throwable) {
+            // High-frequency sensor event handling should never crash the process.
         }
-
-        updateHeading()
-        stabilityEstimator.update(accelerationDeviation, angularVelocity)
-        publish()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

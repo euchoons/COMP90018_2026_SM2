@@ -35,22 +35,27 @@ class AppContainer(context: Context) {
     }
 
     val isPlantNetConfigured: Boolean = BuildConfig.PLANTNET_API_KEY.isNotBlank()
-    val imageClassifier: ImageClassifier = PlantNetImageClassifier(
-        client = PlantNetClient(apiKey = BuildConfig.PLANTNET_API_KEY.trim()),
-    )
-    val photoStorage: PhotoStore = FirebasePhotoStorage(appContext)
-    val identifyStoredPhoto = IdentifyStoredPhotoUseCase(photoStorage, imageClassifier)
+    val imageClassifier: ImageClassifier by lazy {
+        PlantNetImageClassifier(
+            client = PlantNetClient(apiKey = BuildConfig.PLANTNET_API_KEY.trim()),
+        )
+    }
+    val photoStorage: PhotoStore by lazy { FirebasePhotoStorage(appContext) }
+    val identifyStoredPhoto by lazy { IdentifyStoredPhotoUseCase(photoStorage, imageClassifier) }
 
     /** Real scans use the reliability-focused ALA adapter. */
-    val speciesContextRepository: SpeciesContextRepository =
+    val speciesContextRepository: SpeciesContextRepository by lazy {
         ReliableAlaSpeciesContextRepository(AlaOccurrenceClient())
+    }
 
-    val observationRepository: ObservationRepository = OfflineFirstObservationRepository(
-        context = appContext,
-        dao = database.observationDao(),
-    )
+    val observationRepository: ObservationRepository by lazy {
+        OfflineFirstObservationRepository(
+            context = appContext,
+            dao = database.observationDao(),
+        )
+    }
 
     val rankCandidates = RankSpeciesCandidatesUseCase()
-    val sensorMonitor = SensorMonitor(appContext)
-    val locationTracker = LocationTracker(appContext)
+    val sensorMonitor by lazy { SensorMonitor(appContext) }
+    val locationTracker by lazy { LocationTracker(appContext) }
 }

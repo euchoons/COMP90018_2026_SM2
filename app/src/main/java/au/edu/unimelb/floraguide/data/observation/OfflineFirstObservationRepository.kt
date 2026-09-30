@@ -12,11 +12,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -46,36 +46,48 @@ class OfflineFirstObservationRepository(
     // One account per subscription. The ViewModel cancels/rebinds this flow on session changes.
     override fun observeAll(): Flow<List<Observation>> = channelFlow {
         val uid = currentUserId
-        withContext(Dispatchers.IO) { prepareUser() }
+        runCatching {
+            withContext(Dispatchers.IO) { prepareUser() }
+        }.onFailure { Log.e("FloraGuide-Sync", "Failed to prepare user database", it) }
         launch {
-            dao.observeForUser(uid).collect { rows ->
-                if (currentUserId == uid) send(rows.map { it.toObservation() })
+            try {
+                dao.observeForUser(uid).collect { rows ->
+                    if (currentUserId == uid) send(rows.map { it.toObservation() })
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e("FloraGuide-Sync", "Failed to observe user database", error)
             }
         }
         if (uid == LOCAL_GUEST) {
             awaitClose {}
         } else {
-            dao.retryFailed(uid)
-            schedule(uid)
-            val registration = firestore.collection("users").document(uid).collection("observations")
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Log.w("FloraGuide-Sync", "Cloud read failed; retaining local records.")
-                    } else if (snapshot != null) {
-                        launch(Dispatchers.IO) {
-                            for (change in snapshot.documentChanges) {
-                                if (currentUserId != uid) return@launch
-                                // Local pending writes/deletes always win over cloud callbacks.
-                                if (change.type == DocumentChange.Type.REMOVED) {
-                                    dao.removeRemote(uid, change.document.id, change.document.getLong("revision") ?: 0)
-                                } else {
-                                    decodeRemote(change.document, uid)?.let { dao.mergeRemote(it) }
+            runCatching { dao.retryFailed(uid) }
+            runCatching { schedule(uid) }
+            val registration = runCatching {
+                firestore.collection("users").document(uid).collection("observations")
+                    .addSnapshotListener { snapshot, error ->
+                        if (error != null) {
+                            Log.w("FloraGuide-Sync", "Cloud read failed; retaining local records.")
+                        } else if (snapshot != null) {
+                            launch(Dispatchers.IO) {
+                                for (change in snapshot.documentChanges) {
+                                    if (currentUserId != uid) return@launch
+                                    // Local pending writes/deletes always win over cloud callbacks.
+                                    if (change.type == DocumentChange.Type.REMOVED) {
+                                        runCatching { dao.removeRemote(uid, change.document.id, change.document.getLong("revision") ?: 0) }
+                                    } else {
+                                        decodeRemote(change.document, uid)?.let { entity ->
+                                            runCatching { dao.mergeRemote(entity) }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            awaitClose { registration.remove() }
+            }.getOrNull()
+            awaitClose { registration?.remove() }
         }
     }
 
@@ -112,7 +124,9 @@ class OfflineFirstObservationRepository(
     }
 
     private fun schedule(uid: String) {
-        ObservationSyncWorker.schedule(context, uid, workManager ?: WorkManager.getInstance(context))
+        runCatching {
+            ObservationSyncWorker.schedule(context, uid, workManager ?: WorkManager.getInstance(context))
+        }
     }
 
     private fun decodeRemote(doc: DocumentSnapshot, uid: String): ObservationEntity? = runCatching {

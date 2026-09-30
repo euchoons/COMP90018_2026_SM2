@@ -43,12 +43,14 @@ class FirebaseAuthRepository(
             scope.launch {
                 // Only log SESSION_RESTORED if this is the very first check upon app launch
                 if (currentUser != null && isInitialVerification) {
-                    logger.logEvent(
-                        eventType = "SESSION_RESTORED",
-                        status = "SUCCESS",
-                        userUid = currentUser.uid,
-                        detail = "Cold-start session reconciliation synced user."
-                    )
+                    runCatching {
+                        logger.logEvent(
+                            eventType = "SESSION_RESTORED",
+                            status = "SUCCESS",
+                            userUid = currentUser.uid,
+                            detail = "Cold-start session reconciliation synced user."
+                        )
+                    }
                 }
                 // Once the first callback fires, turn off the flag globally
                 isInitialVerification = false
