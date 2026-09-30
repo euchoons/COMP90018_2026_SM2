@@ -10,6 +10,7 @@ written out. Stdlib only:
     python3 tools/build-evaluation-set.py --per-stratum 65 --split train \\
         --exclude app/src/test/resources/evaluation/pilot.json --out app/src/test/resources/evaluation/train.json
     python3 tools/build-evaluation-set.py --per-stratum 1 --out /tmp/x.json  # smoke test
+    python3 tools/build-evaluation-set.py --add-counts-without-inaturalist app/src/test/resources/evaluation/pilot.json
 """
 import argparse
 import concurrent.futures
@@ -166,13 +167,32 @@ def countable(match):
             and match.get("matchType") in ("exactMatch", "canonicalMatch") and match.get("taxonConceptID"))
 
 
-def ala_count(taxon_id, latitude, longitude, radius, observation_id):
+def ala_count(taxon_id, latitude, longitude, radius, observation_id, without_inaturalist=False):
     escaped = taxon_id.replace("\\", "\\\\").replace('"', '\\"')
+    # The observation's own ALA copy would reward the right answer, so leave it out.
+    own = f'-(dataResourceUid:dr1411 AND catalogNumber:"{observation_id}")'
     params = [("q", f'taxonConceptID:"{escaped}"'), ("lat", latitude), ("lon", longitude), ("radius", radius),
-              # The observation's own ALA copy would reward the right answer, so leave it out.
-              ("fq", f'-(dataResourceUid:dr1411 AND catalogNumber:"{observation_id}")'),
-              ("pageSize", 0), ("facet", "false")]
+              ("fq", "-dataResourceUid:dr1411" if without_inaturalist else own), ("pageSize", 0), ("facet", "false")]
     return get(f"{ALA_SEARCH}?{urllib.parse.urlencode(params)}")["totalRecords"]
+
+
+def add_counts_without_inaturalist(path, radius=8):
+    """Robustness check: iNaturalist supplies both the photos and many ALA records, so recount without it.
+
+    Only at the app's radius: ALA returned about 30 of these a minute, so all three radii would take over two hours."""
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source)
+    jobs = [((case["id"], name),
+             (data["alaNames"][name]["taxonConceptID"], case["latitude"], case["longitude"], radius, case["id"], True))
+            for case in data["cases"] for name in case["alaCounts"]]
+    counts = run_parallel("ALA counts without iNaturalist", ala_count, jobs, 4)
+    for case in data["cases"]:
+        case["alaCountsWithoutINaturalist"] = {name: {str(radius): counts[(case["id"], name)]} for name in case["alaCounts"]}
+    data["ala"]["withoutINaturalist"] = {"fq": "-dataResourceUid:dr1411", "radiusKm": radius,
+                                         "retrieved": datetime.date.today().isoformat()}
+    with open(path, "w", encoding="utf-8") as out:
+        out.write(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    print(f"added counts without iNaturalist to {path}", file=sys.stderr)
 
 
 def run_parallel(label, function, items, workers):
@@ -192,7 +212,13 @@ def main():
     parser.add_argument("--out", default=OUT)
     parser.add_argument("--split", help="label every case with this split instead of the hash-based dev/holdout")
     parser.add_argument("--exclude", action="append", default=[], help="an earlier dataset whose observations to avoid")
+    parser.add_argument("--add-counts-without-inaturalist", action="append", default=[], metavar="DATASET",
+                        help="recount an existing dataset's ALA records without iNaturalist, instead of collecting")
     args = parser.parse_args()
+    if args.add_counts_without_inaturalist:
+        for path in args.add_counts_without_inaturalist:
+            add_counts_without_inaturalist(path)
+        return
     key = re.search(r"^plantnet\.api\.key=(.+)$", open("local.properties", encoding="utf-8").read(), re.M).group(1).strip()
     excluded_ids = frozenset(c["id"] for path in args.exclude for c in json.load(open(path, encoding="utf-8"))["cases"])
 

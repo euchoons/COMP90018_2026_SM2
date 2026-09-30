@@ -67,7 +67,12 @@
   ],
   "baselineRadiusKm": 8,
   "coordinateDecimals": 3,
-  "excludesOwnRecord": "dataResourceUid:dr1411 AND catalogNumber:<observation id>"
+  "excludesOwnRecord": "dataResourceUid:dr1411 AND catalogNumber:<observation id>",
+  "withoutINaturalist": {
+   "fq": "-dataResourceUid:dr1411",
+   "radiusKm": 8,
+   "retrieved": "2026-09-30"
+  }
  },
  "alaNames": {
   "Acacia baileyana": {
@@ -5927,6 +5932,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Amyema quandang": {
+     "8": 16
+    },
+    "Amyema miquelii": {
+     "8": 1
+    },
+    "Dendrophthoe vitellinus": {
+     "8": 0
+    },
+    "Amyema congener": {
+     "8": 0
+    }
    }
   },
   {
@@ -6008,6 +6027,20 @@
      "8": 0,
      "25": 57
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Amyema quandang": {
+     "8": 0
+    },
+    "Dendrophthoe vitellinus": {
+     "8": 0
+    },
+    "Amyema congener": {
+     "8": 0
+    },
+    "Amyema miquelii": {
+     "8": 0
+    }
    }
   },
   {
@@ -6087,6 +6120,17 @@
      "2": 0,
      "8": 14,
      "25": 116
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Leucochrysum albicans": {
+     "8": 1
+    },
+    "Xerochrysum viscosum": {
+     "8": 20
+    },
+    "Craspedia variabilis": {
+     "8": 2
     }
    }
   },
@@ -6178,6 +6222,23 @@
      "2": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Goodenia ovata": {
+     "8": 74
+    },
+    "Goodenia varia": {
+     "8": 0
+    },
+    "Goodenia hederacea": {
+     "8": 0
+    },
+    "Goodenia trinervis": {
+     "8": 0
+    },
+    "Goodenia heterophylla": {
+     "8": 0
+    }
    }
   },
   {
@@ -6229,6 +6290,14 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Goodenia ovata": {
+     "8": 93
+    },
+    "Goodenia varia": {
+     "8": 0
+    }
    }
   },
   {
@@ -6274,6 +6343,11 @@
      "2": 13,
      "8": 120,
      "25": 229
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cymbalaria muralis": {
+     "8": 2
     }
    }
   },
@@ -6328,6 +6402,11 @@
      "2": 12,
      "8": 146,
      "25": 1083
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Modiola caroliniana": {
+     "8": 57
     }
    }
   },
@@ -6390,6 +6469,11 @@
      "2": 8,
      "8": 91,
      "25": 1043
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Modiola caroliniana": {
+     "8": 53
     }
    }
   },
@@ -6476,6 +6560,20 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia longifolia": {
+     "8": 22
+    },
+    "Acacia spirorbis": {
+     "8": 0
+    },
+    "Acacia redolens": {
+     "8": 0
+    },
+    "Acacia notabilis": {
+     "8": 0
+    }
    }
   },
   {
@@ -6556,6 +6654,17 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Bursaria spinosa": {
+     "8": 123
+    },
+    "Nitraria schoberi": {
+     "8": 0
+    },
+    "Leionema dentatum": {
+     "8": 0
+    }
    }
   },
   {
@@ -6626,6 +6735,11 @@
      "8": 82,
      "25": 596
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pseudognaphalium luteoalbum": {
+     "8": 17
+    }
    }
   },
   {
@@ -6695,6 +6809,11 @@
      "2": 0,
      "8": 28,
      "25": 292
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Viola odorata": {
+     "8": 4
     }
    }
   },
@@ -6770,6 +6889,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ranunculus repens": {
+     "8": 53
+    },
+    "Ranunculus acris": {
+     "8": 0
     }
    }
   },
@@ -6861,6 +6988,23 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pelargonium inodorum": {
+     "8": 3
+    },
+    "Erodium malacoides": {
+     "8": 2
+    },
+    "Pelargonium capitatum": {
+     "8": 0
+    },
+    "Pelargonium vitifolium": {
+     "8": 0
+    },
+    "Pelargonium littorale": {
+     "8": 0
+    }
    }
   },
   {
@@ -6940,6 +7084,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pelargonium inodorum": {
+     "8": 0
+    },
+    "Pelargonium littorale": {
+     "8": 1
+    },
+    "Pelargonium vitifolium": {
+     "8": 0
     }
    }
   },
@@ -7031,6 +7186,23 @@
      "8": 13,
      "25": 64
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia acinacea": {
+     "8": 86
+    },
+    "Acacia ligustrina": {
+     "8": 0
+    },
+    "Acacia howittii": {
+     "8": 3
+    },
+    "Acacia paradoxa": {
+     "8": 57
+    },
+    "Acacia pravissima": {
+     "8": 7
+    }
    }
   },
   {
@@ -7116,6 +7288,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Arctotheca calendula": {
+     "8": 71
+    },
+    "Arctotis stoechadifolia": {
+     "8": 1
+    },
+    "Arctotis venusta": {
+     "8": 0
+    },
+    "Dimorphotheca sinuata": {
+     "8": 0
+    }
    }
   },
   {
@@ -7185,6 +7371,11 @@
      "2": 11,
      "8": 109,
      "25": 1687
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Senecio quadridentatus": {
+     "8": 42
     }
    }
   },
@@ -7270,6 +7461,20 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pandorea jasminoides": {
+     "8": 0
+    },
+    "Pandorea pandorana": {
+     "8": 14
+    },
+    "Podranea ricasoliana": {
+     "8": 0
+    },
+    "Ipomoea mauritiana": {
+     "8": 0
     }
    }
   },
@@ -7361,6 +7566,23 @@
      "8": 65,
      "25": 329
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Corymbia ficifolia": {
+     "8": 3
+    },
+    "Corymbia ptychocarpa": {
+     "8": 0
+    },
+    "Eucalyptus leucoxylon": {
+     "8": 86
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 7
+    },
+    "Corymbia maculata": {
+     "8": 14
+    }
    }
   },
   {
@@ -7403,6 +7625,11 @@
      "8": 279,
      "25": 2653
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Arctotheca calendula": {
+     "8": 101
+    }
    }
   },
   {
@@ -7444,6 +7671,11 @@
      "2": 34,
      "8": 229,
      "25": 1679
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Aizoon pubescens": {
+     "8": 123
     }
    }
   },
@@ -7523,6 +7755,17 @@
     "Onopordum acanthium": {
      "2": 0,
      "25": 10,
+     "8": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cirsium vulgare": {
+     "8": 58
+    },
+    "Carduus acanthoides": {
+     "8": 0
+    },
+    "Onopordum acanthium": {
      "8": 1
     }
    }
@@ -7605,6 +7848,17 @@
      "8": 0,
      "25": 2
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Sonchus tenerrimus": {
+     "8": 0
+    },
+    "Reichardia picroides": {
+     "8": 0
+    },
+    "Crepis foetida": {
+     "8": 0
+    }
    }
   },
   {
@@ -7675,6 +7929,11 @@
      "8": 1,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Corokia buddleioides": {
+     "8": 1
+    }
    }
   },
   {
@@ -7732,6 +7991,11 @@
      "2": 40,
      "8": 152,
      "25": 571
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Bellis perennis": {
+     "8": 22
     }
    }
   },
@@ -7801,6 +8065,20 @@
      "2": 0,
      "8": 6,
      "25": 389
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Lagurus ovatus": {
+     "8": 34
+    },
+    "Polypogon monspeliensis": {
+     "8": 39
+    },
+    "Chloris virgata": {
+     "8": 0
+    },
+    "Cynosurus echinatus": {
+     "8": 6
     }
    }
   },
@@ -7887,6 +8165,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Capsella bursa-pastoris": {
+     "8": 32
+    },
+    "Lepidium graminifolium": {
+     "8": 2
+    },
+    "Cardamine occulta": {
+     "8": 8
+    },
+    "Draba muralis": {
+     "8": 0
+    }
    }
   },
   {
@@ -7962,6 +8254,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Lycium ferocissimum": {
+     "8": 72
+    },
+    "Lycium europaeum": {
+     "8": 0
+    }
    }
   },
   {
@@ -8025,6 +8325,14 @@
      "8": 5,
      "25": 6
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cotyledon orbiculata": {
+     "8": 5
+    },
+    "Kalanchoe fedtschenkoi": {
+     "8": 0
+    }
    }
   },
   {
@@ -8066,6 +8374,11 @@
      "2": 13,
      "8": 49,
      "25": 438
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Correa alba": {
+     "8": 22
     }
    }
   },
@@ -8112,6 +8425,11 @@
      "2": 35,
      "8": 123,
      "25": 234
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cymbalaria muralis": {
+     "8": 2
     }
    }
   },
@@ -8188,6 +8506,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Grevillea robusta": {
+     "8": 104
+    },
+    "Grevillea pteridifolia": {
+     "8": 0
+    }
    }
   },
   {
@@ -8257,6 +8583,11 @@
      "2": 27,
      "8": 223,
      "25": 1167
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Allium triquetrum": {
+     "8": 89
     }
    }
   },
@@ -8348,6 +8679,23 @@
      "8": 77,
      "25": 863
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia verticillata": {
+     "8": 18
+    },
+    "Acacia olgana": {
+     "8": 0
+    },
+    "Acacia echinula": {
+     "8": 0
+    },
+    "Melaleuca alternifolia": {
+     "8": 0
+    },
+    "Melaleuca ericifolia": {
+     "8": 44
+    }
    }
   },
   {
@@ -8418,6 +8766,11 @@
      "8": 40,
      "25": 179
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Erigeron karvinskianus": {
+     "8": 7
+    }
    }
   },
   {
@@ -8459,6 +8812,11 @@
      "2": 1,
      "8": 47,
      "25": 172
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Anredera cordifolia": {
+     "8": 15
     }
    }
   },
@@ -8537,6 +8895,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Gladiolus undulatus": {
+     "8": 1
+    },
+    "Gladiolus tristis": {
+     "8": 3
+    },
+    "Gladiolus carneus": {
+     "8": 3
+    },
+    "Gladiolus floribundus": {
+     "8": 0
+    }
    }
   },
   {
@@ -8601,7 +8973,8 @@
      }
     ]
    },
-   "alaCounts": {}
+   "alaCounts": {},
+   "alaCountsWithoutINaturalist": {}
   },
   {
    "id": 401767031,
@@ -8663,6 +9036,14 @@
      "2": 1,
      "8": 17,
      "25": 33
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Allium triquetrum": {
+     "8": 79
+    },
+    "Nothoscordum gracile": {
+     "8": 2
     }
    }
   },
@@ -8749,6 +9130,20 @@
      "8": 2,
      "25": 4
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia implexa": {
+     "8": 106
+    },
+    "Acacia cognata": {
+     "8": 14
+    },
+    "Wrightia saligna": {
+     "8": 0
+    },
+    "Acacia salicina": {
+     "8": 0
+    }
    }
   },
   {
@@ -8816,6 +9211,17 @@
      "2": 0,
      "25": 10,
      "8": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Geranium robertianum": {
+     "8": 1
+    },
+    "Geranium purpureum": {
+     "8": 0
+    },
+    "Geranium yeoi": {
+     "8": 0
     }
    }
   },
@@ -8902,6 +9308,20 @@
      "8": 3,
      "25": 41
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Anthoxanthum odoratum": {
+     "8": 19
+    },
+    "Phleum pratense": {
+     "8": 1
+    },
+    "Lolium perenne": {
+     "8": 69
+    },
+    "Avena sativa": {
+     "8": 1
+    }
    }
   },
   {
@@ -8977,6 +9397,14 @@
      "8": 14,
      "25": 54
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Senecio quadridentatus": {
+     "8": 42
+    },
+    "Symphyotrichum squamatum": {
+     "8": 0
+    }
    }
   },
   {
@@ -9031,6 +9459,14 @@
      "2": 0,
      "8": 1,
      "25": 4
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Correa alba": {
+     "8": 20
+    },
+    "Correa backhouseana": {
+     "8": 0
     }
    }
   },
@@ -9122,6 +9558,23 @@
      "8": 117,
      "25": 1202
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus leucoxylon": {
+     "8": 90
+    },
+    "Eucalyptus globulus": {
+     "8": 33
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 7
+    },
+    "Eucalyptus paniculata": {
+     "8": 1
+    },
+    "Eucalyptus viminalis": {
+     "8": 79
+    }
    }
   },
   {
@@ -9192,6 +9645,14 @@
      "2": 1,
      "8": 17,
      "25": 66
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Medicago sativa": {
+     "8": 12
+    },
+    "Medicago falcata": {
+     "8": 12
     }
    }
   },
@@ -9278,6 +9739,20 @@
      "8": 20,
      "25": 84
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Raphanus raphanistrum": {
+     "8": 48
+    },
+    "Brassica juncea": {
+     "8": 1
+    },
+    "Rapistrum rugosum": {
+     "8": 15
+    },
+    "Brassica rapa": {
+     "8": 8
+    }
    }
   },
   {
@@ -9347,6 +9822,11 @@
      "2": 0,
      "8": 8,
      "25": 99
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Amaryllis belladonna": {
+     "8": 1
     }
    }
   },
@@ -9423,6 +9903,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Conium maculatum": {
+     "8": 20
+    },
+    "Anthriscus sylvestris": {
+     "8": 0
+    }
    }
   },
   {
@@ -9468,6 +9956,11 @@
      "2": 27,
      "8": 45,
      "25": 132
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Mesembryanthemum cordifolium": {
+     "8": 9
     }
    }
   },
@@ -9559,6 +10052,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Solanum nigrum": {
+     "8": 43
+    },
+    "Solanum villosum": {
+     "8": 0
+    },
+    "Solanum chenopodioides": {
+     "8": 8
+    },
+    "Solanum americanum": {
+     "8": 3
+    },
+    "Solanum douglasii": {
+     "8": 0
+    }
    }
   },
   {
@@ -9644,6 +10154,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Solanum laciniatum": {
+     "8": 10
+    },
+    "Solanum aviculare": {
+     "8": 6
+    },
+    "Solanum vescum": {
+     "8": 0
+    },
+    "Solanum symonii": {
+     "8": 0
+    }
    }
   },
   {
@@ -9714,6 +10238,11 @@
      "8": 1,
      "25": 8
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Linum usitatissimum": {
+     "8": 1
+    }
    }
   },
   {
@@ -9783,6 +10312,11 @@
      "2": 27,
      "8": 44,
      "25": 132
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Mesembryanthemum cordifolium": {
+     "8": 9
     }
    }
   },
@@ -9865,6 +10399,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dipogon lignosus": {
+     "8": 15
+    },
+    "Lathyrus odoratus": {
+     "8": 4
+    },
+    "Lathyrus latifolius": {
+     "8": 0
+    },
+    "Neustanthus phaseoloides": {
+     "8": 0
+    }
    }
   },
   {
@@ -9923,6 +10471,14 @@
      "2": 0,
      "8": 2,
      "25": 5
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Calendula officinalis": {
+     "8": 3
+    },
+    "Calendula arvensis": {
+     "8": 0
     }
    }
   },
@@ -9993,6 +10549,11 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Tephrosia nana": {
+     "8": 0
     }
    }
   },
@@ -10079,6 +10640,20 @@
      "2": 0,
      "25": 374
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Bromus sterilis": {
+     "8": 0
+    },
+    "Bromus madritensis": {
+     "8": 14
+    },
+    "Bromus diandrus": {
+     "8": 89
+    },
+    "Festuca myuros": {
+     "8": 27
+    }
    }
   },
   {
@@ -10120,6 +10695,11 @@
      "2": 17,
      "8": 316,
      "25": 2825
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Bursaria spinosa": {
+     "8": 132
     }
    }
   },
@@ -10211,6 +10791,23 @@
      "8": 6,
      "25": 7
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Banksia spinulosa": {
+     "8": 47
+    },
+    "Banksia ericifolia": {
+     "8": 12
+    },
+    "Banksia tricuspis": {
+     "8": 0
+    },
+    "Banksia marginata": {
+     "8": 57
+    },
+    "Banksia littoralis": {
+     "8": 6
+    }
    }
   },
   {
@@ -10280,6 +10877,11 @@
      "2": 0,
      "8": 2,
      "25": 11
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ornithopus pinnatus": {
+     "8": 2
     }
    }
   },
@@ -10361,6 +10963,17 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Commelina cyanea": {
+     "8": 0
+    },
+    "Commelina diffusa": {
+     "8": 0
+    },
+    "Commelina benghalensis": {
+     "8": 0
+    }
    }
   },
   {
@@ -10434,6 +11047,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Melilotus indicus": {
+     "8": 36
+    },
+    "Melilotus officinalis": {
+     "8": 1
+    },
+    "Melilotus altissimus": {
+     "8": 1
+    },
+    "Melilotus sulcatus": {
+     "8": 0
+    }
    }
   },
   {
@@ -10502,6 +11129,20 @@
      "2": 0,
      "8": 0,
      "25": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia longifolia": {
+     "8": 25
+    },
+    "Acacia floribunda": {
+     "8": 22
+    },
+    "Acacia retinodes": {
+     "8": 17
+    },
+    "Acacia notabilis": {
+     "8": 0
     }
    }
   },
@@ -10593,6 +11234,23 @@
      "8": 36,
      "25": 211
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia pycnantha": {
+     "8": 68
+    },
+    "Acacia obliquinervia": {
+     "8": 1
+    },
+    "Acacia falcata": {
+     "8": 0
+    },
+    "Acacia retinodes": {
+     "8": 15
+    },
+    "Acacia saligna": {
+     "8": 16
+    }
    }
   },
   {
@@ -10683,6 +11341,23 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia melanoxylon": {
+     "8": 144
+    },
+    "Acacia retinodes": {
+     "8": 16
+    },
+    "Acacia longifolia": {
+     "8": 21
+    },
+    "Acacia pycnantha": {
+     "8": 72
+    },
+    "Acacia redolens": {
+     "8": 0
+    }
    }
   },
   {
@@ -10733,6 +11408,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Banksia integrifolia": {
+     "8": 31
+    },
+    "Banksia vincentia": {
+     "8": 0
     }
    }
   },
@@ -10804,6 +11487,11 @@
      "8": 211,
      "25": 3151
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Romulea rosea": {
+     "8": 118
+    }
    }
   },
   {
@@ -10872,6 +11560,20 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dodonaea viscosa": {
+     "8": 17
+    },
+    "Acacia longifolia": {
+     "8": 27
+    },
+    "Lawsonia inermis": {
+     "8": 0
+    },
+    "Salix purpurea": {
+     "8": 0
     }
    }
   },
@@ -10963,6 +11665,23 @@
      "2": 1,
      "25": 63
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Banksia integrifolia": {
+     "8": 31
+    },
+    "Banksia praemorsa": {
+     "8": 1
+    },
+    "Banksia marginata": {
+     "8": 58
+    },
+    "Carthamus tinctorius": {
+     "8": 4
+    },
+    "Banksia serrata": {
+     "8": 6
+    }
    }
   },
   {
@@ -11037,6 +11756,14 @@
      "2": 4,
      "8": 119,
      "25": 758
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pseudognaphalium luteoalbum": {
+     "8": 19
+    },
+    "Chrysocephalum apiculatum": {
+     "8": 41
     }
    }
   },
@@ -11128,6 +11855,23 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus globulus": {
+     "8": 31
+    },
+    "Eucalyptus camaldulensis": {
+     "8": 338
+    },
+    "Eucalyptus viminalis": {
+     "8": 73
+    },
+    "Eucalyptus tereticornis": {
+     "8": 0
+    },
+    "Eucalyptus dalrympleana": {
+     "8": 0
+    }
    }
   },
   {
@@ -11202,6 +11946,14 @@
      "2": 0,
      "8": 2,
      "25": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Melicytus dentatus": {
+     "8": 68
+    },
+    "Phillyrea angustifolia": {
+     "8": 2
     }
    }
   },
@@ -11278,6 +12030,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Plantago coronopus": {
+     "8": 114
+    },
+    "Cirsium palustre": {
+     "8": 0
+    }
    }
   },
   {
@@ -11319,6 +12079,11 @@
      "2": 1,
      "8": 30,
      "25": 346
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Duma florulenta": {
+     "8": 0
     }
    }
   },
@@ -11410,6 +12175,23 @@
      "8": 3,
      "25": 233
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia melanoxylon": {
+     "8": 128
+    },
+    "Acacia binervata": {
+     "8": 3
+    },
+    "Acacia implexa": {
+     "8": 152
+    },
+    "Acacia howittii": {
+     "8": 3
+    },
+    "Acacia myrtifolia": {
+     "8": 2
+    }
    }
   },
   {
@@ -11485,6 +12267,14 @@
      "8": 6,
      "25": 6
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Anredera cordifolia": {
+     "8": 25
+    },
+    "Muehlenbeckia australis": {
+     "8": 6
+    }
    }
   },
   {
@@ -11551,6 +12341,11 @@
      "25": 738,
      "8": 151
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Olearia ramulosa": {
+     "8": 14
+    }
    }
   },
   {
@@ -11613,6 +12408,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cirsium vulgare": {
+     "8": 40
+    },
+    "Carduus acanthoides": {
+     "8": 0
     }
    }
   },
@@ -11704,6 +12507,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Malva parviflora": {
+     "8": 44
+    },
+    "Malva nicaeensis": {
+     "8": 21
+    },
+    "Malva neglecta": {
+     "8": 6
+    },
+    "Malva multiflora": {
+     "8": 4
+    },
+    "Malva pusilla": {
+     "8": 0
+    }
    }
   },
   {
@@ -11784,6 +12604,17 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Indigofera australis": {
+     "8": 28
+    },
+    "Indigofera tinctoria": {
+     "8": 0
+    },
+    "Indigofera heterantha": {
+     "8": 0
+    }
    }
   },
   {
@@ -11847,6 +12678,17 @@
      "2": 0,
      "8": 6,
      "25": 39
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Hyacinthoides × massartiana": {
+     "8": 0
+    },
+    "Hyacinthoides non-scripta": {
+     "8": 4
+    },
+    "Hyacinthoides hispanica": {
+     "8": 0
     }
    }
   },
@@ -11918,6 +12760,11 @@
      "8": 116,
      "25": 733
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Olearia ramulosa": {
+     "8": 15
+    }
    }
   },
   {
@@ -11986,6 +12833,20 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Poa annua": {
+     "8": 55
+    },
+    "Sclerochloa dura": {
+     "8": 0
+    },
+    "Poa infirma": {
+     "8": 1
+    },
+    "Poa alpina": {
+     "8": 0
     }
    }
   },
@@ -12057,6 +12918,11 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Commelina ensifolia": {
+     "8": 0
+    }
    }
   },
   {
@@ -12116,6 +12982,17 @@
      "2": 1,
      "8": 1,
      "25": 8
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Brachyscome multifida": {
+     "8": 8
+    },
+    "Brachyscome iberidifolia": {
+     "8": 0
+    },
+    "Brachyscome graminea": {
+     "8": 1
     }
    }
   },
@@ -12192,6 +13069,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Chrysocephalum semipapposum": {
+     "8": 23
+    },
+    "Helichrysum italicum": {
+     "8": 0
+    }
    }
   },
   {
@@ -12250,6 +13135,14 @@
      "2": 0,
      "8": 1,
      "25": 7
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Aizoon pubescens": {
+     "8": 130
+    },
+    "Mesembryanthemum crystallinum": {
+     "8": 1
     }
    }
   },
@@ -12330,6 +13223,17 @@
      "2": 0,
      "25": 106,
      "8": 6
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Genista monspessulana": {
+     "8": 68
+    },
+    "Cytisus striatus": {
+     "8": 0
+    },
+    "Cytisus scoparius": {
+     "8": 3
     }
    }
   },
@@ -12416,6 +13320,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Solanum chenopodioides": {
+     "8": 11
+    },
+    "Solanum pseudogracile": {
+     "8": 0
+    },
+    "Solanum americanum": {
+     "8": 3
+    },
+    "Solanum douglasii": {
+     "8": 0
+    }
    }
   },
   {
@@ -12470,6 +13388,14 @@
      "2": 28,
      "8": 163,
      "25": 781
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Chrysocephalum apiculatum": {
+     "8": 23
+    },
+    "Chrysocephalum semipapposum": {
+     "8": 22
     }
    }
   },
@@ -12551,6 +13477,17 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Parietaria judaica": {
+     "8": 16
+    },
+    "Parietaria officinalis": {
+     "8": 0
+    },
+    "Origanum majorana": {
+     "8": 0
+    }
    }
   },
   {
@@ -12630,6 +13567,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Pomaderris apetala": {
+     "8": 1
+    },
+    "Pomaderris racemosa": {
+     "8": 5
+    },
+    "Varronia curassavica": {
+     "8": 0
     }
    }
   },
@@ -12721,6 +13669,23 @@
      "8": 294,
      "25": 898
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Tristaniopsis laurina": {
+     "8": 6
+    },
+    "Acacia retinodes": {
+     "8": 16
+    },
+    "Acacia saligna": {
+     "8": 29
+    },
+    "Laurus nobilis": {
+     "8": 2
+    },
+    "Dodonaea viscosa": {
+     "8": 76
+    }
    }
   },
   {
@@ -12800,6 +13765,17 @@
      "8": 43,
      "2": 7,
      "25": 315
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Paspalum plicatulum": {
+     "8": 0
+    },
+    "Cenchrus setaceus": {
+     "8": 16
+    },
+    "Setaria parviflora": {
+     "8": 22
     }
    }
   },
@@ -12891,6 +13867,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Persicaria decipiens": {
+     "8": 99
+    },
+    "Persicaria strigosa": {
+     "8": 0
+    },
+    "Persicaria glabra": {
+     "8": 0
+    },
+    "Persicaria minor": {
+     "8": 0
+    },
+    "Persicaria hydropiperoides": {
+     "8": 0
+    }
    }
   },
   {
@@ -12960,6 +13953,11 @@
      "2": 1,
      "8": 3,
      "25": 8
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Urtica dioica": {
+     "8": 2
     }
    }
   },
@@ -13035,6 +14033,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Conium maculatum": {
+     "8": 20
+    },
+    "Anthriscus caucalis": {
+     "8": 0
     }
    }
   },
@@ -13126,6 +14132,23 @@
      "8": 14,
      "25": 1455
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Kunzea ericoides": {
+     "8": 32
+    },
+    "Leptospermum scoparium": {
+     "8": 9
+    },
+    "Chamelaucium uncinatum": {
+     "8": 0
+    },
+    "Leptospermum petersonii": {
+     "8": 4
+    },
+    "Gaudium laevigatum": {
+     "8": 4
+    }
    }
   },
   {
@@ -13206,6 +14229,17 @@
      "8": 55,
      "25": 213
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Rumex pulcher": {
+     "8": 22
+    },
+    "Rumex crispus": {
+     "8": 79
+    },
+    "Rumex × acutus": {
+     "8": 7
+    }
    }
   },
   {
@@ -13273,6 +14307,20 @@
     "Erica scoparia": {
      "2": 0,
      "25": 0,
+     "8": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia paradoxa": {
+     "8": 62
+    },
+    "Melaleuca huegelii": {
+     "8": 1
+    },
+    "Baeckea imbricata": {
+     "8": 0
+    },
+    "Erica scoparia": {
      "8": 0
     }
    }
@@ -13350,6 +14398,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Enchylaena tomentosa": {
+     "8": 33
+    },
+    "Portulaca grandiflora": {
+     "8": 0
+    },
+    "Portulaca pilosa": {
+     "8": 0
     }
    }
   },
@@ -13436,6 +14495,20 @@
      "8": 9,
      "25": 14
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Physalis philadelphica": {
+     "8": 0
+    },
+    "Physalis angulata": {
+     "8": 0
+    },
+    "Physalis ixocarpa": {
+     "8": 0
+    },
+    "Physalis peruviana": {
+     "8": 7
+    }
    }
   },
   {
@@ -13510,6 +14583,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Banksia marginata": {
+     "8": 12
+    },
+    "Orites diversifolius": {
+     "8": 0
     }
    }
   },
@@ -13596,6 +14677,20 @@
      "25": 1,
      "8": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Correa glabra": {
+     "8": 19
+    },
+    "Correa reflexa": {
+     "8": 22
+    },
+    "Correa bauerlenii": {
+     "8": 1
+    },
+    "Billardiera longiflora": {
+     "8": 0
+    }
    }
   },
   {
@@ -13676,6 +14771,17 @@
      "8": 67,
      "25": 615
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Chenopodium spinescens": {
+     "8": 2
+    },
+    "Chenopodium vulvaria": {
+     "8": 1
+    },
+    "Atriplex halimus": {
+     "8": 18
+    }
    }
   },
   {
@@ -13755,6 +14861,17 @@
      "2": 0,
      "8": 0,
      "25": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Wahlenbergia stricta": {
+     "8": 9
+    },
+    "Thysanotus dichotomus": {
+     "8": 0
+    },
+    "Wahlenbergia gloriosa": {
+     "8": 0
     }
    }
   },
@@ -13841,6 +14958,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Oxalis bowiei": {
+     "8": 1
+    },
+    "Oxalis debilis": {
+     "8": 4
+    },
+    "Oxalis articulata": {
+     "8": 7
+    },
+    "Oxalis megalorrhiza": {
+     "8": 0
+    }
    }
   },
   {
@@ -13926,6 +15057,20 @@
      "8": 2,
      "25": 2
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia baileyana": {
+     "8": 30
+    },
+    "Acacia dealbata": {
+     "8": 87
+    },
+    "Vachellia nilotica": {
+     "8": 0
+    },
+    "Vachellia farnesiana": {
+     "8": 2
+    }
    }
   },
   {
@@ -14005,6 +15150,17 @@
      "2": 1,
      "8": 34,
      "25": 319
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Fumaria capreolata": {
+     "8": 25
+    },
+    "Fumaria bastardii": {
+     "8": 11
+    },
+    "Fumaria muralis": {
+     "8": 9
     }
    }
   },
@@ -14086,6 +15242,17 @@
      "8": 110,
      "25": 1191
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Sonchus arvensis": {
+     "8": 0
+    },
+    "Sonchus oleraceus": {
+     "8": 184
+    },
+    "Sonchus asper": {
+     "8": 56
+    }
    }
   },
   {
@@ -14136,6 +15303,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Salpichroa origanifolia": {
+     "8": 39
+    },
+    "Solanum pseudogracile": {
+     "8": 0
     }
    }
   },
@@ -14227,6 +15402,23 @@
      "25": 0,
      "8": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Persicaria decipiens": {
+     "8": 162
+    },
+    "Persicaria glabra": {
+     "8": 0
+    },
+    "Persicaria minor": {
+     "8": 0
+    },
+    "Persicaria hydropiper": {
+     "8": 21
+    },
+    "Persicaria hydropiperoides": {
+     "8": 0
+    }
    }
   },
   {
@@ -14290,6 +15482,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Feijoa sellowiana": {
+     "8": 0
+    },
+    "Psidium guajava": {
+     "8": 0
+    },
+    "Psidium guineense": {
+     "8": 0
     }
    }
   },
@@ -14370,6 +15573,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cynara cardunculus": {
+     "8": 122
+    },
+    "Onopordum illyricum": {
+     "8": 1
+    },
+    "Onopordum tauricum": {
+     "8": 0
     }
    }
   },
@@ -14461,6 +15675,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Phragmites australis": {
+     "8": 21
+    },
+    "Arundo donax": {
+     "8": 7
+    },
+    "Cortaderia selloana": {
+     "8": 6
+    },
+    "Alopecurus pratensis": {
+     "8": 0
+    },
+    "Calamagrostis epigejos": {
+     "8": 0
+    }
    }
   },
   {
@@ -14535,6 +15766,14 @@
      "2": 0,
      "8": 0,
      "25": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Xerochrysum viscosum": {
+     "8": 23
+    },
+    "Linaria vulgaris": {
+     "8": 0
     }
    }
   },
@@ -14615,6 +15854,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Papaver dubium": {
+     "8": 6
+    },
+    "Papaver rhoeas": {
+     "8": 0
+    },
+    "Papaver aculeatum": {
+     "8": 0
     }
    }
   },
@@ -14706,6 +15956,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia implexa": {
+     "8": 111
+    },
+    "Acacia melanoxylon": {
+     "8": 110
+    },
+    "Acacia salicina": {
+     "8": 0
+    },
+    "Acacia falcata": {
+     "8": 0
+    },
+    "Acacia koa": {
+     "8": 0
+    }
    }
   },
   {
@@ -14781,6 +16048,14 @@
      "8": 1,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Atriplex cinerea": {
+     "8": 74
+    },
+    "Elaeagnus angustifolia": {
+     "8": 1
+    }
    }
   },
   {
@@ -14855,6 +16130,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Sisyrinchium micranthum": {
+     "8": 3
+    },
+    "Sisyrinchium angustifolium": {
+     "8": 0
     }
    }
   },
@@ -14935,6 +16218,17 @@
      "2": 0,
      "8": 7,
      "25": 73
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Moraea polystachya": {
+     "8": 0
+    },
+    "Dietes grandiflora": {
+     "8": 1
+    },
+    "Moraea setifolia": {
+     "8": 2
     }
    }
   },
@@ -15021,6 +16315,20 @@
      "8": 23,
      "25": 109
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Westringia eremicola": {
+     "8": 1
+    },
+    "Westringia longifolia": {
+     "8": 0
+    },
+    "Westringia rigida": {
+     "8": 0
+    },
+    "Westringia fruticosa": {
+     "8": 2
+    }
    }
   },
   {
@@ -15098,6 +16406,23 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Datura stramonium": {
+     "8": 15
+    },
+    "Datura ferox": {
+     "8": 0
+    },
+    "Datura metel": {
+     "8": 0
+    },
+    "Datura innoxia": {
+     "8": 0
+    },
+    "Datura wrightii": {
+     "8": 0
     }
    }
   },
@@ -15178,6 +16503,17 @@
      "2": 0,
      "8": 2,
      "25": 43
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Themeda quadrivalvis": {
+     "8": 0
+    },
+    "Themeda triandra": {
+     "8": 100
+    },
+    "Poa bulbosa": {
+     "8": 1
     }
    }
   },
@@ -15260,6 +16596,20 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Lagurus ovatus": {
+     "8": 56
+    },
+    "Ptilotus macrocephalus": {
+     "8": 2
+    },
+    "Cynosurus echinatus": {
+     "8": 2
+    },
+    "Phleum arenarium": {
+     "8": 0
+    }
    }
   },
   {
@@ -15323,6 +16673,17 @@
      "2": 0,
      "8": 5,
      "25": 14
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Lythrum salicaria": {
+     "8": 3
+    },
+    "Lythrum hyssopifolia": {
+     "8": 34
+    },
+    "Lythrum junceum": {
+     "8": 1
     }
    }
   },
@@ -15404,6 +16765,17 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Atriplex cinerea": {
+     "8": 33
+    },
+    "Atriplex halimus": {
+     "8": 33
+    },
+    "Conocarpus erectus": {
+     "8": 0
+    }
    }
   },
   {
@@ -15471,6 +16843,14 @@
      "8": 25,
      "25": 934
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ulex minor": {
+     "8": 0
+    },
+    "Ulex europaeus": {
+     "8": 19
+    }
    }
   },
   {
@@ -15533,6 +16913,14 @@
      "2": 1,
      "8": 2,
      "25": 11
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Schinus molle": {
+     "8": 51
+    },
+    "Salix × pendulina": {
+     "8": 1
     }
    }
   },
@@ -15614,6 +17002,17 @@
      "8": 3,
      "25": 16
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Schinus molle": {
+     "8": 35
+    },
+    "Neltuma glandulosa": {
+     "8": 0
+    },
+    "Acacia pendula": {
+     "8": 0
+    }
    }
   },
   {
@@ -15689,6 +17088,14 @@
      "8": 207,
      "25": 1432
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Leucojum aestivum": {
+     "8": 0
+    },
+    "Allium triquetrum": {
+     "8": 90
+    }
    }
   },
   {
@@ -15739,6 +17146,14 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Feijoa sellowiana": {
+     "8": 0
+    },
+    "Rhodomyrtus tomentosa": {
+     "8": 0
     }
    }
   },
@@ -15809,6 +17224,11 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Strelitzia juncea": {
+     "8": 0
     }
    }
   },
@@ -15900,6 +17320,23 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus caesia": {
+     "8": 2
+    },
+    "Eucalyptus woodwardii": {
+     "8": 0
+    },
+    "Eucalyptus polyanthemos": {
+     "8": 21
+    },
+    "Eucalyptus pauciflora": {
+     "8": 4
+    },
+    "Eucalyptus bancroftii": {
+     "8": 0
+    }
    }
   },
   {
@@ -15985,6 +17422,20 @@
      "8": 1,
      "25": 2
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ficinia nodosa": {
+     "8": 24
+    },
+    "Juncus conglomeratus": {
+     "8": 0
+    },
+    "Fimbristylis cymosa": {
+     "8": 0
+    },
+    "Juncus effusus": {
+     "8": 0
+    }
    }
   },
   {
@@ -16066,6 +17517,20 @@
      "8": 35,
      "25": 304
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Hardenbergia violacea": {
+     "8": 44
+    },
+    "Hardenbergia comptoniana": {
+     "8": 9
+    },
+    "Grona heterocarpos": {
+     "8": 0
+    },
+    "Glycine tabacina": {
+     "8": 23
+    }
    }
   },
   {
@@ -16116,6 +17581,14 @@
      "2": 0,
      "8": 1,
      "25": 3
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Melia azedarach": {
+     "8": 184
+    },
+    "Toona sinensis": {
+     "8": 0
     }
    }
   },
@@ -16207,6 +17680,23 @@
      "8": 244,
      "25": 1371
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia cultriformis": {
+     "8": 4
+    },
+    "Acacia baileyana": {
+     "8": 30
+    },
+    "Acacia pravissima": {
+     "8": 8
+    },
+    "Acacia podalyriifolia": {
+     "8": 5
+    },
+    "Acacia acinacea": {
+     "8": 57
+    }
    }
   },
   {
@@ -16266,6 +17756,17 @@
      "2": 0,
      "8": 0,
      "25": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Solanum lycopersicum": {
+     "8": 3
+    },
+    "Solanum pimpinellifolium": {
+     "8": 0
+    },
+    "Solanum melongena": {
+     "8": 0
     }
    }
   },
@@ -16331,7 +17832,8 @@
      }
     ]
    },
-   "alaCounts": {}
+   "alaCounts": {},
+   "alaCountsWithoutINaturalist": {}
   },
   {
    "id": 73181761,
@@ -16372,6 +17874,11 @@
      "25": 290,
      "2": 14,
      "8": 61
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Senna artemisioides": {
+     "8": 12
     }
    }
   },
@@ -16422,6 +17929,11 @@
      "2": 1,
      "8": 3,
      "25": 4
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Murraya paniculata": {
+     "8": 1
     }
    }
   },
@@ -16507,6 +18019,20 @@
      "2": 0,
      "8": 0,
      "25": 5
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus kitsoniana": {
+     "8": 3
+    },
+    "Eucalyptus calycogona": {
+     "8": 0
+    },
+    "Eucalyptus macrandra": {
+     "8": 1
+    },
+    "Melaleuca quinquenervia": {
+     "8": 0
     }
    }
   },
@@ -16594,6 +18120,23 @@
      "8": 1,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus forrestiana": {
+     "8": 1
+    },
+    "Eucalyptus pyriformis": {
+     "8": 0
+    },
+    "Eucalyptus torquata": {
+     "8": 1
+    },
+    "Eucalyptus occidentalis": {
+     "8": 0
+    },
+    "Eucalyptus erythronema": {
+     "8": 1
+    }
    }
   },
   {
@@ -16674,6 +18217,17 @@
      "8": 134,
      "25": 794
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Liriodendron tulipifera": {
+     "8": 3
+    },
+    "Euphorbia dendroides": {
+     "8": 0
+    },
+    "Fraxinus angustifolia": {
+     "8": 86
+    }
    }
   },
   {
@@ -16746,6 +18300,20 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ficus elastica": {
+     "8": 0
+    },
+    "Ficus rubiginosa": {
+     "8": 2
+    },
+    "Ficus benjamina": {
+     "8": 0
+    },
+    "Euphorbia marginata": {
+     "8": 0
     }
    }
   },
@@ -16837,6 +18405,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia pycnantha": {
+     "8": 61
+    },
+    "Acacia saligna": {
+     "8": 18
+    },
+    "Acacia retinodes": {
+     "8": 17
+    },
+    "Acacia obliquinervia": {
+     "8": 1
+    },
+    "Acacia macradenia": {
+     "8": 0
+    }
    }
   },
   {
@@ -16927,6 +18512,23 @@
      "8": 3,
      "25": 11
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Melaleuca quinquenervia": {
+     "8": 0
+    },
+    "Melaleuca cajuputi": {
+     "8": 0
+    },
+    "Acacia longifolia": {
+     "8": 35
+    },
+    "Melaleuca leucadendra": {
+     "8": 0
+    },
+    "Melaleuca rugulosa": {
+     "8": 1
+    }
    }
   },
   {
@@ -16981,6 +18583,11 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Vinca minor": {
+     "8": 0
+    }
    }
   },
   {
@@ -17022,6 +18629,11 @@
      "2": 16,
      "8": 215,
      "25": 1686
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Lomandra longifolia": {
+     "8": 69
     }
    }
   },
@@ -17102,6 +18714,17 @@
      "2": 31,
      "8": 125,
      "25": 737
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Chrysocephalum semipapposum": {
+     "8": 24
+    },
+    "Helichrysum italicum": {
+     "8": 0
+    },
+    "Chrysocephalum apiculatum": {
+     "8": 26
     }
    }
   },
@@ -17193,6 +18816,23 @@
      "8": 59,
      "25": 313
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus camaldulensis": {
+     "8": 295
+    },
+    "Eucalyptus saligna": {
+     "8": 4
+    },
+    "Eucalyptus tereticornis": {
+     "8": 0
+    },
+    "Eucalyptus dalrympleana": {
+     "8": 0
+    },
+    "Corymbia maculata": {
+     "8": 12
+    }
    }
   },
   {
@@ -17283,6 +18923,23 @@
      "8": 1,
      "25": 4
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dillwynia glaberrima": {
+     "8": 1
+    },
+    "Aotus ericoides": {
+     "8": 6
+    },
+    "Dillwynia retorta": {
+     "8": 0
+    },
+    "Pultenaea retusa": {
+     "8": 1
+    },
+    "Dillwynia phylicoides": {
+     "8": 1
+    }
    }
   },
   {
@@ -17362,6 +19019,17 @@
      "2": 0,
      "8": 2,
      "25": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Brugmansia sanguinea": {
+     "8": 1
+    },
+    "Brugmansia × candida": {
+     "8": 2
+    },
+    "Brugmansia suaveolens": {
+     "8": 2
     }
    }
   },
@@ -17448,6 +19116,20 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Thryptomene baeckeacea": {
+     "8": 0
+    },
+    "Thryptomene saxicola": {
+     "8": 0
+    },
+    "Micromyrtus ciliata": {
+     "8": 0
+    },
+    "Melaleuca gibbosa": {
+     "8": 0
+    }
    }
   },
   {
@@ -17529,6 +19211,23 @@
      "2": 0,
      "8": 21,
      "25": 163
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Hakea laurina": {
+     "8": 1
+    },
+    "Hakea petiolaris": {
+     "8": 0
+    },
+    "Hakea francisiana": {
+     "8": 0
+    },
+    "Hakea multilineata": {
+     "8": 0
+    },
+    "Eucalyptus globulus": {
+     "8": 10
     }
    }
   },
@@ -17620,6 +19319,23 @@
      "8": 1,
      "25": 6
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cordyline australis": {
+     "8": 2
+    },
+    "Cordyline fruticosa": {
+     "8": 0
+    },
+    "Cordyline rubra": {
+     "8": 0
+    },
+    "Crinum asiaticum": {
+     "8": 0
+    },
+    "Cenchrus americanus": {
+     "8": 1
+    }
    }
   },
   {
@@ -17710,6 +19426,23 @@
      "8": 28,
      "25": 130
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus caesia": {
+     "8": 1
+    },
+    "Eucalyptus leucoxylon": {
+     "8": 79
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 7
+    },
+    "Eucalyptus globulus": {
+     "8": 28
+    },
+    "Corymbia ficifolia": {
+     "8": 3
+    }
    }
   },
   {
@@ -17790,6 +19523,17 @@
      "8": 0,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Stachys byzantina": {
+     "8": 0
+    },
+    "Stachys germanica": {
+     "8": 0
+    },
+    "Mentha longifolia": {
+     "8": 0
+    }
    }
   },
   {
@@ -17849,6 +19593,17 @@
      "2": 11,
      "8": 316,
      "25": 1883
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia podalyriifolia": {
+     "8": 4
+    },
+    "Acacia cultriformis": {
+     "8": 4
+    },
+    "Acacia dealbata": {
+     "8": 114
     }
    }
   },
@@ -17940,6 +19695,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia glaucoptera": {
+     "8": 0
+    },
+    "Acacia paradoxa": {
+     "8": 50
+    },
+    "Acacia cultriformis": {
+     "8": 0
+    },
+    "Acacia conferta": {
+     "8": 0
+    },
+    "Bossiaea bossiaeoides": {
+     "8": 0
+    }
    }
   },
   {
@@ -18003,6 +19775,17 @@
      "2": 0,
      "8": 10,
      "25": 156
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Crassula ovata": {
+     "8": 1
+    },
+    "Crassula arborescens": {
+     "8": 0
+    },
+    "Crassula multicava": {
+     "8": 3
     }
    }
   },
@@ -18083,6 +19866,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Brugmansia × candida": {
+     "8": 2
+    },
+    "Brugmansia suaveolens": {
+     "8": 2
+    },
+    "Brugmansia insignis": {
+     "8": 0
     }
    }
   },
@@ -18174,6 +19968,23 @@
      "25": 232,
      "8": 36
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus leucoxylon": {
+     "8": 81
+    },
+    "Eucalyptus camaldulensis": {
+     "8": 579
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 5
+    },
+    "Eucalyptus viminalis": {
+     "8": 77
+    },
+    "Eucalyptus microcarpa": {
+     "8": 26
+    }
    }
   },
   {
@@ -18249,6 +20060,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Monstera deliciosa": {
+     "8": 0
+    },
+    "Epipremnum pinnatum": {
+     "8": 0
+    }
    }
   },
   {
@@ -18303,6 +20122,11 @@
      "8": 1,
      "25": 1
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cestrum aurantiacum": {
+     "8": 1
+    }
    }
   },
   {
@@ -18352,6 +20176,11 @@
      "2": 0,
      "8": 0,
      "25": 4
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Rosa banksiae": {
+     "8": 0
     }
    }
   },
@@ -18428,6 +20257,14 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Acacia glaucoptera": {
+     "8": 1
+    },
+    "Bossiaea bossiaeoides": {
+     "8": 0
+    }
    }
   },
   {
@@ -18503,6 +20340,14 @@
      "8": 3,
      "25": 11
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Passiflora caerulea": {
+     "8": 3
+    },
+    "Passiflora edulis": {
+     "8": 0
+    }
    }
   },
   {
@@ -18544,6 +20389,11 @@
      "2": 1,
      "8": 2,
      "25": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Ginkgo biloba": {
+     "8": 2
     }
    }
   },
@@ -18607,6 +20457,14 @@
      "2": 0,
      "8": 10,
      "25": 102
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cydonia oblonga": {
+     "8": 0
+    },
+    "Malus domestica": {
+     "8": 8
     }
    }
   },
@@ -18672,6 +20530,17 @@
      "8": 262,
      "25": 1553
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Grevillea robusta": {
+     "8": 107
+    },
+    "Taxodium distichum": {
+     "8": 0
+    },
+    "Acacia dealbata": {
+     "8": 85
+    }
    }
   },
   {
@@ -18736,7 +20605,8 @@
      }
     ]
    },
-   "alaCounts": {}
+   "alaCounts": {},
+   "alaCountsWithoutINaturalist": {}
   },
   {
    "id": 49667028,
@@ -18810,6 +20680,14 @@
      "2": 1,
      "8": 1,
      "25": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Salvia microphylla": {
+     "8": 0
+    },
+    "Salvia coccinea": {
+     "8": 1
     }
    }
   },
@@ -18901,6 +20779,23 @@
      "8": 0,
      "25": 0
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Corymbia ficifolia": {
+     "8": 3
+    },
+    "Corymbia ptychocarpa": {
+     "8": 0
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 11
+    },
+    "Eucalyptus leucoxylon": {
+     "8": 53
+    },
+    "Eucalyptus youngiana": {
+     "8": 0
+    }
    }
   },
   {
@@ -18970,6 +20865,20 @@
      "8": 0,
      "25": 4
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dietes bicolor": {
+     "8": 0
+    },
+    "Dietes iridioides": {
+     "8": 1
+    },
+    "Dietes grandiflora": {
+     "8": 0
+    },
+    "Iris japonica": {
+     "8": 0
+    }
    }
   },
   {
@@ -19014,7 +20923,8 @@
      }
     ]
    },
-   "alaCounts": {}
+   "alaCounts": {},
+   "alaCountsWithoutINaturalist": {}
   },
   {
    "id": 94975157,
@@ -19090,6 +21000,17 @@
      "8": 2,
      "25": 11
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Doryanthes palmeri": {
+     "8": 2
+    },
+    "Doryanthes excelsa": {
+     "8": 4
+    },
+    "Phormium tenax": {
+     "8": 0
+    }
    }
   },
   {
@@ -19135,6 +21056,11 @@
      "2": 0,
      "8": 1,
      "25": 1
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Protea repens": {
+     "8": 1
     }
    }
   },
@@ -19207,6 +21133,14 @@
      "8": 2,
      "25": 2
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Salvia leucantha": {
+     "8": 0
+    },
+    "Salvia farinacea": {
+     "8": 0
+    }
    }
   },
   {
@@ -19257,6 +21191,14 @@
      "2": 0,
      "8": 4,
      "25": 8
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Doryanthes palmeri": {
+     "8": 2
+    },
+    "Doryanthes excelsa": {
+     "8": 4
     }
    }
   },
@@ -19348,6 +21290,23 @@
      "8": 19,
      "25": 228
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Eucalyptus polyanthemos": {
+     "8": 22
+    },
+    "Eucalyptus ovata": {
+     "8": 14
+    },
+    "Eucalyptus globulus": {
+     "8": 24
+    },
+    "Guioa semiglauca": {
+     "8": 0
+    },
+    "Eucalyptus microcarpa": {
+     "8": 14
+    }
    }
   },
   {
@@ -19397,6 +21356,11 @@
      "2": 0,
      "8": 2,
      "25": 3
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Adenanthos sericeus": {
+     "8": 1
     }
    }
   },
@@ -19448,6 +21412,14 @@
      "2": 0,
      "8": 2,
      "25": 2
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Backhousia citriodora": {
+     "8": 0
+    },
+    "Backhousia myrtifolia": {
+     "8": 2
     }
    }
   },
@@ -19529,6 +21501,17 @@
      "8": 26,
      "25": 94
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Arum italicum": {
+     "8": 5
+    },
+    "Zantedeschia aethiopica": {
+     "8": 54
+    },
+    "Beta vulgaris": {
+     "8": 20
+    }
    }
   },
   {
@@ -19608,6 +21591,17 @@
      "2": 0,
      "8": 0,
      "25": 0
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Alyogyne hakeifolia": {
+     "8": 0
+    },
+    "Alyogyne huegelii": {
+     "8": 2
+    },
+    "Alyogyne cuneiformis": {
+     "8": 0
     }
    }
   },
@@ -19694,6 +21688,20 @@
      "8": 5,
      "25": 34
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Myoporum parvifolium": {
+     "8": 4
+    },
+    "Eremophila divaricata": {
+     "8": 0
+    },
+    "Coleonema pulchrum": {
+     "8": 0
+    },
+    "Salvia rosmarinus": {
+     "8": 0
+    }
    }
   },
   {
@@ -19779,6 +21787,20 @@
      "8": 0,
      "25": 12
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dietes grandiflora": {
+     "8": 0
+    },
+    "Dietes iridioides": {
+     "8": 1
+    },
+    "Moraea fugax": {
+     "8": 0
+    },
+    "Diplarrena moraea": {
+     "8": 0
+    }
    }
   },
   {
@@ -19829,6 +21851,14 @@
      "2": 1,
      "8": 14,
      "25": 37
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Solanum pimpinellifolium": {
+     "8": 0
+    },
+    "Solanum lycopersicum": {
+     "8": 8
     }
    }
   },
@@ -19910,6 +21940,17 @@
      "8": 1,
      "25": 2
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Cosmos caudatus": {
+     "8": 0
+    },
+    "Cosmos bipinnatus": {
+     "8": 3
+    },
+    "Cosmos sulphureus": {
+     "8": 0
+    }
    }
   },
   {
@@ -19984,6 +22025,14 @@
      "2": 39,
      "8": 152,
      "25": 2191
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Dichondra micrantha": {
+     "8": 4
+    },
+    "Dichondra repens": {
+     "8": 57
     }
    }
   },
@@ -20070,6 +22119,20 @@
      "2": 2,
      "25": 7
     }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Agonis flexuosa": {
+     "8": 0
+    },
+    "Salix babylonica": {
+     "8": 7
+    },
+    "Eucalyptus sideroxylon": {
+     "8": 7
+    },
+    "Brachychiton rupestris": {
+     "8": 4
+    }
    }
   },
   {
@@ -20111,6 +22174,11 @@
      "2": 0,
      "8": 2,
      "25": 8
+    }
+   },
+   "alaCountsWithoutINaturalist": {
+    "Agave attenuata": {
+     "8": 0
     }
    }
   }
