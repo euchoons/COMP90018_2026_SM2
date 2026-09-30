@@ -35,3 +35,6 @@ Desktop.ini
 # Local evidence and recordings
 /docs/evidence/*
 !/docs/evidence/.gitkeep
+
+curl_response
+firebase-tools.exe

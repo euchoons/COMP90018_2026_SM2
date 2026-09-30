@@ -18,6 +18,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
 
 class FirebaseAuthRepository(
     private val context: Context,
@@ -28,26 +31,29 @@ class FirebaseAuthRepository(
     override val authState: StateFlow<AuthState> = state.asStateFlow()
     private val operations = Mutex()
     private val scope = CoroutineScope(Dispatchers.IO)
+    private var isInitialVerification = true // Track the cold-start check
 
     init {
         auth.addAuthStateListener { firebaseAuth ->
             val currentUser = firebaseAuth.currentUser
             if (currentUser != null || state.value != AuthState.OfflineGuest) {
-                val newState = currentState()
-                state.value = newState
-                scope.launch {
-                    if (currentUser != null) {
-                        logger.logEvent(
-                            eventType = "SESSION_RESTORED",
-                            status = "SUCCESS",
-                            userUid = currentUser.uid,
-                            detail = "Auth state listener synced user (Anonymous: ${currentUser.isAnonymous})"
-                        )
-                    }
-                }
+                state.value = currentState()
+            }
+            val restoredSession = isInitialVerification && currentUser != null
+            isInitialVerification = false
+
+            if (restoredSession) scope.launch {
+                // Only log SESSION_RESTORED if this is the very first check upon app launch
+                logger.logEvent(
+                    eventType = "SESSION_RESTORED",
+                    status = "SUCCESS",
+                    userUid = currentUser.uid,
+                    detail = "Cold-start session reconciliation synced user."
+                )
             }
         }
     }
+
 
     override fun getCurrentUser(): UserProfile? = auth.currentUser?.toDomain()
 
@@ -102,15 +108,45 @@ class FirebaseAuthRepository(
 
     override suspend fun deleteAccount(): Result<Unit> = operations.withLock {
         val user = auth.currentUser ?: return Result.failure(IllegalStateException("No authenticated user to delete."))
+        val uid = user.uid
+
         try {
+            state.value = AuthState.Authenticating
+            val firestore = FirebaseFirestore.getInstance()
+            val storage = FirebaseStorage.getInstance()
+
+            // 1. Wipe all cloud observations and associated Cloud Storage photos
+            val observationsRef = firestore.collection("users").document(uid).collection("observations")
+            // Never use a partial offline cache as the authoritative deletion inventory.
+            val snapshot = observationsRef.get(Source.SERVER).await()
+            val photos = FirebasePhotoStorage(context, storage, auth, expectedUserId = uid)
+
+            for (doc in snapshot.documents) {
+                doc.getString("remotePhotoUrl")?.takeIf { it.isNotBlank() }?.let { gsUri ->
+                    // Reuse ownership validation and idempotent handling of already deleted objects.
+                    // All other failures must stop the cascade, leaving the account available to retry.
+                    photos.deletePhoto(gsUri)
+                }
+                doc.reference.delete().await()
+            }
+
+            // 2. Remove the user's root Firestore document
+            firestore.collection("users").document(uid).delete().await()
+
+            // 3. Remove the Auth account
             user.delete().await()
+
             state.value = AuthState.Unauthenticated
+            logger.logEvent("DELETE_ACCOUNT", "SUCCESS", uid, "Account and associated data completely removed.")
             Result.success(Unit)
         } catch (cancelled: CancellationException) {
+            state.value = currentState()
             throw cancelled
         } catch (error: Exception) {
+            val failMsg = error.localizedMessage ?: "Account deletion failed."
             state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
-                ?: AuthState.Error(error.localizedMessage ?: "Account deletion failed.")
+                ?: AuthState.Error(failMsg)
+            logger.logEvent("DELETE_ACCOUNT", "FAILURE", uid, failMsg)
             Result.failure(error)
         }
     }

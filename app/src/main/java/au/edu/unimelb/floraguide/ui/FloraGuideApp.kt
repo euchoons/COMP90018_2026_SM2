@@ -55,6 +55,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onImportLocal = viewModel::importLocalObservations,
                 onRetrySync = viewModel::retrySync,
                 onSignOut = viewModel::signOut,
+                onDeleteAccount = viewModel::deleteAccount,
                 modifier = Modifier.safeDrawingPadding(),
             )
         }
@@ -139,6 +140,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 onImportLocal = viewModel::importLocalObservations,
                 onRetrySync = viewModel::retrySync,
                 onSignOut = viewModel::signOut,
+                onDeleteAccount = viewModel::deleteAccount,
                 modifier = Modifier.padding(padding),
             )
         }

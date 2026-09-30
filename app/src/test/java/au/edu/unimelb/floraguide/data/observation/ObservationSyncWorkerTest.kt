@@ -105,4 +105,27 @@ class ObservationSyncWorkerTest {
         assertEquals(SyncState.PENDING_DELETE, dao.find("A", "one")!!.syncState)
         assertTrue(dao.getAllForUser("A").isEmpty())
     }
+
+    @Test fun `failed cloud photo deletion propagates error and reschedules task instead of swallowing`() = runBlocking {
+        // 1. Arrange: Insert a local tombstone row marked for cloud deletion
+        val entityPendingDelete = cacheEntity(id = "stale-node", state = SyncState.PENDING_DELETE)
+        dao.insertOrUpdate(entityPendingDelete)
+
+        // Configure remote mapping behavior to crash upon processing the target asset
+        delete = { _: ObservationEntity ->
+            throw java.io.IOException("Cloud Storage bucket unavailable (Transient 503)")
+        }
+
+        // 2. Act: Trigger execution loop through the worker pipeline boundary
+        val result = worker().doWork()
+
+        // 3. Assert: Verify the sync pipeline reschedules the task on structural failure
+        assertEquals(ListenableWorker.Result.retry(), result)
+
+        // Assert the local database tombstone is PRESERVED, confirming metadata was not removed prematurely
+        val persistentRow = dao.find("A", "stale-node")
+        assertNotNull(persistentRow)
+        assertEquals(SyncState.PENDING_DELETE, persistentRow!!.syncState)
+    }
+
 }

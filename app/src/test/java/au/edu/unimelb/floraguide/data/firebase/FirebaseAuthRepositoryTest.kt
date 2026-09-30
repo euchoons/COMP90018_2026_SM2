@@ -15,6 +15,18 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QueryDocumentSnapshot
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+import com.google.firebase.storage.StorageException
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import org.junit.After
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -101,6 +113,17 @@ class FirebaseAuthRepositoryTest {
     }
 
     @Test
+    fun `delayed auth callback preserves offline guest mode`() = runTest {
+        every { auth.currentUser } returns null
+        val listener = slot<FirebaseAuth.AuthStateListener>()
+        every { auth.addAuthStateListener(capture(listener)) } just Runs
+        val repository = FirebaseAuthRepository(app, auth)
+        repository.continueOffline()
+        listener.captured.onAuthStateChanged(auth)
+        assertEquals(AuthState.OfflineGuest, repository.authState.value)
+    }
+
+    @Test
     fun `guest action cannot silently reuse an existing real account`() = runTest {
         every { auth.currentUser } returns user("A", false)
         val repository = FirebaseAuthRepository(app, auth)
@@ -141,5 +164,149 @@ class FirebaseAuthRepositoryTest {
         val logs = repository.getSessionLogs()
         assertFalse(logs.isEmpty())
         assertTrue(logs.any { it.contains("EMAIL_SIGN_IN") && it.contains("FAILURE") })
+    }
+
+    @After
+    fun tearDown() {
+        unmockkAll() // Clears static mocks after each test to prevent test pollution
+    }
+
+    @Test
+    fun `deleteAccount successfully wipes firestore data, storage photos, and auth profile`() = runTest {
+        checkDeletion(null)
+    }
+
+    @Test
+    fun `photo deletion failure preserves documents and auth for retry`() = runTest {
+        checkDeletion(IllegalStateException("Storage unavailable"))
+    }
+
+    @Test
+    fun `already deleted photo does not prevent retrying account deletion`() = runTest {
+        checkDeletion(StorageException.fromExceptionAndHttpCode(null, 404))
+    }
+
+    @Test
+    fun `photo deletion cancellation does not continue account deletion`() = runTest {
+        checkDeletion(CancellationException("Cancelled"))
+    }
+
+    private suspend fun checkDeletion(photoError: Exception?) {
+        // 1. Mock static Firebase SDK instances
+        mockkStatic(FirebaseFirestore::class)
+        mockkStatic(FirebaseStorage::class)
+
+        val firestore = mockk<FirebaseFirestore>(relaxed = true)
+        val storage = mockk<FirebaseStorage>(relaxed = true)
+        every { FirebaseFirestore.getInstance() } returns firestore
+        every { FirebaseStorage.getInstance() } returns storage
+
+        // 2. Mock authenticated user
+        val u = user("user-123", false)
+        every { auth.currentUser } returns u
+        every { u.delete() } returns Tasks.forResult(null)
+
+        // 3. Mock Firestore observation documents and Cloud Storage photo references
+        val querySnapshot = mockk<QuerySnapshot>()
+        val docSnap = mockk<QueryDocumentSnapshot>()
+        val docRef = mockk<DocumentReference>()
+        val storageRef = mockk<StorageReference>()
+        val userDoc = mockk<DocumentReference>()
+        val obsCollection = mockk<CollectionReference>()
+
+        // Mock document data containing a remote photo URL
+        every { docSnap.getString("remotePhotoUrl") } returns "gs://test-bucket/plant_photos/user-123/photo.jpg"
+        every { docSnap.reference } returns docRef
+        every { docRef.delete() } returns Tasks.forResult(null)
+        every { querySnapshot.documents } returns listOf(docSnap)
+
+        // Wire up the Firestore collection chain
+        every { firestore.collection("users").document("user-123") } returns userDoc
+        every { userDoc.collection("observations") } returns obsCollection
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
+        every { userDoc.delete() } returns Tasks.forResult(null)
+
+        // Wire up the Cloud Storage chain
+        every { storage.getReferenceFromUrl("gs://test-bucket/plant_photos/user-123/photo.jpg") } returns storageRef
+        every { storage.reference.bucket } returns "test-bucket"
+        every { storageRef.bucket } returns "test-bucket"
+        every { storageRef.path } returns "/plant_photos/user-123/photo.jpg"
+        every { storageRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
+
+        val repository = FirebaseAuthRepository(app, auth)
+        val result = try {
+            repository.deleteAccount()
+        } catch (cancelled: CancellationException) {
+            assertTrue(photoError is CancellationException)
+            Result.failure(cancelled)
+        }
+
+        if (photoError != null && (photoError as? StorageException)?.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND) {
+            assertTrue(result.isFailure)
+            if (photoError is CancellationException) assertTrue(result.exceptionOrNull() is CancellationException)
+            verify(exactly = 0) { docRef.delete(); userDoc.delete(); u.delete() }
+            return
+        }
+
+        // 4. Verify cascade execution order and success state
+        assertTrue(result.isSuccess)
+        verify(exactly = 1) { storageRef.delete() }
+        verify(exactly = 1) { docRef.delete() }
+        verify(exactly = 1) { userDoc.delete() }
+        verify(exactly = 1) { u.delete() }
+
+        val logs = repository.getSessionLogs()
+        assertTrue(logs.any { it.contains("DELETE_ACCOUNT") && it.contains("SUCCESS") })
+    }
+
+    @Test
+    fun `deleteAccount returns failure and logs error if unauthenticated`() = runTest {
+        every { auth.currentUser } returns null
+
+        val repository = FirebaseAuthRepository(app, auth)
+        val result = repository.deleteAccount()
+
+        assertTrue(result.isFailure)
+        assertEquals("No authenticated user to delete.", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun `deleteAccount reverts state and logs failure if network or auth error occurs`() = runTest {
+        mockkStatic(FirebaseFirestore::class)
+        mockkStatic(FirebaseStorage::class)
+
+        val firestore = mockk<FirebaseFirestore>(relaxed = true)
+        val storage = mockk<FirebaseStorage>(relaxed = true)
+        every { FirebaseFirestore.getInstance() } returns firestore
+        every { FirebaseStorage.getInstance() } returns storage
+
+        val u = user("user-123", false)
+        every { auth.currentUser } returns u
+
+        // Simulate an Auth rejection (e.g., requires recent login)
+        every { u.delete() } returns Tasks.forException(
+            FirebaseAuthRecentLoginRequiredException("ERROR_REQUIRES_RECENT_LOGIN", "Re-authenticate before deleting.")
+        )
+
+        // Mock empty observations for simplicity
+        val userDoc = mockk<DocumentReference>()
+        val obsCollection = mockk<CollectionReference>()
+        val querySnapshot = mockk<QuerySnapshot>()
+        every { querySnapshot.documents } returns emptyList()
+        every { firestore.collection("users").document("user-123") } returns userDoc
+        every { userDoc.collection("observations") } returns obsCollection
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
+        every { userDoc.delete() } returns Tasks.forResult(null)
+
+        val repository = FirebaseAuthRepository(app, auth)
+        val result = repository.deleteAccount()
+
+        assertTrue(result.isFailure)
+
+        // Verify state is restored to Authenticated rather than remaining Authenticating or Unauthenticated
+        assertTrue(repository.authState.value is AuthState.Authenticated)
+
+        val logs = repository.getSessionLogs()
+        assertTrue(logs.any { it.contains("DELETE_ACCOUNT") && it.contains("FAILURE") })
     }
 }

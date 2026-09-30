@@ -185,8 +185,13 @@ internal fun parseTaxonId(body: String): String? = try {
         } else {
             // Synonyms provide 'acceptedConceptID' to link back to the authoritative taxon.
             // Fall back to 'taxonConceptID' for exact or canonical matches.
-            val id = root.optString("acceptedConceptID").takeIf { it.isNotBlank() }
-                ?: root.optString("taxonConceptID").takeIf { it.isNotBlank() }
+            // Fix: Use opt(name) type-casting instead of optString coercion
+            val acceptedId = root.opt("acceptedConceptID") as? String
+            val taxonId = root.opt("taxonConceptID") as? String
+
+            val id = acceptedId?.takeIf { it.isNotBlank() }
+                ?: taxonId?.takeIf { it.isNotBlank() }
+
 
             if (id == null || id.length > 2_048 || id.any { it.isISOControl() }) {
                 throw AlaResponseException("ALA name matching returned an invalid or missing taxon ID")
