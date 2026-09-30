@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.catalog
 import au.edu.unimelb.floraguide.data.plantnet.parsePlantNetResults
 import au.edu.unimelb.floraguide.data.plantnet.parsePredictedOrgan
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
+import au.edu.unimelb.floraguide.domain.model.FloweringCheck
 import au.edu.unimelb.floraguide.domain.model.FloweringRecord
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
@@ -36,15 +37,16 @@ class VicFloraFloweringTest {
         RankSpeciesCandidatesUseCase(floweringRecords = table)
     }
 
-    @Test fun februaryWattleFlowerKeepsTheSummerSpeciesAndLowersASpringOne() {
+    @Test fun februaryWattleFlowerIsInSeasonOnlyForTheSummerSpecies() {
         val ranker = RankSpeciesCandidatesUseCase(floweringRecords = parseFloweringTable(tsv))
         val wattles = listOf("Acacia implexa", "Acacia mearnsii", "Acacia dealbata").mapIndexed { index, name ->
             ImagePrediction(Species(name, name, name, emptySet(), emptyMap(), 0), 0.3, index + 1)
         }
-        val factors = ranker.live(wattles, NearbyContext(emptyMap(), ContextDataSource.NOT_REQUESTED, 8), 2,
-            PredictedOrgan("flower", 0.9)).associate { it.species.id to it.evidence.seasonMultiplier }
+        val checks = ranker.live(wattles, NearbyContext(emptyMap(), ContextDataSource.NOT_REQUESTED, 8), 2,
+            PredictedOrgan("flower", 0.9)).associate { it.species.id to it.evidence.floweringCheck }
         // Dec.–Mar. is in season, Sep.–Nov. is not, and no statement is unknown.
-        assertEquals(mapOf("Acacia implexa" to 1.0, "Acacia mearnsii" to 0.85, "Acacia dealbata" to 1.0), factors)
+        assertEquals(mapOf("Acacia implexa" to FloweringCheck.IN_SEASON, "Acacia mearnsii" to FloweringCheck.OUT_OF_SEASON,
+            "Acacia dealbata" to FloweringCheck.NO_DATA), checks)
     }
 
     @Test fun liveBottlebrushIdentificationFindsVicFloraUnderItsWcvpName() {

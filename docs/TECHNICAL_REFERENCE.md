@@ -92,22 +92,25 @@ app's full name-resolution path. It checks three names and requires `curl` and `
 
 ## Fusion formula
 
-### Current live rule (provisional)
+### Current live rule (trained in #20)
 
 ```text
 support(s) = ln(1 + min(count(s), 50)) / ln(51)
-season(s) = 0.85 if the photo is a flower and every documented flowering month of s
+season(s) = f if the photo is a flower and every documented flowering month of s
             is more than one month from the capture month, otherwise 1
-weight(s) = imageScore(s) * (1 + 0.15 * support(s)) * season(s)
+weight(s) = imageScore(s) * (1 + c * support(s)) * season(s)
 relativeScore(s) = weight(s) / sum(weight)
 ```
 
-Geographic support is enabled only for complete live counts; otherwise it is neutral for
-every candidate. Zero counts give a neutral multiplier of 1; the maximum is 1.15. The
-flowering cue needs Pl@ntNet's predicted organ to be a flower with a score of at least 0.5,
-and species without documented months stay at 1. The months come from VicFlora flowering
-statements for 75 common Parkville species (see the missing-context policy). Habitat is not an input to `live()`. These bounds are coursework heuristics,
-not tuned values or evidence of superiority; #20 evaluates alternatives before selecting parameters.
+Training set `c = 0.5` (its design bound) and `f = 1.0`, with an 8 km radius; see
+[fusion training](FUSION_EVALUATION.md). Geographic support is enabled only for complete live
+counts; otherwise it is neutral for every candidate. Zero counts give a neutral multiplier of 1;
+the maximum is 1.5. The flowering check needs Pl@ntNet's predicted organ to be a flower with a
+score of at least 0.5, and species without documented months are never out of season. The
+months come from VicFlora flowering statements for 75 common Parkville species (see the
+missing-context policy). With `f = 1.0` the check is shown but does not reorder. Habitat is not
+an input to `live()`. On held-out photos the trained rule changed no Top-1 answer, so it is not
+evidence that context improves identification.
 
 ### Synthetic guided demo only
 
@@ -123,6 +126,9 @@ Demo weights are `1.00`, `0.75`, `0.35` and `0.45`. Nearby records use additive 
 These constants are prototype values. The final report should explain how weights were selected, report sensitivity or validation results, and avoid calling the output calibrated confidence unless calibration is actually performed.
 
 ## Evaluation measures
+
+The offline fusion evaluation reports candidate recall, Top-1 and Top-3, cue activation and the
+radius comparison; see [fusion training](FUSION_EVALUATION.md).
 
 ### Identification
 

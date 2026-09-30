@@ -22,14 +22,15 @@ class RankSpeciesCandidatesUseCase(
     private val seasonWeight: Double = 0.35,
     private val habitatWeight: Double = 0.45,
     private val locationSmoothing: Double = 3.0,
-    private val maximumLiveBoost: Double = 0.15,
+    private val maximumLiveBoost: Double = 0.5,
     private val liveCountSaturation: Int = 50,
     /** Documented flowering by exact scientific name; the app passes the bundled VicFlora table. */
     private val floweringRecords: Map<String, FloweringRecord> = emptyMap(),
-    private val outOfSeasonMultiplier: Double = 0.85,
+    private val outOfSeasonMultiplier: Double = 1.0,
     private val minimumFlowerScore: Double = 0.5,
 ) {
     init {
+        // 0.5 is a design bound that keeps the image model in charge; #20's fit reached it.
         require(maximumLiveBoost in 0.0..0.5 && liveCountSaturation > 0)
         require(locationSmoothing > 0.0)
         require(outOfSeasonMultiplier in 0.5..1.0 && minimumFlowerScore in 0.0..1.0)
@@ -38,13 +39,15 @@ class RankSpeciesCandidatesUseCase(
     }
 
     /**
-     * Coursework heuristic, not a trained or calibrated probability model.
+     * Coursework heuristic, not a calibrated probability model. The defaults were fitted in #20
+     * (docs/FUSION_EVALUATION.md).
      * support = log(1 + min(count, 50)) / log(51)
-     * weight = originalImageScore * (1 + 0.15 * support) * season
+     * weight = originalImageScore * (1 + 0.5 * support) * season
      * Normalise within the candidate set. Zero records apply no penalty.
      * Incomplete ALA context disables geographic support for every candidate, not just the failed ones.
-     * season is 0.85 only for a photographed flower more than a month outside the candidate's
-     * documented flowering months; other organs, a missing date and unlisted species stay neutral.
+     * season is outOfSeasonMultiplier only for a photographed flower more than a month outside the
+     * candidate's documented flowering months; other organs, a missing date and unlisted species stay
+     * neutral. Training set it to 1.0, so the check is reported but does not reorder.
      */
     fun live(
         predictions: List<ImagePrediction>,
@@ -152,7 +155,7 @@ class RankSpeciesCandidatesUseCase(
 
     companion object {
         const val LIVE_RULE_VERSION =
-            "ala-positive-support-v1-cap0.15-saturation50+flowering-mismatch-v1-x0.85-tolerance1-flower0.5" +
+            "ala-positive-support-v1-cap0.50-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5" +
                 "+vicflora-2026-09-25"
         const val IMAGE_ONLY_RULE_VERSION = "image-only-normalised-v1"
         const val DEMO_RULE_VERSION = "synthetic-ecology-demo-v1"

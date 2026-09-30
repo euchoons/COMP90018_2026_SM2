@@ -154,12 +154,12 @@ fun ResultsScreen(
                                 Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
                             }
                         }
-                        Text("For complete ALA results: image score x (1 + 0.15 x support), then normalise. " +
-                            "Support uses capped log-counts; the maximum multiplier is 1.15x.",
+                        Text("For complete ALA results: image score x (1 + 0.5 x support), then normalise. " +
+                            "Support uses capped log-counts; the maximum multiplier is 1.5x.",
                             style = MaterialTheme.typography.bodySmall)
                         Text("Partial, unavailable or skipped ALA context adds no geographic adjustment. " +
-                            "A flower photographed more than a month outside a candidate's documented flowering months " +
-                            "multiplies that candidate by 0.85; other photos and species without flowering data are unaffected. " +
+                            "The flowering check is shown for reference and does not change the order: in offline " +
+                            "testing it lowered the correct species more often than wrong ones. " +
                             "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
                     HorizontalDivider()
@@ -268,7 +268,7 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
         FloweringCheck.IN_SEASON -> statement +
             if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month is within this period."
             else "$month is within a month of this period."
-        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table, so it is not lowered."
+        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table."
         FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
             (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
             ". Flowering months apply only to a confidently recognised flower."
