@@ -13,6 +13,8 @@ The baseline architecture is designed to:
 
 ## Dependency direction
 
+The diagram below describes the original ranking prototype. Runtime dependencies now also include Firebase photo storage, an upload-consent gate, Room and offline-first synchronisation; AppContainer is the source of truth for the selected implementations. See the current photo flow in [PHOTO_UPLOAD_CONSENT.md](PHOTO_UPLOAD_CONSENT.md).
+
 ```mermaid
 flowchart LR
     UI[Compose screens] --> VM[FloraGuideViewModel]
@@ -104,8 +106,10 @@ When `photoPath` is null the classifier delegates to `DemoImageClassifier`, so t
 ## Runtime flow
 
 ```text
-User captures a photo
-  -> ViewModel starts analysis
+User captures a local photo and freezes shutter-time metadata
+  -> ViewModel displays a per-photo consent dialog; no image transfer starts
+  -> Cancel/Back: discard the unsent local capture and stay on Scan
+  -> Agree: Firebase upload -> verified download -> Pl@ntNet identification
   -> ImageClassifier returns Top-K candidates
   -> image-only ranking is exposed immediately
   -> SpeciesContextRepository requests nearby counts concurrently
@@ -203,7 +207,13 @@ Fallbacks must remain visible. The app should never silently present demo data a
 
 ## Privacy and persistence
 
-Before saving an observation, latitude and longitude are rounded to three decimal places and accuracy metadata is removed. This is a basic privacy measure, not a complete sensitive-species policy. Future cloud work should add user consent, deletion, access control, data retention and stronger location obfuscation where appropriate.
+A real capture first stays local and requires explicit per-photo consent before the Firebase -> Pl@ntNet identification pipeline starts. The in-memory consent is bound to the capture ID, local path and account session. Retrying that same photo can reuse consent; navigating away, changing account or taking another photo clears the active permission. The guided demo does not use live photo transfer.
+
+Cancel or Back before agreeing schedules deletion of that unsent app-owned local file. This is bounded, best-effort local cleanup, not a durable deletion queue or a crash-recovery sweep. The implementation deliberately never passes an accepted photo or cloud URI to this cleanup path. Full uploaded/discarded-photo lifetime management remains open under Issues #7 and #46: shared Storage objects must not be deleted while another observation still references them.
+
+Upload for identification and observation confirmation are separate actions. AppContainer already selects Firebase photo storage and OfflineFirstObservationRepository; the running application is not local-only. The dialog discloses that saved observations may sync and that uploaded but unconfirmed photos may remain in Firebase. Neither cancellation after consent nor this patch recalls data already sent to Pl@ntNet.
+
+Capture coordinates are rounded before live ALA lookups; saved observation coordinates are also coarsened. This is not a complete sensitive-species or photo-metadata sanitisation policy. See [PHOTO_UPLOAD_CONSENT.md](PHOTO_UPLOAD_CONSENT.md) for the scope, validation checklist and remaining retention work.
 
 ## Tests
 
