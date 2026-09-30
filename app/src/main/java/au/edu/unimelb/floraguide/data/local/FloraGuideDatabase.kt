@@ -6,6 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import net.sqlcipher.database.SupportFactory
+import android.util.Base64
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import java.security.SecureRandom
+
+
 
 @Database(entities = [ObservationEntity::class, ObservationImport::class], version = 2, exportSchema = false)
 abstract class FloraGuideDatabase : RoomDatabase() {
@@ -13,11 +20,52 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
     companion object {
         @Volatile private var instance: FloraGuideDatabase? = null
+        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
+            val keyString = runCatching {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
 
+                EncryptedSharedPreferences.create(
+                    context,
+                    "secure_db_prefs",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            }.getOrElse {
+                context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
+            }.let { prefs ->
+                var passphrase = prefs.getString("sqlcipher_passphrase", null)
+                if (passphrase == null) {
+                    val randomBytes = ByteArray(32)
+                    SecureRandom().nextBytes(randomBytes)
+                    passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+                    prefs.edit().putString("sqlcipher_passphrase", passphrase).apply()
+                }
+                passphrase
+            }
+
+            return Base64.decode(keyString, Base64.NO_WRAP)
+        }
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                .addMigrations(MIGRATION_1_2)
-                .build().also { instance = it }
+            instance ?: run {
+                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                    .addMigrations(MIGRATION_1_2)
+
+                val hasSqlCipher = runCatching {
+                    net.sqlcipher.database.SQLiteDatabase.loadLibs(context.applicationContext)
+                    true
+                }.getOrDefault(false)
+
+                if (hasSqlCipher) {
+                    val passphrase: ByteArray = retrieveOrGenerateSecureKey(context.applicationContext)
+                    val factory = SupportFactory(passphrase)
+                    builder.openHelperFactory(factory)
+                }
+
+                builder.build().also { instance = it }
+            }
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {

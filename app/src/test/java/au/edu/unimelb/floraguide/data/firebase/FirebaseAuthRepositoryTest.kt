@@ -27,6 +27,10 @@ import com.google.firebase.storage.StorageException
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import org.junit.After
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertTrue
+import io.mockk.every
+import android.content.Context
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -39,6 +43,11 @@ class FirebaseAuthRepositoryTest {
     fun setUp() {
         app = ApplicationProvider.getApplicationContext()
     }
+
+    // Test the repository with a deterministic storage backend; Android Keystore is device-only.
+    private fun repository(context: Context = app) = FirebaseAuthRepository(
+        context, auth, AuthSessionLogger(context.getSharedPreferences("test_auth_logs", Context.MODE_PRIVATE)),
+    )
 
     // Helper configured to support all test requirements (handles nulls and custom profiles)
     private fun user(
@@ -67,7 +76,7 @@ class FirebaseAuthRepositoryTest {
         }
         every { linked.updateProfile(any()) } returns Tasks.forResult(null)
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         assertEquals("guest-uid", repository.registerWithEmail("new@example.test", "password", "Gardener").getOrThrow().uid)
         verify(exactly = 1) { guest.linkWithCredential(any()) }
         verify(exactly = 0) { auth.createUserWithEmailAndPassword(any(), any()) }
@@ -80,7 +89,7 @@ class FirebaseAuthRepositoryTest {
         every { auth.currentUser } returns null
         every { auth.signInWithEmailAndPassword(any(), any()) } returns TaskCompletionSource<AuthResult>().task
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         repository.continueOffline()
         var swallowed = false
         val pending = launch { repository.signInWithEmail("test@example.test", "password"); swallowed = true }
@@ -97,7 +106,7 @@ class FirebaseAuthRepositoryTest {
         every { auth.currentUser } returns guest
         every { guest.linkWithCredential(any()) } returns Tasks.forException(IllegalStateException("Email already in use"))
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         assertTrue(repository.registerWithEmail("existing@example.test", "password", "Gardener").isFailure)
         assertEquals("guest-uid", (repository.authState.value as AuthState.Authenticated).user.uid)
         verify(exactly = 0) { auth.signOut() }
@@ -106,7 +115,7 @@ class FirebaseAuthRepositoryTest {
     @Test
     fun `offline entry never calls Firebase anonymous sign in`() = runTest {
         every { auth.currentUser } returns null
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         repository.continueOffline()
         assertEquals(AuthState.OfflineGuest, repository.authState.value)
         verify(exactly = 0) { auth.signInAnonymously() }
@@ -117,7 +126,7 @@ class FirebaseAuthRepositoryTest {
         every { auth.currentUser } returns null
         val listener = slot<FirebaseAuth.AuthStateListener>()
         every { auth.addAuthStateListener(capture(listener)) } just Runs
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         repository.continueOffline()
         listener.captured.onAuthStateChanged(auth)
         assertEquals(AuthState.OfflineGuest, repository.authState.value)
@@ -126,7 +135,7 @@ class FirebaseAuthRepositoryTest {
     @Test
     fun `guest action cannot silently reuse an existing real account`() = runTest {
         every { auth.currentUser } returns user("A", false)
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         assertTrue(repository.signInAnonymously().isFailure)
         assertEquals("A", (repository.authState.value as AuthState.Authenticated).user.uid)
         verify(exactly = 0) { auth.signInAnonymously() }
@@ -141,7 +150,7 @@ class FirebaseAuthRepositoryTest {
         every { auth.currentUser } returns u
         every { auth.signInWithEmailAndPassword(any(), any()) } returns Tasks.forResult(result)
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         val res = repository.signInWithEmail("user@example.test", "password123")
 
         assertTrue(res.isSuccess)
@@ -157,7 +166,7 @@ class FirebaseAuthRepositoryTest {
             FirebaseAuthInvalidCredentialsException("ERROR_WRONG_PASSWORD", "Invalid credentials")
         )
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         val res = repository.signInWithEmail("user@example.test", "wrongpass")
 
         assertTrue(res.isFailure)
@@ -233,7 +242,7 @@ class FirebaseAuthRepositoryTest {
         every { storageRef.path } returns "/plant_photos/user-123/photo.jpg"
         every { storageRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         val result = try {
             repository.deleteAccount()
         } catch (cancelled: CancellationException) {
@@ -263,7 +272,7 @@ class FirebaseAuthRepositoryTest {
     fun `deleteAccount returns failure and logs error if unauthenticated`() = runTest {
         every { auth.currentUser } returns null
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         val result = repository.deleteAccount()
 
         assertTrue(result.isFailure)
@@ -298,7 +307,7 @@ class FirebaseAuthRepositoryTest {
         every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
         every { userDoc.delete() } returns Tasks.forResult(null)
 
-        val repository = FirebaseAuthRepository(app, auth)
+        val repository = repository()
         val result = repository.deleteAccount()
 
         assertTrue(result.isFailure)
@@ -308,5 +317,46 @@ class FirebaseAuthRepositoryTest {
 
         val logs = repository.getSessionLogs()
         assertTrue(logs.any { it.contains("DELETE_ACCOUNT") && it.contains("FAILURE") })
+    }
+
+
+
+    @Test
+    fun `auth logs strictly redact emails and hash UIDs to prevent PII leakage`() = runTest {
+        val rawEmail = "student.target@student.unimelb.edu.au"
+        val rawUid = "plain-text-uid-12345"
+
+        // Create a relaxed mock for the Context
+        //val context = mockk<Context>(relaxed = true)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        // 1. Force Firebase to throw an exception that leaks the email in the message
+        every { auth.signInWithEmailAndPassword(any(), any()) } returns Tasks.forException(
+            Exception("Firebase Auth failed for $rawEmail: User disabled")
+        )
+
+        val guestUser = user(rawUid, true)
+        every { auth.currentUser } returns guestUser
+
+        // Pass the mocked context alongside the auth instance
+        val repository = repository(context)
+
+        // 2. Trigger the failure to generate the internal log
+        repository.signInWithEmail(rawEmail, "password")
+
+        val logs = repository.getSessionLogs()
+
+        // 3. Assert absolute absence of raw identifiers in the resulting dataset
+        assertTrue(
+            "Logs must not contain the raw email string",
+            logs.none { it.contains(rawEmail) }
+        )
+        assertTrue(
+            "Logs must not contain the raw UID string",
+            logs.none { it.contains(rawUid) }
+        )
+        assertTrue(
+            "Exceptions must be masked with the redaction placeholder",
+            logs.any { it.contains("[REDACTED_EMAIL]") }
+        )
     }
 }

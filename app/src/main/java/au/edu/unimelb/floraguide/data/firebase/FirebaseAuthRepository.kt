@@ -181,7 +181,7 @@ class FirebaseAuthRepository(
             )
             throw cancelled
         } catch (error: Exception) {
-            val failMsg = error.localizedMessage ?: "Authentication failed."
+            val failMsg = sanitizeAuthError(error)
             state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
                 ?: AuthState.Error(failMsg)
             logger.logEvent(
@@ -197,5 +197,18 @@ class FirebaseAuthRepository(
     private fun currentState(): AuthState = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
         ?: AuthState.Unauthenticated
 
-    private fun FirebaseUser.toDomain() = UserProfile(uid, email, displayName, isAnonymous)
+    // UI needs the real identity; only AuthSessionLogger hashes persisted identifiers.
+    private fun FirebaseUser.toDomain() = UserProfile(
+        uid = uid,
+        email = email, // Pass to domain for UI, but DO NOT log this object raw
+        displayName = displayName,
+        isAnonymous = isAnonymous
+    )
+
+    // If capturing Firebase Exceptions for logs, sanitize the message:
+    private fun sanitizeAuthError(error: Exception): String {
+        val rawMessage = error.localizedMessage ?: "Unknown auth error"
+        // Regex to strip out email addresses from Firebase exception messages
+        return rawMessage.replace(Regex("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"), "[REDACTED_EMAIL]")
+    }
 }

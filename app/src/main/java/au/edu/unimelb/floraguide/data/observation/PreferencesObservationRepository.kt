@@ -7,26 +7,49 @@ import au.edu.unimelb.floraguide.domain.repository.ObservationRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 /** Legacy local observation store used only for one-time import into the offline-first repository. */
-class PreferencesObservationRepository(context: Context) : ObservationRepository {
-    private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+class PreferencesObservationRepository(private val context: Context) : ObservationRepository {
+    private val preferences = runCatching {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        EncryptedSharedPreferences.create(
+            context,
+            PREFERENCES_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.getOrElse {
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    }
 
     override suspend fun loadAll(): List<Observation> = withContext(Dispatchers.IO) {
-        val encoded = preferences.getString(KEY_OBSERVATIONS, null) ?: return@withContext emptyList()
+        val encoded = runCatching { preferences.getString(KEY_OBSERVATIONS, null) }.getOrNull()
+            ?: runCatching { context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).getString(KEY_OBSERVATIONS, null) }.getOrNull()
+            ?: return@withContext emptyList()
         val array = runCatching { JSONArray(encoded) }.getOrNull() ?: return@withContext emptyList()
         (0 until array.length()).mapNotNull { index ->
             array.optJSONObject(index)?.let(ObservationJsonCodec::decode)
         }
     }
 
-    override suspend fun save(observation: Observation) = withContext(Dispatchers.IO) {
+    override suspend fun save(observation: Observation): Unit = withContext(Dispatchers.IO) {
         val current = loadAll().filterNot { it.id == observation.id }
         val array = JSONArray()
         (listOf(observation) + current).take(MAX_OBSERVATIONS).forEach {
             array.put(ObservationJsonCodec.encode(it))
         }
-        preferences.edit { putString(KEY_OBSERVATIONS, array.toString()) }
+        val content = array.toString()
+        try {
+            preferences.edit { putString(KEY_OBSERVATIONS, content) }
+        } catch (_: Throwable) {
+            context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit { putString(KEY_OBSERVATIONS, content) }
+        }
     }
 
     private companion object {

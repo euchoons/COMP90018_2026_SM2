@@ -175,4 +175,7 @@ dependencies {
     implementation(libs.firebase.firestore)
 
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("net.zetetic:android-database-sqlcipher:4.5.4")
+    implementation("androidx.sqlite:sqlite:2.4.0")
 }
