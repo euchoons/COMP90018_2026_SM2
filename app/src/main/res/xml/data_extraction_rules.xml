@@ -7,7 +7,8 @@
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="photos/" />
-        <!-- You can allow device-to-device transfer for DBs, but exclude secure prefs -->
+        <!-- A database transferred without its device-bound key is unreadable. -->
         <exclude domain="sharedpref" path="." />
+        <exclude domain="database" path="." />
     </device-transfer>
 </data-extraction-rules>
