@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
 
 class FirebaseAuthRepository(
@@ -35,22 +36,20 @@ class FirebaseAuthRepository(
     init {
         auth.addAuthStateListener { firebaseAuth ->
             val currentUser = firebaseAuth.currentUser
-            val previousState = state.value
-            val newState = currentState()
-            state.value = newState
+            if (currentUser != null || state.value != AuthState.OfflineGuest) {
+                state.value = currentState()
+            }
+            val restoredSession = isInitialVerification && currentUser != null
+            isInitialVerification = false
 
-            scope.launch {
+            if (restoredSession) scope.launch {
                 // Only log SESSION_RESTORED if this is the very first check upon app launch
-                if (currentUser != null && isInitialVerification) {
-                    logger.logEvent(
-                        eventType = "SESSION_RESTORED",
-                        status = "SUCCESS",
-                        userUid = currentUser.uid,
-                        detail = "Cold-start session reconciliation synced user."
-                    )
-                }
-                // Once the first callback fires, turn off the flag globally
-                isInitialVerification = false
+                logger.logEvent(
+                    eventType = "SESSION_RESTORED",
+                    status = "SUCCESS",
+                    userUid = currentUser.uid,
+                    detail = "Cold-start session reconciliation synced user."
+                )
             }
         }
     }
@@ -107,8 +106,6 @@ class FirebaseAuthRepository(
     }
 
 
-// app/src/main/java/au/edu/unimelb/floraguide/data/firebase/FirebaseAuthRepository.kt
-
     override suspend fun deleteAccount(): Result<Unit> = operations.withLock {
         val user = auth.currentUser ?: return Result.failure(IllegalStateException("No authenticated user to delete."))
         val uid = user.uid
@@ -120,11 +117,15 @@ class FirebaseAuthRepository(
 
             // 1. Wipe all cloud observations and associated Cloud Storage photos
             val observationsRef = firestore.collection("users").document(uid).collection("observations")
-            val snapshot = observationsRef.get().await()
+            // Never use a partial offline cache as the authoritative deletion inventory.
+            val snapshot = observationsRef.get(Source.SERVER).await()
+            val photos = FirebasePhotoStorage(context, storage, auth, expectedUserId = uid)
 
             for (doc in snapshot.documents) {
                 doc.getString("remotePhotoUrl")?.takeIf { it.isNotBlank() }?.let { gsUri ->
-                    runCatching { storage.getReferenceFromUrl(gsUri).delete().await() }
+                    // Reuse ownership validation and idempotent handling of already deleted objects.
+                    // All other failures must stop the cascade, leaving the account available to retry.
+                    photos.deletePhoto(gsUri)
                 }
                 doc.reference.delete().await()
             }
