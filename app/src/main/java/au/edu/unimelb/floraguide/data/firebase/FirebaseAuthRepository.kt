@@ -21,7 +21,6 @@ import kotlinx.coroutines.tasks.await
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
-import java.security.MessageDigest
 
 class FirebaseAuthRepository(
     private val context: Context,
@@ -198,15 +197,7 @@ class FirebaseAuthRepository(
     private fun currentState(): AuthState = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
         ?: AuthState.Unauthenticated
 
-    //private fun FirebaseUser.toDomain() = UserProfile(uid, email, displayName, isAnonymous)
-
-    // Utility function to one-way hash identifiers for logs
-    private fun hashIdentifier(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }.take(8) // Keep it short for logs
-    }
-
-    // Ensure your user mapping redacts sensitive info before any logging
+    // UI needs the real identity; only AuthSessionLogger hashes persisted identifiers.
     private fun FirebaseUser.toDomain() = UserProfile(
         uid = uid,
         email = email, // Pass to domain for UI, but DO NOT log this object raw
