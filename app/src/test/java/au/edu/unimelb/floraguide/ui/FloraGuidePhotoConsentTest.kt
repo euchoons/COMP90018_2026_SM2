@@ -46,6 +46,7 @@ class FloraGuidePhotoConsentTest {
     private lateinit var auth: MutableStateFlow<AuthState>
     private lateinit var container: AppContainer
     private lateinit var identifier: IdentifyStoredPhotoUseCase
+    private lateinit var observations: ObservationRepository
     private lateinit var viewModel: FloraGuideViewModel
     private lateinit var photos: File
     private lateinit var owner: ViewModelStore
@@ -59,7 +60,7 @@ class FloraGuidePhotoConsentTest {
         every { authRepository.getCurrentUser() } answers {
             (auth.value as? AuthState.Authenticated)?.user
         }
-        val observations = mockk<ObservationRepository>(relaxed = true)
+        observations = mockk(relaxed = true)
         coEvery { observations.observeAll() } returns flowOf(emptyList())
         identifier = mockk()
         // The test stops at the pipeline boundary; no Firebase/API credentials are used.
@@ -100,7 +101,7 @@ class FloraGuidePhotoConsentTest {
         assertNotNull(viewModel.uiState.value.pendingPhotoConsent)
         assertFalse(viewModel.uiState.value.isClassifying)
         coVerify(exactly = 0) { identifier.invoke(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { container.observationRepository.save(any()) }
+        coVerify(exactly = 0) { observations.save(any()) }
     }
 
     @Test fun agreementStartsExactlyOnePipelineAndDoesNotSave() = runTest(dispatcher) {
@@ -111,7 +112,7 @@ class FloraGuidePhotoConsentTest {
         runCurrent()
         assertNull(viewModel.uiState.value.pendingPhotoConsent)
         coVerify(exactly = 1) { identifier.invoke(file.absolutePath, any(), any(), any()) }
-        coVerify(exactly = 0) { container.observationRepository.save(any()) }
+        coVerify(exactly = 0) { observations.save(any()) }
     }
 
     @Test fun cancellationQueuesOnlyTheUnsentLocalPhoto() = runTest(dispatcher) {
