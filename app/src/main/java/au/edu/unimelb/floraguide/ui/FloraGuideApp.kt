@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.domain.repository.AuthState
+import au.edu.unimelb.floraguide.ui.components.PhotoConsentDialog
 import au.edu.unimelb.floraguide.ui.screens.AuthScreen
 import au.edu.unimelb.floraguide.ui.screens.CollectionScreen
 import au.edu.unimelb.floraguide.ui.screens.HomeScreen
@@ -69,7 +70,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
         }
     }
 
-    BackHandler(enabled = state.screen != AppScreen.HOME) {
+    BackHandler(enabled = state.screen != AppScreen.HOME && state.pendingPhotoConsent == null) {
         when (state.screen) {
             AppScreen.RESULTS -> viewModel.goToScan()
             AppScreen.SCAN, AppScreen.COLLECTION, AppScreen.ACCOUNT -> viewModel.goHome()
@@ -77,7 +78,15 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
         }
     }
 
-    val showNavigation = state.screen != AppScreen.RESULTS
+    state.pendingPhotoConsent?.let { request ->
+        PhotoConsentDialog(
+            hasCaptureLocation = state.capture?.location != null,
+            onAgree = { viewModel.approvePhotoUpload(request.captureId) },
+            onCancel = { viewModel.cancelPhotoUpload(request.captureId) },
+        )
+    }
+
+    val showNavigation = state.screen != AppScreen.RESULTS && state.pendingPhotoConsent == null
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
