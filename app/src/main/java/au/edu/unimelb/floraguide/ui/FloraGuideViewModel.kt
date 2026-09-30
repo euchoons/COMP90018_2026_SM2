@@ -16,6 +16,8 @@ import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
+import au.edu.unimelb.floraguide.domain.privacy.PendingPhotoConsent
+import au.edu.unimelb.floraguide.domain.privacy.PhotoConsentGate
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
 import au.edu.unimelb.floraguide.domain.usecase.CreateObservationUseCase
@@ -53,6 +55,7 @@ data class FloraGuideUiState(
     val locationSkipped: Boolean = false,
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
     val photoPath: String? = null,
+    val pendingPhotoConsent: PendingPhotoConsent? = null,
     val storedPhoto: StoredPhoto? = null,
     val capture: CaptureSnapshot? = null,
     val identificationStage: IdentificationStage? = null,
@@ -90,7 +93,7 @@ data class FloraGuideUiState(
             .size
 
     val canSave: Boolean
-        get() = selectedCandidate != null &&
+        get() = pendingPhotoConsent == null && selectedCandidate != null &&
             capture?.location != null &&
             !isClassifying && !isContextLoading && !isSaving
 }
@@ -100,6 +103,9 @@ class FloraGuideViewModel(
 ) : ViewModel() {
     private var analysisJob: Job? = null
     private var pendingCapture: CaptureSnapshot? = null
+    private var pendingCaptureOwner: String? = null
+    private var disposed = false
+    private val photoConsentGate = PhotoConsentGate()
     private val observationFactory = CreateObservationUseCase()
     private val _uiState = MutableStateFlow(FloraGuideUiState())
     val uiState: StateFlow<FloraGuideUiState> = _uiState.asStateFlow()
@@ -112,6 +118,7 @@ class FloraGuideViewModel(
         viewModelScope.launch {
             authState.map { sessionKey() }.distinctUntilChanged().collectLatest { uid ->
                 analysisJob?.cancel()
+                discardPendingConsent()
                 _uiState.update { current -> FloraGuideUiState(sensorSnapshot = current.sensorSnapshot) }
                 if (uid != null) {
                     try {
@@ -186,11 +193,14 @@ class FloraGuideViewModel(
     }
 
     fun signOut() {
+        analysisJob?.cancel()
+        discardPendingConsent()
         viewModelScope.launch { container.authRepository.signOut() }
     }
 
     fun goHome() {
         analysisJob?.cancel()
+        discardPendingConsent()
         container.locationTracker.stop()
         _uiState.update {
             it.copy(
@@ -205,6 +215,7 @@ class FloraGuideViewModel(
 
     fun goToCollection() {
         analysisJob?.cancel()
+        discardPendingConsent()
         container.locationTracker.stop()
         _uiState.update {
             it.copy(
@@ -219,12 +230,14 @@ class FloraGuideViewModel(
 
     fun goToAccount() {
         analysisJob?.cancel()
+        discardPendingConsent()
         container.locationTracker.stop()
         _uiState.update { it.copy(screen = AppScreen.ACCOUNT, message = null) }
     }
 
     fun goToScan() {
         analysisJob?.cancel()
+        discardPendingConsent()
         container.locationTracker.stop()
         _uiState.update { current ->
             FloraGuideUiState(
@@ -289,23 +302,107 @@ class FloraGuideViewModel(
      * Called at the shutter press. Saving the JPEG can take seconds, long enough for a fix near
      * the 60 s freshness limit to expire, so time and location are frozen here like the heading.
      */
-    fun beginCapture() {
-        pendingCapture = liveCaptureNow()
+    fun beginCapture(): String? {
+        val current = _uiState.value
+        if (disposed || current.screen != AppScreen.SCAN || current.pendingPhotoConsent != null) return null
+        val owner = sessionKey() ?: return null
+        val capture = liveCaptureNow()
+        pendingCapture = capture
+        pendingCaptureOwner = owner
+        return capture.observationId
     }
 
+    /** Historical callback name retained: receiving a JPEG now stages consent, not analysis. */
     fun analyzeCapturedPhoto(photoPath: String?, captureHeadingDegrees: Float?) {
         if (photoPath.isNullOrBlank()) {
             showMessage("Capture a photo before starting identification.")
             return
         }
-        val capture = (pendingCapture ?: liveCaptureNow()).copy(headingDegrees = captureHeadingDegrees)
+        val pending = pendingCapture
+        val owner = sessionKey()
+        if (
+            disposed || pending == null || owner == null || pendingCaptureOwner != owner ||
+            _uiState.value.screen != AppScreen.SCAN ||
+            !container.capturedPhotoFiles.belongsToCapture(photoPath, pending.observationId)
+        ) {
+            // A CameraX callback can arrive after navigation, sign-out or another shutter press.
+            discardUnapprovedPhoto(photoPath)
+            return
+        }
         pendingCapture = null
+        pendingCaptureOwner = null
         container.locationTracker.stop()
-        startAnalysis(
-            photoPath = photoPath,
-            preferLiveData = true,
-            capture = capture,
-        )
+        val capture = pending.copy(headingDegrees = captureHeadingDegrees)
+        val request = PendingPhotoConsent(capture.observationId, owner, photoPath)
+        photoConsentGate.offer(request)
+        _uiState.update {
+            it.copy(
+                photoPath = photoPath,
+                capture = capture,
+                pendingPhotoConsent = request,
+                storedPhoto = null,
+                analysisError = null,
+                identificationStage = null,
+                imagePredictions = emptyList(),
+                imageSource = null,
+                imageOnlyRanking = emptyList(),
+                fusedRanking = emptyList(),
+                nearbyContext = null,
+                selectedSpeciesId = null,
+                isClassifying = false,
+                isContextLoading = false,
+                isSaving = false,
+                message = null,
+            )
+        }
+    }
+
+    fun approvePhotoUpload(captureId: String) {
+        val owner = sessionKey() ?: return
+        val current = _uiState.value
+        val capture = current.capture ?: return
+        if (disposed || current.screen != AppScreen.SCAN || capture.observationId != captureId) return
+        val request = photoConsentGate.approve(captureId, owner) ?: return
+        _uiState.update { it.copy(pendingPhotoConsent = null, screen = AppScreen.RESULTS) }
+        startAnalysis(request.photoPath, preferLiveData = true, capture = capture)
+    }
+
+    fun cancelPhotoUpload(captureId: String) {
+        if (_uiState.value.pendingPhotoConsent?.captureId != captureId) return
+        discardPendingConsent()
+        _uiState.update {
+            it.copy(message = "Photo not sent. Take another photo or use the offline guided demo.")
+        }
+    }
+
+    private fun discardPendingConsent() {
+        pendingCapture = null
+        pendingCaptureOwner = null
+        val unsent = photoConsentGate.reset()
+        _uiState.update {
+            it.copy(
+                pendingPhotoConsent = null,
+                photoPath = if (unsent != null) null else it.photoPath,
+                capture = if (unsent != null) null else it.capture,
+            )
+        }
+        unsent?.let { discardUnapprovedPhoto(it.photoPath) }
+    }
+
+    private fun discardUnapprovedPhoto(photoPath: String) {
+        // Ignore duplicate callbacks for pending/accepted files, including a file already saved.
+        if (
+            photoConsentGate.wasEverApproved(photoPath) ||
+            _uiState.value.pendingPhotoConsent?.photoPath == photoPath
+        ) return
+        val owner = sessionKey()
+        container.discardUnsentPhoto(photoPath) {
+            viewModelScope.launch {
+                if (!disposed && sessionKey() == owner) {
+                    showMessage("The photo was not sent, but its local file could not be removed.")
+                }
+            }
+        }
     }
 
     private fun liveCaptureNow(): CaptureSnapshot {
@@ -327,6 +424,11 @@ class FloraGuideViewModel(
         val current = _uiState.value
         val capture = current.capture ?: return
         if (current.isClassifying || current.isSaving || current.photoPath == null) return
+        val owner = sessionKey() ?: return
+        if (!photoConsentGate.isApproved(capture.observationId, owner, current.photoPath)) {
+            showMessage("Agree to online identification before retrying this photo.")
+            return
+        }
         startAnalysis(
             photoPath = current.photoPath,
             preferLiveData = true,
@@ -336,6 +438,7 @@ class FloraGuideViewModel(
     }
 
     fun runGuidedDemo() {
+        discardPendingConsent()
         container.locationTracker.stop()
         val capture = CaptureSnapshot(
             observationId = UUID.randomUUID().toString(),
@@ -366,6 +469,9 @@ class FloraGuideViewModel(
             current.imagePredictions.isEmpty() || current.isContextLoading || current.isSaving ||
             !current.analysisPrefersLiveData
         ) return
+        val owner = sessionKey() ?: return
+        val path = current.photoPath ?: return
+        if (!photoConsentGate.isApproved(capture.observationId, owner, path)) return
         if (capture.location == null) {
             showMessage("This photo has no usable capture location. Enable location and take a new photo.")
             return
@@ -389,6 +495,7 @@ class FloraGuideViewModel(
     fun confirmSelectedObservation() {
         val uid = sessionKey() ?: return
         val current = _uiState.value
+        if (!current.canSave) return
         val capture = current.capture ?: return
         val selected = current.selectedCandidate ?: return
         if (capture.location == null) {
@@ -478,6 +585,13 @@ class FloraGuideViewModel(
         previouslyUploaded: StoredPhoto? = null,
     ) {
         val uid = sessionKey() ?: return
+        if (preferLiveData && (
+                photoPath == null || !photoConsentGate.isApproved(capture.observationId, uid, photoPath)
+            )
+        ) {
+            showMessage("Agree to online identification before sending this photo.")
+            return
+        }
         analysisJob?.cancel()
         analysisJob = viewModelScope.launch {
             if (sessionKey() != uid) return@launch
@@ -485,6 +599,7 @@ class FloraGuideViewModel(
                 it.copy(
                     screen = AppScreen.RESULTS,
                     photoPath = photoPath,
+                    pendingPhotoConsent = null,
                     storedPhoto = previouslyUploaded,
                     capture = capture,
                     identificationStage = null,
@@ -511,15 +626,23 @@ class FloraGuideViewModel(
                         "Set PLANTNET_API_KEY in the root local.properties, then rebuild the app."
                     }
                     val localPath = requireNotNull(photoPath) { "No captured photo was provided." }
+                    currentCoroutineContext().ensureActive()
+                    check(photoConsentGate.isApproved(capture.observationId, uid, localPath)) {
+                        "Photo consent is no longer valid. Take a new photo."
+                    }
                     container.identifyStoredPhoto(
                         localPath = localPath,
                         previouslyUploaded = previouslyUploaded,
                         onUploaded = { stored ->
-                            if (sessionKey() != uid) throw CancellationException("Account changed")
+                            if (sessionKey() != uid || _uiState.value.capture?.observationId != capture.observationId) {
+                                throw CancellationException("Capture or account changed")
+                            }
                             _uiState.update { it.copy(storedPhoto = stored) }
                         },
                         onStage = { stage ->
-                            if (sessionKey() != uid) throw CancellationException("Account changed")
+                            if (sessionKey() != uid || _uiState.value.capture?.observationId != capture.observationId) {
+                                throw CancellationException("Capture or account changed")
+                            }
                             _uiState.update { it.copy(identificationStage = stage) }
                         },
                     )
@@ -549,6 +672,8 @@ class FloraGuideViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
+                currentCoroutineContext().ensureActive()
+                if (sessionKey() != uid || _uiState.value.capture?.observationId != capture.observationId) return@launch
                 _uiState.update {
                     it.copy(
                         isClassifying = false,
@@ -618,6 +743,8 @@ class FloraGuideViewModel(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
+            currentCoroutineContext().ensureActive()
+            if (sessionKey() != uid || _uiState.value.capture?.observationId != capture.observationId) return
             val imageOnly = container.rankCandidates.imageOnly(candidates)
             _uiState.update {
                 it.copy(
@@ -656,6 +783,8 @@ class FloraGuideViewModel(
     }
 
     override fun onCleared() {
+        disposed = true
+        discardPendingConsent()
         analysisJob?.cancel()
         container.sensorMonitor.stop()
         container.locationTracker.stop()
