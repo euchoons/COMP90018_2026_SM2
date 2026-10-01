@@ -370,40 +370,111 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
-    @Test fun `a flower photo lowers candidates outside their flowering months even after reranking`() = runTest(dispatcher) {
-        val flower = prepareOffSeasonFlower()
-        every { container.locationTracker.snapshotForObservation() } returns null
-        val model = FloraGuideViewModel(container)
-        runCurrent()
-        model.beginCapture()
-        model.analyzeCapturedPhoto("/capture.jpg", null)
-        runCurrent()
-        assertEquals(flower, model.uiState.value.predictedOrgan)
-        assertEquals(listOf("live1", "live0"), model.uiState.value.fusedRanking.map { it.species.id })
-        assertEquals(0.85, model.uiState.value.fusedRanking.last().evidence.seasonMultiplier, 0.0)
-        // A habitat edit reranks with the stored capture month and organ.
-        model.setHabitat(Habitat.LAWN)
-        assertEquals(listOf("live1", "live0"), model.uiState.value.fusedRanking.map { it.species.id })
-        state.value = AuthState.Unauthenticated
-        runCurrent()
-    }
+    @Test
+    fun `a flower photo lowers candidates outside their flowering months even after reranking`() =
+        runTest(dispatcher) {
+            val flower = prepareOffSeasonFlower()
 
-    @Test fun `a failed ALA lookup keeps the flowering cue`() = runTest(dispatcher) {
-        prepareOffSeasonFlower()
-        val location = GeoPoint(-37.7963, 144.9614, 12f)
-        every { container.locationTracker.snapshotForObservation() } returns location
-        coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), location, 8, true) } throws
-            IllegalStateException("ALA down")
-        val model = FloraGuideViewModel(container)
-        runCurrent()
-        model.beginCapture()
-        model.analyzeCapturedPhoto("/capture.jpg", null)
-        runCurrent()
-        assertEquals(ContextDataSource.ALA_UNAVAILABLE, model.uiState.value.nearbyContext?.source)
-        assertEquals(listOf("live1", "live0"), model.uiState.value.fusedRanking.map { it.species.id })
-        state.value = AuthState.Unauthenticated
-        runCurrent()
-    }
+            every {
+                container.locationTracker.snapshotForObservation()
+            } returns null
+
+            val model = FloraGuideViewModel(container)
+            runCurrent()
+
+            model.goToScan()
+
+            val captureId = requireNotNull(model.beginCapture())
+
+            model.analyzeCapturedPhoto(
+                "/capture.jpg",
+                null,
+            )
+
+            model.approvePhotoUpload(captureId)
+
+            runCurrent()
+
+            assertEquals(
+                flower,
+                model.uiState.value.predictedOrgan,
+            )
+
+            assertEquals(
+                listOf("live1", "live0"),
+                model.uiState.value.fusedRanking.map { it.species.id },
+            )
+
+            assertEquals(
+                0.85,
+                model.uiState.value.fusedRanking.last().evidence.seasonMultiplier,
+                0.0,
+            )
+
+            // A habitat edit reranks with the stored capture month and organ.
+            model.setHabitat(Habitat.LAWN)
+
+            assertEquals(
+                listOf("live1", "live0"),
+                model.uiState.value.fusedRanking.map { it.species.id },
+            )
+
+            state.value = AuthState.Unauthenticated
+            runCurrent()
+        }
+    @Test
+    fun `a failed ALA lookup keeps the flowering cue`() =
+        runTest(dispatcher) {
+            prepareOffSeasonFlower()
+
+            val location = GeoPoint(
+                -37.7963,
+                144.9614,
+                12f,
+            )
+
+            every {
+                container.locationTracker.snapshotForObservation()
+            } returns location
+
+            coEvery {
+                container.speciesContextRepository.nearbyOccurrenceCounts(
+                    any(),
+                    location,
+                    8,
+                    true,
+                )
+            } throws IllegalStateException("ALA down")
+
+            val model = FloraGuideViewModel(container)
+            runCurrent()
+
+            model.goToScan()
+
+            val captureId = requireNotNull(model.beginCapture())
+
+            model.analyzeCapturedPhoto(
+                "/capture.jpg",
+                null,
+            )
+
+            model.approvePhotoUpload(captureId)
+
+            runCurrent()
+
+            assertEquals(
+                ContextDataSource.ALA_UNAVAILABLE,
+                model.uiState.value.nearbyContext?.source,
+            )
+
+            assertEquals(
+                listOf("live1", "live0"),
+                model.uiState.value.fusedRanking.map { it.species.id },
+            )
+
+            state.value = AuthState.Unauthenticated
+            runCurrent()
+        }
 
     /** Live flower photo whose image leader is documented to flower six months from any capture month. */
     private fun prepareOffSeasonFlower(): PredictedOrgan {
