@@ -99,8 +99,8 @@ class AlaOccurrenceClientValidationTest {
     @Test fun exactNameMatchingToleratesCaseAndInputPadding() {
         val body = """{"success":true,"scientificName":"acacia dealbata","rank":"SPECIES",
             "matchType":"exactMatch","taxonConceptID":"test-taxon-1"}"""
-        assertEquals("test-taxon-1", parseTaxonId(body))
-        assertNull(parseTaxonId(body.replace("exactMatch", "fuzzyMatch")))
+        assertEquals("test-taxon-1", parseTaxon(body, "  Acacia dealbata ")?.id)
+        assertNull(parseTaxon(body.replace("exactMatch", "fuzzyMatch"), "Acacia dealbata"))
     }
 
     private fun rejectingClient(onConnection: () -> Unit) = AlaOccurrenceClient(

@@ -26,14 +26,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.domain.model.CaptureLocationSource
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
+import au.edu.unimelb.floraguide.domain.model.FloweringCheck
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
@@ -48,6 +51,7 @@ import au.edu.unimelb.floraguide.ui.components.RelativeScoreLabel
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.SelectableCard
 import au.edu.unimelb.floraguide.ui.components.StatusPill
+import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
@@ -141,11 +145,22 @@ fun ResultsScreen(
                         EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
                     } else {
                         Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
+                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx", selected.evidence.seasonMultiplier))
+                        Text(floweringLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
+                        selected.evidence.flowering?.let { record ->
+                            val uriHandler = LocalUriHandler.current
+                            // CC BY 4.0 needs the attribution wherever VicFlora's wording is shown.
+                            TextButton(onClick = { runCatching { uriHandler.openUri(record.sourceUrl) } }) {
+                                Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
+                            }
+                        }
                         Text("For complete ALA results: image score x (1 + 0.15 x support), then normalise. " +
                             "Support uses capped log-counts; the maximum multiplier is 1.15x.",
                             style = MaterialTheme.typography.bodySmall)
-                        Text("Partial, unavailable or skipped ALA context keeps the image-only order. " +
-                            "Season and habitat do not change live rankings.", style = MaterialTheme.typography.bodySmall)
+                        Text("Partial, unavailable or skipped ALA context adds no geographic adjustment. " +
+                            "A flower photographed more than a month outside a candidate's documented flowering months " +
+                            "multiplies that candidate by 0.85; other photos and species without flowering data are unaffected. " +
+                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
                     HorizontalDivider()
                     Text("Observation habitat", fontWeight = FontWeight.Bold)
@@ -169,7 +184,7 @@ fun ResultsScreen(
         item {
             InformationCard("Interpretation and privacy",
                 "ALA counts are historical records, not a count of individual plants and not proof of identity. " +
-                    "Zero records do not prove absence. Exact-name queries can miss synonyms. " +
+                    "Zero records do not prove absence. Only exact names and objective synonyms are matched, so other synonyms can be missed. " +
                     "Saving marks your selection as unverified, stores rounded coordinates locally, and does not submit it to ALA.")
         }
     }
@@ -231,16 +246,45 @@ private fun RankingColumn(title: String, candidates: List<RankedCandidate>, modi
 private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): String {
     val count = candidate.nearbyRecordCount
     if (state.imageSource == ImageSource.DEMO_ADAPTER) return "Synthetic demo count: ${count ?: "pending"}"
+    val synonym = state.nearbyContext?.acceptedNamesBySpeciesId?.get(candidate.species.id)?.let { " (as $it)" }.orEmpty()
     return when {
         state.isContextLoading -> "ALA count: pending"
         count == null -> "ALA count: unknown / not available"
-        count == 0 -> "ALA: 0 matching historical records (not proof of absence)"
-        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km"
+        count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
+        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
     }
 }
-private fun rankingExplanation(state: FloraGuideUiState): String = when {
-    state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
-    state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
-    state.nearbyContext?.source == ContextDataSource.ALA_LIVE -> "All candidate queries succeeded. ALA may add a small, capped positive adjustment."
-    else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+/** The documented statement behind the flowering factor, or why none was applied. */
+private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState): String {
+    if (state.isContextLoading) return "Checked when the ALA lookup finishes."
+    val evidence = candidate.evidence
+    val month = state.analysisDate.month.getDisplayName(TextStyle.FULL, Locale.US)
+    val statement = evidence.flowering?.let { record ->
+        val synonym = if (record.sourceName != candidate.species.scientificName) " (as ${record.sourceName})" else ""
+        "VicFlora$synonym: \"${record.statement}\" "
+    }.orEmpty()
+    return when (evidence.floweringCheck) {
+        FloweringCheck.OUT_OF_SEASON -> "$statement$month is more than a month outside this period."
+        FloweringCheck.IN_SEASON -> statement +
+            if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month is within this period."
+            else "$month is within a month of this period."
+        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table, so it is not lowered."
+        FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
+            (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
+            ". Flowering months apply only to a confidently recognised flower."
+    }
+}
+
+private fun rankingExplanation(state: FloraGuideUiState): String {
+    val season = if (state.fusedRanking.any { it.evidence.seasonMultiplier < 1.0 }) {
+        " This flower photo lowered candidates documented to flower at other times of year."
+    } else ""
+    return when {
+        state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
+        state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
+        state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
+            "All candidate queries succeeded. ALA may add a small, capped positive adjustment.$season"
+        season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
+        else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+    }
 }

@@ -31,7 +31,9 @@ class CreateObservationUseCase {
         val source = context?.source ?: ContextDataSource.NOT_REQUESTED
         val rule = when {
             imageSource == ImageSource.DEMO_ADAPTER -> RankSpeciesCandidatesUseCase.DEMO_RULE_VERSION
-            source == ContextDataSource.ALA_LIVE -> RankSpeciesCandidatesUseCase.LIVE_RULE_VERSION
+            // The flowering cue works without ALA, so a seasonal adjustment alone also means the live rule.
+            source == ContextDataSource.ALA_LIVE || ranking.any { it.evidence.seasonMultiplier != 1.0 } ->
+                RankSpeciesCandidatesUseCase.LIVE_RULE_VERSION
             else -> RankSpeciesCandidatesUseCase.IMAGE_ONLY_RULE_VERSION
         }
         return Observation(

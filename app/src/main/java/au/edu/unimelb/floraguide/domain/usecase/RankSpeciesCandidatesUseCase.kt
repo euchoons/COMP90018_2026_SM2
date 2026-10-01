@@ -2,10 +2,14 @@ package au.edu.unimelb.floraguide.domain.usecase
 
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
 import au.edu.unimelb.floraguide.domain.model.EvidenceBreakdown
+import au.edu.unimelb.floraguide.domain.model.FloweringCheck
+import au.edu.unimelb.floraguide.domain.model.FloweringRecord
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
+import au.edu.unimelb.floraguide.domain.model.circularMonthDistance
 import java.time.LocalDate
 import kotlin.math.exp
 import kotlin.math.ln
@@ -20,24 +24,43 @@ class RankSpeciesCandidatesUseCase(
     private val locationSmoothing: Double = 3.0,
     private val maximumLiveBoost: Double = 0.15,
     private val liveCountSaturation: Int = 50,
+    /** Documented flowering by exact scientific name; the app passes the bundled VicFlora table. */
+    private val floweringRecords: Map<String, FloweringRecord> = emptyMap(),
+    private val outOfSeasonMultiplier: Double = 0.85,
+    private val minimumFlowerScore: Double = 0.5,
 ) {
     init {
         require(maximumLiveBoost in 0.0..0.5 && liveCountSaturation > 0)
         require(locationSmoothing > 0.0)
+        require(outOfSeasonMultiplier in 0.5..1.0 && minimumFlowerScore in 0.0..1.0)
+        // An empty set would read as "never flowers" and lower every flower photo.
+        require(floweringRecords.values.all { record -> record.months.isNotEmpty() && record.months.all { it in 1..12 } })
     }
 
     /**
      * Coursework heuristic, not a trained or calibrated probability model.
      * support = log(1 + min(count, 50)) / log(51)
-     * weight = originalImageScore * (1 + 0.15 * support)
+     * weight = originalImageScore * (1 + 0.15 * support) * season
      * Normalise within the candidate set. Zero records apply no penalty.
-     * Incomplete context keeps the entire image-only order, not just the failed candidates.
+     * Incomplete ALA context disables geographic support for every candidate, not just the failed ones.
+     * season is 0.85 only for a photographed flower more than a month outside the candidate's
+     * documented flowering months; other organs, a missing date and unlisted species stay neutral.
      */
-    fun live(predictions: List<ImagePrediction>, context: NearbyContext): List<RankedCandidate> {
+    fun live(
+        predictions: List<ImagePrediction>,
+        context: NearbyContext,
+        captureMonth: Int? = null,
+        organ: PredictedOrgan? = null,
+    ): List<RankedCandidate> {
+        require(captureMonth == null || captureMonth in 1..12) { "Invalid capture month" }
         val baseline = imageOnly(predictions)
         if (baseline.isEmpty()) return baseline
         val complete = context.source == ContextDataSource.ALA_LIVE && predictions.all {
             (context.countsBySpeciesId[it.species.id] ?: -1) >= 0
+        }
+        // Flowering months say nothing about a leaf, bark or whole-plant photo.
+        val flowerMonth = captureMonth.takeIf {
+            organ != null && organ.organ.equals("flower", ignoreCase = true) && organ.score >= minimumFlowerScore
         }
         val components = baseline.map { candidate ->
             val count = context.countsBySpeciesId[candidate.species.id]?.takeIf { it >= 0 }
@@ -45,12 +68,18 @@ class RankSpeciesCandidatesUseCase(
                 ln1p(count.coerceAtMost(liveCountSaturation).toDouble()) / ln1p(liveCountSaturation.toDouble())
             } else 0.0
             val multiplier = 1.0 + maximumLiveBoost * support
-            val value = candidate.evidence.imagePrior * multiplier
+            val flowering = floweringRecords[candidate.species.scientificName]
+            val check = floweringCheck(flowering, flowerMonth)
+            val season = if (check == FloweringCheck.OUT_OF_SEASON) outOfSeasonMultiplier else 1.0
+            val value = candidate.evidence.imagePrior * multiplier * season
             candidate.copy(
                 nearbyRecordCount = count,
                 evidence = candidate.evidence.copy(
                     locationPrior = support,
                     locationMultiplier = multiplier,
+                    seasonMultiplier = season,
+                    flowering = flowering,
+                    floweringCheck = check,
                 ),
             ) to value
         }
@@ -60,6 +89,14 @@ class RankSpeciesCandidatesUseCase(
         ).mapIndexed { index, (candidate, value) ->
             candidate.copy(relativeScore = value / total, finalRank = index + 1)
         }
+    }
+
+    /** Only a documented mismatch lowers a candidate; unlisted species count the same as in season. */
+    private fun floweringCheck(record: FloweringRecord?, flowerMonth: Int?): FloweringCheck = when {
+        flowerMonth == null -> FloweringCheck.NOT_APPLIED
+        record == null -> FloweringCheck.NO_DATA
+        record.months.any { circularMonthDistance(flowerMonth, it) <= 1 } -> FloweringCheck.IN_SEASON
+        else -> FloweringCheck.OUT_OF_SEASON
     }
 
     fun imageOnly(predictions: List<ImagePrediction>): List<RankedCandidate> {
@@ -114,7 +151,9 @@ class RankSpeciesCandidatesUseCase(
     }
 
     companion object {
-        const val LIVE_RULE_VERSION = "ala-positive-support-v1-cap0.15-saturation50"
+        const val LIVE_RULE_VERSION =
+            "ala-positive-support-v1-cap0.15-saturation50+flowering-mismatch-v1-x0.85-tolerance1-flower0.5" +
+                "+vicflora-2026-09-25"
         const val IMAGE_ONLY_RULE_VERSION = "image-only-normalised-v1"
         const val DEMO_RULE_VERSION = "synthetic-ecology-demo-v1"
     }

@@ -14,6 +14,7 @@ import au.edu.unimelb.floraguide.domain.model.ImagePrediction
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.Observation
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import au.edu.unimelb.floraguide.domain.repository.AuthState
@@ -60,6 +61,7 @@ data class FloraGuideUiState(
     val imagePredictions: List<ImagePrediction> = emptyList(),
     val imageSource: ImageSource? = null,
     val imageElapsedMillis: Long? = null,
+    val predictedOrgan: PredictedOrgan? = null,
     val imageOnlyRanking: List<RankedCandidate> = emptyList(),
     val fusedRanking: List<RankedCandidate> = emptyList(),
     val nearbyContext: NearbyContext? = null,
@@ -492,6 +494,7 @@ class FloraGuideViewModel(
                     imagePredictions = emptyList(),
                     imageSource = null,
                     imageElapsedMillis = null,
+                    predictedOrgan = null,
                     imageOnlyRanking = emptyList(),
                     fusedRanking = emptyList(),
                     nearbyContext = null,
@@ -539,6 +542,7 @@ class FloraGuideViewModel(
                         analysisError = null,
                         imageSource = classification.source,
                         imageElapsedMillis = classification.elapsedMillis,
+                        predictedOrgan = classification.predictedOrgan,
                         imageOnlyRanking = imageOnly,
                         fusedRanking = imageOnly,
                         isClassifying = false,
@@ -583,7 +587,7 @@ class FloraGuideViewModel(
                     countsBySpeciesId = emptyMap(),
                     source = ContextDataSource.NOT_REQUESTED,
                     radiusKm = CONTEXT_RADIUS_KM,
-                    warning = "No usable capture location. ALA was not queried; image-only ranking is retained.",
+                    warning = "No usable capture location. ALA was not queried, so no geographic adjustment is applied.",
                 )
                 else -> container.speciesContextRepository.nearbyOccurrenceCounts(
                     candidates = candidates.map { it.species },
@@ -604,7 +608,7 @@ class FloraGuideViewModel(
                     date = latest.analysisDate,
                 )
             } else {
-                container.rankCandidates.live(candidates, nearby)
+                container.rankCandidates.live(candidates, nearby, latest.analysisDate.monthValue, latest.predictedOrgan)
             }
 
             _uiState.update {
@@ -618,17 +622,24 @@ class FloraGuideViewModel(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
-            val imageOnly = container.rankCandidates.imageOnly(candidates)
+            val unavailable = NearbyContext(
+                countsBySpeciesId = emptyMap(),
+                source = ContextDataSource.ALA_UNAVAILABLE,
+                radiusKm = CONTEXT_RADIUS_KM,
+                warning = "ALA lookup failed, so no geographic adjustment is applied.",
+            )
+            val latest = _uiState.value
+            // The flowering cue needs no ALA data, so a failed lookup must not drop it.
+            val fused = if (preferLiveData) {
+                container.rankCandidates.live(candidates, unavailable, latest.analysisDate.monthValue, latest.predictedOrgan)
+            } else {
+                container.rankCandidates.imageOnly(candidates)
+            }
             _uiState.update {
                 it.copy(
-                    fusedRanking = imageOnly,
+                    fusedRanking = fused,
                     isContextLoading = false,
-                    nearbyContext = NearbyContext(
-                        countsBySpeciesId = emptyMap(),
-                        source = ContextDataSource.ALA_UNAVAILABLE,
-                        radiusKm = CONTEXT_RADIUS_KM,
-                        warning = "ALA lookup failed. Image-only ranking is retained.",
-                    ),
+                    nearbyContext = unavailable,
                     message = error.message ?: "Context lookup failed.",
                 )
             }
@@ -648,7 +659,7 @@ class FloraGuideViewModel(
                 date = current.analysisDate,
             )
         } else {
-            container.rankCandidates.live(candidates, context)
+            container.rankCandidates.live(candidates, context, current.analysisDate.monthValue, current.predictedOrgan)
         }
         _uiState.update {
             it.copy(fusedRanking = fused)

@@ -1,5 +1,6 @@
 package au.edu.unimelb.floraguide.data.plantnet
 
+import au.edu.unimelb.floraguide.domain.model.PredictedOrgan
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -29,6 +30,21 @@ class PlantNetClientTest {
         // Not every species has a common name; the classifier falls back to the scientific one.
         assertNull(results[0].commonName)
         assertEquals(499, parseRemainingRequests(fixture()))
+    }
+
+    @Test
+    fun predictedOrganKeepsTheBestGuessAndNeverFailsIdentification() {
+        assertEquals(PredictedOrgan("habit", 0.64779), parsePredictedOrgan(fixture()))
+        assertEquals(
+            PredictedOrgan("flower", 0.8),
+            parsePredictedOrgan(
+                """{"predictedOrgans":[{"organ":"leaf","score":0.2},{"organ":"flower","score":0.8},""" +
+                    """{"organ":" ","score":0.9},{"organ":"bark","score":1.5},{"organ":"fruit","score":"0.95"}]}""",
+            ),
+        )
+        for (body in listOf("not-json", "{}", """{"predictedOrgans":{}}""", """{"predictedOrgans":[{"organ":"flower"}]}""")) {
+            assertNull(parsePredictedOrgan(body))
+        }
     }
 
     @Test
@@ -86,6 +102,7 @@ class PlantNetClientTest {
         assertEquals(200, identification.httpStatus)
         assertEquals(3_400L, identification.elapsedMillis)
         assertEquals(499, identification.remainingRequests)
+        assertEquals(PredictedOrgan("habit", 0.64779), identification.predictedOrgan)
 
         val query = requestedUrls.single().query
         assertTrue(query.contains("api-key=test-key"))
