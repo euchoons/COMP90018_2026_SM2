@@ -5,13 +5,17 @@ import android.net.Uri
 import android.util.Log
 import au.edu.unimelb.floraguide.domain.repository.PhotoStore
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRegistry
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageMetadata
+import com.google.firebase.storage.UploadTask
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
+import java.util.UUID
+import java.util.concurrent.Executor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -19,34 +23,95 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+internal fun storageIOException(
+    action: String,
+    errorCode: Int,
+): IOException {
+    val hint = when (errorCode) {
+        StorageException.ERROR_NOT_AUTHENTICATED ->
+            "Sign in with Firebase Authentication."
+
+        StorageException.ERROR_NOT_AUTHORIZED ->
+            "Check the UID-based Storage rules and App Check configuration."
+
+        StorageException.ERROR_OBJECT_NOT_FOUND ->
+            "The stored photo no longer exists."
+
+        StorageException.ERROR_BUCKET_NOT_FOUND ->
+            "Check the bucket in google-services.json."
+
+        StorageException.ERROR_QUOTA_EXCEEDED ->
+            "Check Storage quota and billing."
+
+        StorageException.ERROR_RETRY_LIMIT_EXCEEDED ->
+            "The Storage request timed out. Check the network."
+
+        else ->
+            "Check Firebase Storage configuration and network connectivity."
+    }
+
+    return IOException(
+        "$action failed (Storage $errorCode). $hint"
+    )
+}
+
+internal fun isMissingStorageObject(
+    errorCode: Int,
+): Boolean =
+    errorCode == StorageException.ERROR_OBJECT_NOT_FOUND
+
 class FirebasePhotoStorage(
     context: Context,
     private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val expectedUserId: String? = null,
+    private val pendingUploads: PendingPhotoRegistry? = null,
 ) : PhotoStore {
     private val cacheDirectory = File(context.applicationContext.cacheDir, "plantnet-cloud")
 
     override suspend fun uploadPhoto(localPath: String): StoredPhoto {
         val uid = ensureUser()
-        return withContext(Dispatchers.IO) {
-            cleanStaleCache()
-            val file = File(localPath)
-            require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
-            require(file.length() in 1L..MAX_IMAGE_BYTES) {
-                "The photo is empty or exceeds the app's 20 MiB upload limit."
-            }
-            val contentType = imageContentType(file)
-            val digest = sha256(file)
-            check(ensureUser() == uid) { "Account changed before upload." }
-            val extension = if (contentType == "image/png") "png" else "jpg"
-            val reference = storage.reference.child("plant_photos/$uid/$digest.$extension")
-            val metadata = StorageMetadata.Builder()
-                .setContentType(contentType)
-                .setCustomMetadata("sha256", digest)
-                .build()
-            val upload = reference.putFile(Uri.fromFile(file), metadata)
-            try {
+        var pendingUri: String? = null
+        var uploadTask: UploadTask? = null
+        try {
+            return withContext(Dispatchers.IO) {
+                cleanStaleCache()
+                val file = File(localPath)
+                require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
+                require(file.length() in 1L..MAX_IMAGE_BYTES) {
+                    "The photo is empty or exceeds the app's 20 MiB upload limit."
+                }
+                val contentType = imageContentType(file)
+                val digest = sha256(file)
+                check(ensureUser() == uid) { "Account changed before upload." }
+                val extension = if (contentType == "image/png") "png" else "jpg"
+                // Only identification uploads get exclusive ownership. Existing observation-sync
+                // uploads keep their historical content-addressed paths and are never auto-cleaned.
+                val name = if (pendingUploads == null) "$digest.$extension" else "scan-${UUID.randomUUID()}-$digest.$extension"
+                val reference = storage.reference.child("plant_photos/$uid/$name")
+                val metadata = StorageMetadata.Builder()
+                    .setContentType(contentType)
+                    .setCustomMetadata("sha256", digest)
+                    .build()
+                if (pendingUploads != null) {
+                    pendingUploads.registerUpload(uid, reference.toString())
+                    pendingUri = reference.toString()
+                }
+                val upload = try {
+                    reference.putFile(Uri.fromFile(file), metadata)
+                } catch (error: Exception) {
+                    pendingUri?.let { pendingUploads?.uploadFinished(it) }
+                    throw error
+                }
+                uploadTask = upload
+                pendingUri?.let { uri ->
+                    // Wait for the SDK task to become terminal before allowing cleanup.
+                    if (upload.isComplete) {
+                        pendingUploads?.uploadFinished(uri)
+                    } else {
+                        upload.addOnCompleteListener(DIRECT_EXECUTOR) { pendingUploads?.uploadFinished(uri) }
+                    }
+                }
                 upload.await()
                 currentCoroutineContext().ensureActive()
                 check(ensureUser() == uid) { "Account changed during upload." }
@@ -58,12 +123,17 @@ class FirebasePhotoStorage(
                     sha256 = digest,
                     contentType = contentType,
                 )
-            } catch (cancelled: CancellationException) {
-                upload.cancel()
-                throw cancelled
-            } catch (error: StorageException) {
-                throw storageError("Upload", error)
             }
+        } catch (cancelled: CancellationException) {
+            uploadTask?.cancel()
+            pendingUri?.let { pendingUploads?.abandon(it) }
+            throw cancelled
+        } catch (error: StorageException) {
+            pendingUri?.let { pendingUploads?.abandon(it) }
+            throw storageError("Upload", error)
+        } catch (error: Exception) {
+            pendingUri?.let { pendingUploads?.abandon(it) }
+            throw error
         }
     }
 
@@ -73,19 +143,33 @@ class FirebasePhotoStorage(
             return withContext(Dispatchers.IO) {
                 cleanStaleCache()
                 val uid = ensureUser()
+                require(photo.gsUri.startsWith("gs://")) { "Expected a private Storage reference." }
                 val reference = storage.getReferenceFromUrl(photo.gsUri)
                 require(reference.bucket == storage.reference.bucket) { "Unexpected Storage bucket." }
                 require(reference.path.trimStart('/').startsWith("plant_photos/$uid/")) {
                     "This photo does not belong to the signed-in user."
                 }
+                require(reference.path.trimStart('/') == photo.storagePath.trimStart('/')) {
+                    "Stored photo path mismatch."
+                }
                 require(photo.sizeBytes in 1L..MAX_IMAGE_BYTES) { "Unsupported stored photo size." }
+                require(photo.contentType == "image/jpeg" || photo.contentType == "image/png") { "Unsupported stored photo content type." }
+                require(SHA256_PATTERN.matches(photo.sha256)) { "Invalid stored photo checksum." }
                 val metadata = try {
                     reference.metadata.await()
                 } catch (error: StorageException) {
                     throw storageError("Reading metadata", error)
                 }
+                currentCoroutineContext().ensureActive()
+                check(ensureUser() == uid) { "Account changed while reading photo metadata." }
                 require(metadata.sizeBytes == photo.sizeBytes && metadata.sizeBytes <= MAX_IMAGE_BYTES) {
                     "The stored photo size changed. Retake the photo."
+                }
+                require(metadata.getCustomMetadata("sha256") == photo.sha256) {
+                    "The stored photo checksum metadata changed. Retake the photo."
+                }
+                require(metadata.contentType == photo.contentType) {
+                    "The stored photo content type changed. Retake the photo."
                 }
                 check(cacheDirectory.isDirectory || cacheDirectory.mkdirs()) { "Cannot create image cache." }
                 val suffix = if (photo.contentType == "image/png") ".png" else ".jpg"
@@ -101,9 +185,11 @@ class FirebasePhotoStorage(
                     throw storageError("Download", error)
                 }
                 currentCoroutineContext().ensureActive()
+                check(ensureUser() == uid) { "Account changed during download." }
                 require(target.length() == photo.sizeBytes && sha256(target) == photo.sha256) {
                     "The downloaded photo failed its integrity check. Retry identification."
                 }
+                require(imageContentType(target) == photo.contentType) { "The downloaded photo content type does not match its metadata." }
                 Log.i(TAG, "stage=download outcome=success sha256Verified=true bytes=${target.length()}")
                 target
             }
@@ -117,17 +203,19 @@ class FirebasePhotoStorage(
         if (gsUri.isBlank()) return
         val uid = ensureUser()
         withContext(Dispatchers.IO) {
+            require(gsUri.startsWith("gs://")) { "Expected a private Storage reference." }
             val reference = storage.getReferenceFromUrl(gsUri)
             require(reference.bucket == storage.reference.bucket) { "Unexpected Storage bucket." }
             require(reference.path.trimStart('/').startsWith("plant_photos/$uid/")) {
                 "This photo does not belong to the signed-in user."
             }
+            check(ensureUser() == uid) { "Account changed before deletion." }
             try {
                 reference.delete().await()
-                Log.i(TAG, "stage=delete outcome=success uri=$gsUri")
+                Log.i(TAG, "stage=delete outcome=success")
             } catch (error: StorageException) {
-                if (error.errorCode == StorageException.ERROR_OBJECT_NOT_FOUND) {
-                    Log.i(TAG, "stage=delete outcome=already_deleted uri=$gsUri")
+                if (isMissingStorageObject(error.errorCode)) {
+                    Log.i(TAG, "stage=delete outcome=already_deleted")
                     return@withContext
                 }
                 throw storageError("Delete photo", error)
@@ -141,9 +229,7 @@ class FirebasePhotoStorage(
             if (!cacheDirectory.exists()) return
             val threshold = System.currentTimeMillis() - 3_600_000L
             cacheDirectory.listFiles()?.forEach { file ->
-                if (file.isFile && file.lastModified() < threshold) {
-                    file.delete()
-                }
+                if (file.isFile && file.lastModified() < threshold) file.delete()
             }
         }
     }
@@ -154,31 +240,15 @@ class FirebasePhotoStorage(
         return uid
     }
 
-    private fun storageError(action: String, error: StorageException): IOException {
-        val hint = when (error.errorCode) {
-            StorageException.ERROR_NOT_AUTHENTICATED -> "Sign in with Firebase Authentication."
-            StorageException.ERROR_NOT_AUTHORIZED ->
-                "Check the UID-based Storage rules and App Check configuration."
-            StorageException.ERROR_OBJECT_NOT_FOUND -> "The stored photo no longer exists."
-            StorageException.ERROR_BUCKET_NOT_FOUND -> "Check the bucket in google-services.json."
-            StorageException.ERROR_QUOTA_EXCEEDED -> "Check Storage quota and billing."
-            StorageException.ERROR_RETRY_LIMIT_EXCEEDED -> "The Storage request timed out. Check the network."
-            else -> "Check Firebase Storage configuration and network connectivity."
-        }
-        Log.w(TAG, "action=$action storageCode=${error.errorCode}")
-        return IOException("$action failed (Storage ${error.errorCode}). $hint")
-    }
+    private fun storageError(
+        action: String,
+        error: StorageException,
+    ): IOException = storageIOException(
+        action = action,
+        errorCode = error.errorCode,
+    )
 
-    private fun imageContentType(file: File): String {
-        val header = ByteArray(8)
-        val count = file.inputStream().use { it.read(header) }
-        if (count >= 3 && header[0] == 0xFF.toByte() && header[1] == 0xD8.toByte() && header[2] == 0xFF.toByte()) {
-            return "image/jpeg"
-        }
-        val pngHeader = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
-        require(count == 8 && header.contentEquals(pngHeader)) { "Only JPEG and PNG photos are supported." }
-        return "image/png"
-    }
+    private fun imageContentType(file: File): String = file.inputStream().use(PhotoContentValidation::contentType)
 
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -196,5 +266,7 @@ class FirebasePhotoStorage(
     private companion object {
         const val TAG = "FloraGuide-Storage"
         const val MAX_IMAGE_BYTES = 20L * 1024L * 1024L
+        val SHA256_PATTERN = Regex("[0-9a-f]{64}")
+        val DIRECT_EXECUTOR = Executor { it.run() }
     }
 }
