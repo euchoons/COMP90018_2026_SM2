@@ -240,13 +240,10 @@ class FirebasePhotoStorage(
         return uid
     }
 
-    private fun storageError(
-        action: String,
-        error: StorageException,
-    ): IOException = storageIOException(
-        action = action,
-        errorCode = error.errorCode,
-    )
+    private fun storageError(action: String, error: StorageException): IOException {
+        Log.w(TAG, "action=$action storageCode=${error.errorCode}")
+        return storageIOException(action = action, errorCode = error.errorCode)
+    }
 
     private fun imageContentType(file: File): String = file.inputStream().use(PhotoContentValidation::contentType)
 

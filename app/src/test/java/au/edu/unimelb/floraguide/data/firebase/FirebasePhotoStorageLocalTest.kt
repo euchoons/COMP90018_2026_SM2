@@ -240,39 +240,24 @@ class FirebasePhotoStorageLocalTest {
     }
 
     // FB-18
-    @Test
-    fun deniedUploadMapsSdkErrorToActionableIOException() {
-        val error = storageIOException(
-            action = "Upload",
-            errorCode = StorageException.ERROR_NOT_AUTHORIZED,
-        )
-
-        assertTrue(
-            error.message.orEmpty().contains(
-                "UID-based Storage rules"
-            )
-        )
-
-        assertTrue(
-            error.message.orEmpty().contains(
-                StorageException.ERROR_NOT_AUTHORIZED.toString()
-            )
-        )
-    }  
+    @Test fun deniedUploadMapsSdkErrorToActionableIOExceptionAndQueuesCleanup() {
+        uploadTask = completedUpload(error = StorageException.fromExceptionAndHttpCode(null, 403))
+        val registry = newRegistry()
+        val error = assertThrows(IOException::class.java) {
+            runBlocking { FirebasePhotoStorage(context, storage, auth, pendingUploads = registry).uploadPhoto(photo().absolutePath) }
+        }
+        assertTrue(error.message.orEmpty().contains("UID-based Storage rules"))
+        assertTrue(error.message.orEmpty().contains(StorageException.ERROR_NOT_AUTHORIZED.toString()))
+        assertEquals(1, registry.candidates(UID).size)
+    }
 
     // FB-19A
-    @Test
-    fun missingObjectMapsToActionableIOException() {
-        val error = storageIOException(
-            action = "Download",
-            errorCode = StorageException.ERROR_OBJECT_NOT_FOUND,
-        )
-
-        assertTrue(
-            error.message.orEmpty().contains(
-                "no longer exists"
-            )
-        )
+    @Test fun failedDownloadMapsErrorAndRemovesTemporaryFile() {
+        metadataSize(JPEG.size.toLong())
+        downloadTask = completedDownload(error = StorageException.fromExceptionAndHttpCode(null, 404))
+        val error = assertThrows(IOException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
+        assertTrue(error.message.orEmpty().contains("no longer exists"))
+        assertNoTemporaryDownloads()
     }
     // FB-19B
     @Test
@@ -369,12 +354,13 @@ class FirebasePhotoStorageLocalTest {
     }
 
     @Test fun downloadedSignatureMustMatchDeclaredType() {
-        val bytes = byteArrayOf(1, 2, 3, 4)
+        val bytes = PNG // a valid image, but not the declared JPEG
         downloadedBytes = bytes
         metadataSize(bytes.size.toLong(), checksum = sha256(bytes))
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored().copy(sha256 = sha256(bytes))) }
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { adapter().downloadPhoto(stored().copy(sizeBytes = bytes.size.toLong(), sha256 = sha256(bytes))) }
         }
+        assertTrue(error.message.orEmpty().contains("content type does not match"))
         assertNoTemporaryDownloads()
     }
 
