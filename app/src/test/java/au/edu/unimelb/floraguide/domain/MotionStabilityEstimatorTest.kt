@@ -8,7 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Pins the tolerances derived in docs/MOTION_STABILITY_CALIBRATION.md. */
+/** Pins the tolerances derived in docs/technical/MOTION_STABILITY_CALIBRATION.md. */
 class MotionStabilityEstimatorTest {
     private val motionBudget = ln(1.0 / STABLE_THRESHOLD)
 
@@ -48,7 +48,7 @@ class MotionStabilityEstimatorTest {
 
     @Test
     fun shakyHandIsRejectedOnlyNarrowly() {
-        // Illustrative pairs from docs/MOTION_STABILITY_CALIBRATION.md.
+        // Illustrative pairs from docs/technical/MOTION_STABILITY_CALIBRATION.md.
         val steadyHand = MotionStabilityEstimator.target(0.2, 0.1)
         val shakyHand = MotionStabilityEstimator.target(0.5, 0.25)
         assertEquals(0.787, steadyHand, 0.001)

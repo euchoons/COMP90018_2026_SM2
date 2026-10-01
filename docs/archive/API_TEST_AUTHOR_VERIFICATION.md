@@ -1,5 +1,7 @@
 # Authoring verification — not a Gradle test report
 
+> Historical authoring checks for the dated source snapshot below. The [API test inventory](../testing/API_TEST_CASES.md) describes execution; this document does not record current test results.
+
 Prepared on 2026-09-24 for source snapshot
 `ad79b69f723868d7079182426a875766c98270c5` of
 `euchoons/COMP90018_2026_SM2`.

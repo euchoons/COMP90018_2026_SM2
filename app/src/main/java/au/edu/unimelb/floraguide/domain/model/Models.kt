@@ -127,7 +127,7 @@ data class SensorSnapshot(
             else -> LightCondition.VERY_BRIGHT
         }
 
-    // Prototype thresholds pending field calibration; see docs/HARDWARE_ADAPTERS_VERIFICATION.md.
+    // Prototype thresholds pending field calibration; see docs/testing/HARDWARE_ADAPTERS_VERIFICATION.md.
     companion object {
         /** Dimmer than a typical living room; handheld shots need long exposures. */
         const val LOW_LIGHT_LUX = 25f

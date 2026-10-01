@@ -1,5 +1,7 @@
 # PR drafting aid: scoped API regression tests
 
+> Historical drafting aid retained from the original API test package. Use the [current PR template](../../.github/PULL_REQUEST_TEMPLATE.md) and fresh results for new submissions.
+
 Use the repository's existing PR template. Copy the relevant text below and fill
 in actual results. This is not a submitted PR and is not completed test evidence.
 

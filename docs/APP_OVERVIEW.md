@@ -4,6 +4,8 @@
 
 FloraGuide is a campus biodiversity observation app that provides an explainable species shortlist by combining camera-derived candidates with location, flowering season and nearby occurrence history, and records the user's observed microhabitat with each observation.
 
+Implementation progress and scope decisions are tracked in the [roadmap](PROJECT_STATUS_AND_ROADMAP.md); the [original Assignment 1 plan](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) remains a historical proposal.
+
 ## Problem
 
 Image-only species identification can be ambiguous when multiple plants look similar, a photo is poorly framed, or the model has limited training data. A mobile device already has access to additional context that can reduce this ambiguity: where the observation was made, when it was made, what habitat surrounds it and whether the photo was captured under usable conditions.
@@ -21,19 +23,19 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 1. The user opens the Observe screen.
 2. Sensor feedback indicates whether the phone is steady and the lighting is usable.
 3. The user selects the visible microhabitat and captures a photo.
-4. An on-device model produces a Top-K candidate list.
-5. The app immediately shows an image-only shortlist.
+4. The app uploads the photo to Firebase, downloads the stored bytes and sends them to Pl@ntNet's cloud model for a Top-K candidate list.
+5. The app shows an image-only shortlist when cloud classification finishes.
 6. The app retrieves nearby Atlas of Living Australia occurrence counts for the candidates.
 7. Image, location and flowering-season evidence are fused and the Top 3 is reranked; the microhabitat is recorded, not ranked.
 8. The user opens **Why this species?** to inspect the evidence.
 9. The user confirms, corrects or rejects the suggestion.
-10. The observation is stored in a personal field guide and, in the final system, synchronised to the team's cloud backend.
+10. The observation is saved to the local field guide; signed-in records are queued for cloud synchronisation and saved locations can be shown on the field-guide map.
 
 ## Context cues and their roles
 
 | Cue | Source | Role in the product |
 |---|---|---|
-| Image | Camera and on-device model | Produces the initial candidate set. |
+| Image | Camera and Pl@ntNet cloud model | Produces the initial candidate set. |
 | Stability | Accelerometer + gyroscope | Reduces motion blur and demonstrates sensor fusion. |
 | Light | Ambient-light sensor | Warns about low light or possible glare. |
 | Heading | Accelerometer + magnetometer | Records observation direction as optional metadata. |
@@ -60,14 +62,14 @@ The surprising interaction is that the visual leader can be demoted when ecologi
 The group should treat the following as the minimum credible final scope:
 
 - one agreed plant group with a controlled species list;
-- CameraX capture and an on-device TensorFlow Lite Top-K model;
+- CameraX capture and Pl@ntNet cloud Top-K identification (the on-device model was dropped, #50);
 - GPS, date and ALA nearby-occurrence context;
 - accelerometer/gyroscope stability feedback;
 - one additional useful sensor cue, such as light or heading;
 - explainable context reranking with unknown/genus-level fallback;
 - user confirmation and a cloud-backed personal field guide;
 - complete permission, sensor and network fallbacks;
-- one showcase extension: either a campus biodiversity map or a team observation mission;
+- a campus biodiversity map for saved observations; the current Field Guide contains this view, with device/usability validation still required;
 - accuracy, latency and usability evaluation.
 
 ## Non-goals for the MVP
@@ -89,8 +91,8 @@ A final evaluation should report:
 
 - candidate recall at K;
 - image-only versus fused Top-1 and Top-3 accuracy;
-- ablation results for location, season and habitat cues;
-- model inference, ALA lookup and end-to-end latency;
+- ablation results for the live location and flowering-season cues; habitat is not a live ranking input;
+- Pl@ntNet identification, ALA lookup and end-to-end latency;
 - behaviour under no network, partial requests and missing sensors;
 - task completion and comprehension in a small usability study;
 - whether users understand that the score is relative and that they retain final control.

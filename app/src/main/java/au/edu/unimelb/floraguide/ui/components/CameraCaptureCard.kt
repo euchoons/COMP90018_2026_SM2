@@ -274,7 +274,7 @@ private fun CameraOverlayPill(text: String, positive: Boolean) {
  * Caps captures near 1920x1440 (4:3, ~2.8 MP) instead of the full sensor, which is 12–50 MP on
  * current phones. Consented captures are uploaded to Firebase and Pl@ntNet; the Pl@ntNet round
  * trip was measured with a 1123x1600 photo, so this keeps upload size down without dropping
- * below a resolution known to work. Rationale: docs/CAMERA_AND_SENSOR_VALIDATION.md.
+ * below a resolution known to work. Rationale: docs/testing/CAMERA_VALIDATION.md.
  */
 private val CAPTURE_RESOLUTION = ResolutionSelector.Builder()
     .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
