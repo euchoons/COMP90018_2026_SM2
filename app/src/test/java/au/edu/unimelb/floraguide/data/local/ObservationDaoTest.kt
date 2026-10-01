@@ -111,4 +111,12 @@ class ObservationDaoTest {
         assertTrue(dao.getAllForUser("B").isEmpty())
         assertTrue(dao.getAllGuestRows().isEmpty())
     }
+
+    @Test fun `photo reference check ignores other accounts and deleted rows`() = runBlocking {
+        dao.saveLocal(cacheEntity().copy(remotePhotoUrl = "gs://bucket/photo"))
+        assertTrue(dao.isPhotoReferenced("A", "gs://bucket/photo"))
+        assertFalse(dao.isPhotoReferenced("B", "gs://bucket/photo"))
+        dao.markDeleted("A", "one")
+        assertFalse(dao.isPhotoReferenced("A", "gs://bucket/photo"))
+    }
 }
