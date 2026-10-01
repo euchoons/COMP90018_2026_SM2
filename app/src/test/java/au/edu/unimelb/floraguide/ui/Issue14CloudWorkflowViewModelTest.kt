@@ -42,6 +42,7 @@ class Issue14CloudWorkflowViewModelTest {
     private var classifications = 0
     private var failDownload = false
     private var failClassification = false
+    private var hangDeletes = false
     private var firstClassificationGate: CompletableDeferred<Unit>? = null
     private val prediction = ImagePrediction(Species("test-plant", "Test plant", "Test species", emptySet(), emptyMap(), 0), 0.83, 1)
 
@@ -69,7 +70,10 @@ class Issue14CloudWorkflowViewModelTest {
                 if (failDownload) throw IOException("download unavailable")
                 return temporary.newFile("download-$downloads.jpg").apply { writeText("cloud") }
             }
-            override suspend fun deletePhoto(gsUri: String) { deleted += gsUri }
+            override suspend fun deletePhoto(gsUri: String) {
+                if (hangDeletes) awaitCancellation() // offline: the SDK keeps retrying
+                deleted += gsUri
+            }
         }
         val classifier = object : ImageClassifier {
             override suspend fun classify(photoPath: String?): ImageClassification {
@@ -168,6 +172,45 @@ class Issue14CloudWorkflowViewModelTest {
             assertEquals(uri, deleted.last())
             assertNull(model.uiState.value.storedPhoto)
         }
+    }
+
+    @Test fun guestSignOutDeletesItsQueuedScanPhotoFirst() = runTest(dispatcher) {
+        authFlow.value = AuthState.Authenticated(UserProfile(UID, null, null, true))
+        runCurrent()
+        scan(); runCurrent()
+        val uri = model.uiState.value.storedPhoto!!.gsUri
+        var deletedBeforeSignOut: List<String>? = null
+        coEvery { auth.signOut() } coAnswers { deletedBeforeSignOut = deleted.toList() }
+        model.signOut(); runCurrent()
+        assertEquals(listOf(uri), deletedBeforeSignOut)
+        assertTrue(registry.snapshot().isEmpty())
+    }
+
+    @Test fun offlineAccountDeletionGivesUpInBoundedTimeAndBlocksDataActions() = runTest(dispatcher) {
+        scan(); runCurrent()
+        model.goToAccount()
+        hangDeletes = true
+        model.deleteAccount(); runCurrent()
+        model.importLocalObservations(); runCurrent()
+        coVerify(exactly = 0) { records.importLocalObservations() }
+        advanceUntilIdle()
+        assertEquals("Pending photo cleanup has not finished. Reconnect and retry account deletion.", model.uiState.value.message)
+        coVerify(exactly = 0) { auth.deleteAccount() }
+        assertEquals(1, registry.candidates(UID).size)
+    }
+
+    @Test fun accountDeletionWaitsForABackgroundCleanupClaim() = runTest(dispatcher) {
+        scan(); runCurrent()
+        val uri = model.uiState.value.storedPhoto!!.gsUri
+        model.goToAccount()
+        assertTrue(registry.claim(uri)) // the background worker is mid-delete
+        coEvery { auth.deleteAccount() } coAnswers { Result.success(Unit) }
+        model.deleteAccount(); runCurrent()
+        coVerify(exactly = 0) { auth.deleteAccount() }
+        registry.releaseClaim(uri)
+        advanceTimeBy(1_500); runCurrent()
+        assertEquals(listOf(uri), deleted)
+        coVerify(exactly = 1) { auth.deleteAccount() }
     }
 
     @Test fun savePersistsCloudMetadataAndLaterNavigationDoesNotDeleteThePhoto() = runTest(dispatcher) {

@@ -31,6 +31,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,9 +41,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val CONTEXT_RADIUS_KM = 8
 private const val MAX_ALA_CANDIDATES = 5
+private const val PENDING_CLEANUP_TIMEOUT_MS = 20_000L
+private const val PENDING_CLEANUP_POLL_MS = 1_000L
 
 /** One immutable state object makes loading, fallback and before/after ranking states explicit. */
 data class FloraGuideUiState(
@@ -103,7 +107,7 @@ class FloraGuideViewModel(
 ) : ViewModel() {
     private var analysisJob: Job? = null
     private var requestGeneration = 0L
-    private var deletingAccount = false
+    private var accountChangeInProgress = false
     private var pendingCapture: CaptureSnapshot? = null
     private val observationFactory = CreateObservationUseCase()
     private val _uiState = MutableStateFlow(FloraGuideUiState())
@@ -130,8 +134,8 @@ class FloraGuideViewModel(
     }
 
     private fun canChangeAnalysis(): Boolean {
-        if (_uiState.value.isSaving || deletingAccount) {
-            showMessage("Finish saving or deleting the account before starting another action.")
+        if (_uiState.value.isSaving || accountChangeInProgress) {
+            showMessage("Finish saving or the account change before starting another action.")
             return false
         }
         return true
@@ -202,6 +206,7 @@ class FloraGuideViewModel(
     )
 
     private fun observationAction(message: String, action: suspend () -> Unit) {
+        if (!canChangeAnalysis()) return
         val uid = sessionKey() ?: return
         viewModelScope.launch {
             if (sessionKey() != uid) return@launch
@@ -218,8 +223,27 @@ class FloraGuideViewModel(
 
     fun signOut() {
         if (!canChangeAnalysis()) return
+        // A cloud guest can never sign back in, so its queued scan photos cannot be cleaned later.
+        val guestUid = container.authRepository.getCurrentUser()?.takeIf { it.isAnonymous }?.uid
         abandonAnalysis()
-        viewModelScope.launch { container.authRepository.signOut() }
+        if (guestUid == null) {
+            viewModelScope.launch { container.authRepository.signOut() }
+            return
+        }
+        accountChangeInProgress = true
+        showMessage("Removing this guest's pending scan photos before signing out...")
+        viewModelScope.launch {
+            try {
+                drainPendingPhotos(guestUid)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                // Best effort: the guest account is abandoned either way.
+            } finally {
+                accountChangeInProgress = false
+            }
+            container.authRepository.signOut()
+        }
     }
 
     fun goHome() {
@@ -343,7 +367,7 @@ class FloraGuideViewModel(
         val current = _uiState.value
         val capture = current.capture ?: return
         if (current.screen != AppScreen.RESULTS || current.isClassifying || current.isContextLoading ||
-            current.isSaving || current.photoPath == null || deletingAccount) return
+            current.isSaving || current.photoPath == null || accountChangeInProgress) return
         startAnalysis(
             photoPath = current.photoPath,
             preferLiveData = true,
@@ -377,7 +401,7 @@ class FloraGuideViewModel(
         val current = _uiState.value
         val capture = current.capture ?: return
         if (current.screen != AppScreen.RESULTS || current.imagePredictions.isEmpty() || current.isContextLoading ||
-            current.isClassifying || current.isSaving || !current.analysisPrefersLiveData || deletingAccount) return
+            current.isClassifying || current.isSaving || !current.analysisPrefersLiveData || accountChangeInProgress) return
         if (capture.location == null) {
             showMessage("This photo has no usable capture location. Enable location and take a new photo.")
             return
@@ -401,7 +425,7 @@ class FloraGuideViewModel(
     fun confirmSelectedObservation() {
         val uid = sessionKey() ?: return
         val current = _uiState.value
-        if (current.screen != AppScreen.RESULTS || current.isClassifying || current.isContextLoading || current.isSaving || deletingAccount) return
+        if (current.screen != AppScreen.RESULTS || current.isClassifying || current.isContextLoading || current.isSaving || accountChangeInProgress) return
         val capture = current.capture ?: return
         val selected = current.selectedCandidate ?: return
         if (capture.location == null) {
@@ -484,13 +508,14 @@ class FloraGuideViewModel(
         val uid = sessionKey() ?: return
         val oldAnalysis = analysisJob
         abandonAnalysis()
-        deletingAccount = true
+        accountChangeInProgress = true
+        showMessage("Removing pending scan photos before deleting the account...")
         viewModelScope.launch {
             try {
                 oldAnalysis?.join()
                 if (sessionKey() != uid) return@launch
-                // Deleting Auth first would make this user's pending objects inaccessible forever.
-                if (container.cleanupPendingPhotos(uid)) {
+                // Deleting Auth first would leave this device's journalled scan photos undeletable.
+                if (!drainPendingPhotos(uid)) {
                     showMessage("Pending photo cleanup has not finished. Reconnect and retry account deletion.")
                     return@launch
                 }
@@ -505,10 +530,19 @@ class FloraGuideViewModel(
             } catch (_: Exception) {
                 if (sessionKey() == uid) showMessage("Could not clean up pending photos. Reconnect and retry account deletion.")
             } finally {
-                deletingAccount = false
+                accountChangeInProgress = false
             }
         }
     }
+
+    /**
+     * True once no journalled scan photo of [uid] remains. Bounded, because offline each Storage
+     * delete would otherwise wait out the SDK's multi-minute retry window while the UI is locked.
+     */
+    private suspend fun drainPendingPhotos(uid: String): Boolean = withTimeoutOrNull(PENDING_CLEANUP_TIMEOUT_MS) {
+        // A background cleanup's claim or a cancelling upload clears within seconds.
+        while (container.cleanupPendingPhotos(uid)) delay(PENDING_CLEANUP_POLL_MS)
+    } != null
 
     private fun startAnalysis(
         photoPath: String?,
