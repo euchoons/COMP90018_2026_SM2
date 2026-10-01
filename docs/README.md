@@ -19,7 +19,10 @@
 - [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) — stability gate constants, what they allow in m/s² and °/s, why they were relaxed, and the calibration runs still required.
 - [`HARDWARE_ADAPTERS_VERIFICATION.md`](HARDWARE_ADAPTERS_VERIFICATION.md) — ambient-light guidance, compass heading and missing-sensor fallbacks, with the device checks still outstanding.
 
-## Complete Assignment 1
+## Assignment 1
 
-- [`assignment-1/FloraGuide Android Mobile App Project Plan Assessment 1.docx`](<assignment-1/FloraGuide Android Mobile App Project Plan Assessment 1.docx>) — submitted project plan.
+- [Project plan — Markdown](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) — readable version of the Assignment 1 plan, with the original diagrams and transcribed formulas.
+- [Project plan — original PDF](<assignment-1/COMP90018_2026_T01_03_03 Assignment 1.pdf>) — source document for the Markdown version.
 - [`assignment-1/AI_USE_LOG.md`](assignment-1/AI_USE_LOG.md) — AI-use record and acknowledgement draft.
+
+The plan records the Assignment 1 proposal; see [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md) for implementation status. Keep the Markdown file beside its `COMP90018_2026_T01_03_03_Assignment_1_assets/` directory so the diagrams resolve.

@@ -62,10 +62,10 @@ Do not commit `local.properties`, `.idea`, `.gradle`, `.kotlin`, `app/build`, AP
 The fastest path for a new team member is:
 
 1. Run the guided demo from the Home screen.
-2. Read [`docs/APP_OVERVIEW.md`](docs/APP_OVERVIEW.md) for the product scope and innovation claim.
-3. Follow one observation through [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-4. Check what is real, provisional and still planned in [`docs/PROJECT_STATUS_AND_ROADMAP.md`](docs/PROJECT_STATUS_AND_ROADMAP.md).
-5. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before taking ownership of a workstream.
+2. Read [`APP_OVERVIEW.md`](APP_OVERVIEW.md) for the product scope and innovation claim.
+3. Follow one observation through [`ARCHITECTURE.md`](ARCHITECTURE.md).
+4. Check what is real, provisional and still planned in [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md).
+5. Read [`CONTRIBUTING.md`](../CONTRIBUTING.md) before taking ownership of a workstream.
 
 ## Core user flow
 
@@ -101,8 +101,11 @@ The domain model and ranking use case do not import Android APIs. The classifier
 
 Assignment 1 requires traceable planning against the Assignment 2 rubric, an itemised contribution plan, group/member details and acknowledgement of AI use. The remaining working files are under [`docs/assignment-1/`](assignment-1/):
 
-- `FloraGuide Android Mobile App Project Plan Assessment 1.docx` — the submitted project plan;
-- `AI_USE_LOG.md` — tool-use log and acknowledgement draft.
+- [Project plan — Markdown](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) — the Assignment 1 plan with diagrams and formulas;
+- [Project plan — original PDF](<assignment-1/COMP90018_2026_T01_03_03 Assignment 1.pdf>) — the source document;
+- [`AI_USE_LOG.md`](assignment-1/AI_USE_LOG.md) — tool-use log and acknowledgement draft.
+
+The plan preserves the original proposal, not a statement of current implementation. Its Markdown file and `COMP90018_2026_T01_03_03_Assignment_1_assets/` directory must stay together for the diagrams to display.
 
 Record any material AI use in `AI_USE_LOG.md` as the work happens, not at submission time.
 
