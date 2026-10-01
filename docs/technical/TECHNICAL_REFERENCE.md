@@ -40,7 +40,7 @@ logged after every call so the team can see the budget before a demo.
 
 The key is read from `plantnet.api.key` in the git-ignored `local.properties` and exposed through
 `BuildConfig`. It is therefore present inside the APK: acceptable for coursework, not secret
-storage. Without a key the app builds, but live identification reports the missing key;
+storage. Request logs record the endpoint without its query string, so the key never reaches logcat. Without a key the app builds, but live identification reports the missing key;
 the explicit guided demo remains available.
 
 Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.

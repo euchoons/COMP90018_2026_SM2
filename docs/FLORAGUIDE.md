@@ -15,7 +15,7 @@ Open the repository root in Android Studio and allow Gradle sync to complete.
 
 - **Pl@ntNet:** set `plantnet.api.key` or `PLANTNET_API_KEY` in the git-ignored root `local.properties`, or provide the `PLANTNET_API_KEY` environment variable. Rebuild after changing it. A missing key blocks live identification; the explicitly selected guided demo remains available.
 - **Firebase:** live photo identification uploads to Firebase Storage, downloads the stored bytes and sends them to Pl@ntNet. It needs the app's Firebase project configuration, an authenticated session and working service access. Use the team's configured test environment and keep credentials out of Git.
-- **Maps:** set `MAPS_API_KEY` in `local.properties` or the environment for Google Maps. Without a configured key or saved locations, the field guide displays its map fallback.
+- **Maps:** set `MAPS_API_KEY` in `local.properties` or the environment for Google Maps. Without a key at build time, the field guide shows a "Map unavailable" placeholder; with a key but no saved observations, it shows the current or campus demo location. An invalid key or missing Play services is not detected at runtime.
 
 See [technical reference](technical/TECHNICAL_REFERENCE.md) for the request contracts and [data handling](PRIVACY_POLICY.md) for current storage and deletion limitations.
 

@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes the implementation wired by `AppContainer` on PR #51. See the [roadmap](../PROJECT_STATUS_AND_ROADMAP.md) for current status and pending work, the [live context policy](MISSING_CONTEXT_POLICY.md) for ranking semantics, and [data handling](../PRIVACY_POLICY.md) for storage/deletion limitations.
+This document describes the implementation wired by `AppContainer`. See the [roadmap](../PROJECT_STATUS_AND_ROADMAP.md) for current status and pending work, the [live context policy](MISSING_CONTEXT_POLICY.md) for ranking semantics, and [data handling](../PRIVACY_POLICY.md) for storage/deletion limitations.
 
 ## Design goals
 
@@ -76,7 +76,7 @@ User captures a photo with sensor guidance
   -> signed-in records are queued for cloud synchronisation
 ```
 
-Upload, download and classification failures retain their stage and retry controls. Classification never silently falls back to the camera original or demo data after a failed cloud transfer. The per-photo consent step proposed in PR #48 is not yet in this branch.
+Upload, download and classification failures retain their stage and retry controls. Classification never silently falls back to the camera original or demo data after a failed cloud transfer. Upload starts after capture; PR #48 proposes a per-photo consent step before it.
 
 The guided demo calls the classifier without a photo path and supplies a fixed date, campus location and synthetic context. It skips the live identification/context pipeline. A missing Pl@ntNet key causes an explicit live error; it does not turn a real capture into a demo result.
 
@@ -98,7 +98,7 @@ Ambient lux drives unavailable, low, usable or very-bright guidance. It describe
 
 The [missing-context policy](MISSING_CONTEXT_POLICY.md) owns the live algorithm, provisional bounds, candidate limits, missing-evidence handling and flowering data. [Fusion data sources](FUSION_DATA_SOURCES.md) records the evidence behind the source choices. The [technical reference](TECHNICAL_REFERENCE.md#fusion-formula) retains the synthetic demo formula.
 
-On this branch, incomplete ALA counts leave geographic support neutral for all candidates. A flower photo can independently apply the provisional flowering-season adjustment. Habitat is observation metadata; changing it only affects synthetic demo ranking. Scores are relative within the candidate set, not calibrated probabilities. PR #49 proposes a different rule and trained parameters; those are not current behaviour here.
+Incomplete ALA counts leave geographic support neutral for all candidates. A flower photo can independently apply the provisional flowering-season adjustment. Habitat is observation metadata; changing it only affects synthetic demo ranking. Scores are relative within the candidate set, not calibrated probabilities. PR #49 proposes a different rule with trained parameters; it is not adopted yet.
 
 ## Responsiveness
 
@@ -115,7 +115,7 @@ Classification and transfer run asynchronously. The image-only list appears afte
 | ALA | Species resolution and live counts | Preserve unknown/failure states, bounded retry and neutral geographic support for incomplete context. |
 | Firebase photo transfer / Pl@ntNet | Upload, download and cloud identification | Stage-specific failure and explicit retry; no offline live identification. |
 | Observation sync | Room plus Firestore/Storage | Durable local pending state, background retry and account actions. |
-| Maps | Google Maps with configured key and saved locations | Map fallback when unavailable. |
+| Maps | Google Maps with a key set at build time | Without a key, a "Map unavailable" placeholder; with no saved observations, the current or demo location. An invalid key or missing Play services is not detected. |
 
 ## Privacy and persistence
 

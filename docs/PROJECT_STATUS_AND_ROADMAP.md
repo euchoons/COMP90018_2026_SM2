@@ -1,6 +1,6 @@
 # Project status and roadmap
 
-Updated 2026-10-01 against the implementation on PR #51. This page owns current feature status, remaining work and scope decisions. The [Assignment 1 plan](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) and [initial milestones](archive/INITIAL_MILESTONES.md) preserve the earlier proposal.
+Updated 2026-10-01 against the current implementation. This page owns current feature status, remaining work and scope decisions. The [Assignment 1 plan](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) and [initial milestones](archive/INITIAL_MILESTONES.md) preserve the earlier proposal.
 
 ## Current status
 
@@ -19,8 +19,8 @@ Updated 2026-10-01 against the implementation on PR #51. This page owns current 
 | Accounts | Implemented in source | Firebase registration, sign-in, online guest, offline entry, sign-out and account actions. Backend/device verification and erasure limitations are separate from implementation presence. |
 | Observation storage | Implemented in source | Room local records, Firestore metadata, Firebase Storage photos and WorkManager synchronisation/retry. Preferences are a legacy import source, not the active store. |
 | Privacy | Implemented with limitations | Coarse coordinates, diagnostic handling and deletion paths are documented in [data handling and limitations](PRIVACY_POLICY.md). Complete erasure and encryption-upgrade guarantees are not established. |
-| Map | Implemented in source | Field Guide displays saved observation locations through Google Maps when configured, with a fallback when unavailable. Field usability remains to be verified. |
-| Evaluation | Separate work in progress | Scoped/unit checks exist. Fusion training is proposed in [PR #49](https://github.com/euchoons/COMP90018_2026_SM2/pull/49); its new rule and evaluation results are not part of this branch. Live latency, usability and field studies remain outstanding. |
+| Map | Implemented in source | Field Guide displays saved observation locations through Google Maps when a key is set at build time, and a placeholder without one; an invalid key or missing Play services is not detected at runtime. Field usability remains to be verified. |
+| Evaluation | Separate work in progress | Scoped/unit checks exist. Fusion training is proposed in [PR #49](https://github.com/euchoons/COMP90018_2026_SM2/pull/49); its rule and evaluation results are not adopted yet. Live latency (#53), usability and field studies remain outstanding. |
 
 ## Claims that are not currently supported
 
@@ -28,12 +28,12 @@ Updated 2026-10-01 against the implementation on PR #51. This page owns current 
 - Offline/on-device live identification or direct observation uploads to ALA.
 - Complete account erasure, guaranteed encryption of every existing database or independently validated deployed Firebase rules.
 - A completed campus field study, sensor calibration across all phones or an executed device checklist without recorded evidence.
-- Performance or accuracy results from another PR as evidence for this branch's ranking rule.
+- Results from an unmerged PR, such as #49, as evidence for the current ranking rule.
 
 ## Next work
 
 1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), camera checklist and sensor calibration on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
-2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). This branch currently uploads after capture without that additional consent step.
+2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). The app currently uploads after capture without that consent step.
 3. Review the #20 evaluation in PR #49. Update the live policy, reference and status together when its rule is adopted; retain the experiment's dataset, revision and limitations.
 4. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
 5. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.
@@ -43,9 +43,9 @@ Updated 2026-10-01 against the implementation on PR #51. This page owns current 
 | Risk | Consequence | Mitigation and decision gate |
 |---|---|---|
 | Real model performs poorly outdoors | Core identification story is weak. | Restrict species set, collect representative photos, show Top 3/unknown and evaluate early. |
-| Pl@ntNet free quota is 500 identifications a day | Live demo fails mid-presentation. | `remainingIdentificationRequests` is logged on every call; the guided demo runs offline; a quota error tells the user to switch to it. |
+| Pl@ntNet free quota is 500 identifications a day | Live demo fails mid-presentation. | `remainingIdentificationRequests` is logged on every call; a quota error asks the user to retry later, and the guided demo stays available offline. |
 | Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | Accepted: the on-device model was dropped (#50). Show the image-only result as soon as the cloud pipeline returns, keep the offline guided demo and measure Pl@ntNet latency. |
-| Model labels do not match ALA taxonomy | Nearby counts are missing or misleading. | Create a versioned mapping table using accepted identifiers and test representative synonyms. |
+| Model labels do not match ALA taxonomy | Nearby counts are missing or misleading. | ALA name matching accepts only exact, canonical or objective-synonym species matches, the flowering table carries WCVP aliases (#18), and representative synonyms are tested. |
 | ALA latency or availability varies | Reranking is slow or unavailable. | Show image-only first, use bounded retries, retain partial/unavailable states and measure latency. A persistent ALA response cache remains future work. |
 | Sensor availability differs by phone | Features fail on some devices. | Runtime checks, manual fallbacks and testing on multiple physical devices. |
 | Too many social/game features | Core system remains incomplete. | One showcase extension only; treat all other gamification as stretch scope. |
