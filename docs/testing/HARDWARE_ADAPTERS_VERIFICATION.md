@@ -4,7 +4,7 @@ Owner: Mason Lu. Project plan deliverable: *"Hardware adapters — Verify ambien
 
 This document records what was checked in the ambient-light and compass paths, the defects found and fixed, what each fallback does when a sensor is absent or unreliable, and the device tests still required. It supports rubric criteria 6 (Sensors), 13 (Language) and 14 (Reactiveness).
 
-Related: [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) for the accelerometer/gyroscope gate, [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) for the capture path.
+Related: [`MOTION_STABILITY_CALIBRATION.md`](../technical/MOTION_STABILITY_CALIBRATION.md) for the accelerometer/gyroscope gate, [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) for the capture path.
 
 ## Summary
 

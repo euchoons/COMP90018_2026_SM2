@@ -4,10 +4,11 @@ This project is assessed both as a group system and through individual code owne
 
 ## Before starting work
 
-1. Read the root `README.md`, `docs/APP_OVERVIEW.md`, `docs/ARCHITECTURE.md` and `docs/PROJECT_STATUS_AND_ROADMAP.md`.
+1. Start with the [documentation index](docs/README.md), [quick start](docs/FLORAGUIDE.md), [architecture](docs/technical/ARCHITECTURE.md) and [current status](docs/PROJECT_STATUS_AND_ROADMAP.md).
 2. Add your own Pl@ntNet API key to `local.properties` as `plantnet.api.key=<key>`. Free keys
    (500 identifications a day) come from https://my.plantnet.org. The file is git-ignored and
-   the key must never be committed; without one the app runs on the labelled demo adapter.
+   the key must never be committed. Without one, live identification reports a missing key;
+   the explicitly selected guided demo remains available.
 3. Run `./tools/check.sh` on your machine.
 4. Run the guided demo and, where relevant, test on a physical phone.
 5. Select an issue or workstream with a concrete acceptance condition.
@@ -18,7 +19,7 @@ This project is assessed both as a group system and through individual code owne
 Create a short-lived branch from the current integration branch:
 
 ```text
-feature/tflite-classifier
+feature/latency-telemetry
 feature/ala-cache
 fix/location-permission-loop
 test/sensor-threshold-study
@@ -94,7 +95,7 @@ Do not use an emulator as proof of physical accelerometer, gyroscope, light, mag
 
 ## Privacy and data handling
 
-Do not commit API secrets, service-account files, personal coordinates, photos of identifiable people or sensitive-species locations. The current observation store rounds latitude and longitude before persistence; future cloud work must preserve or strengthen this protection.
+Do not commit API secrets, service-account files, personal coordinates, photos of identifiable people or sensitive-species locations. The current observation store rounds latitude and longitude before persistence. Follow the documented [data handling and limitations](docs/PRIVACY_POLICY.md) when changing local or cloud storage.
 
 ## AI-assisted work
 

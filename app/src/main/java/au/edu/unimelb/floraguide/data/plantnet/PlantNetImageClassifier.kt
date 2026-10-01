@@ -10,10 +10,7 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Cloud image recognition. A future on-device TensorFlow Lite adapter implements the same
- * [ImageClassifier] seam, so both back ends can coexist behind one interface.
- */
+/** Cloud image recognition, the only live classifier: the planned on-device model was dropped (#50). */
 class PlantNetImageClassifier(
     private val client: PlantNetSource,
     private val guidedDemoClassifier: ImageClassifier = DemoImageClassifier(),
