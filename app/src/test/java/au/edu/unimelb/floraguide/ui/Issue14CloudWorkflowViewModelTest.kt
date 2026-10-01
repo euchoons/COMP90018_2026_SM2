@@ -213,6 +213,15 @@ class Issue14CloudWorkflowViewModelTest {
         coVerify(exactly = 1) { auth.deleteAccount() }
     }
 
+    @Test fun retappingObserveKeepsTheShutterTimeLocation() = runTest(dispatcher) {
+        model.goToScan()
+        model.beginCapture()
+        every { container.locationTracker.snapshotForObservation() } returns null // the tracker was stopped
+        model.goToScan()
+        scan(); runCurrent()
+        assertNotNull(model.uiState.value.capture?.location)
+    }
+
     @Test fun savePersistsCloudMetadataAndLaterNavigationDoesNotDeleteThePhoto() = runTest(dispatcher) {
         scan(); runCurrent()
         val uri = model.uiState.value.storedPhoto!!.gsUri

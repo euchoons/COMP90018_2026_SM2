@@ -273,7 +273,10 @@ class FloraGuideViewModel(
 
     fun goToScan() {
         if (!canChangeAnalysis()) return
+        // Re-tapping Observe must not drop a shutter press whose JPEG is still being saved.
+        val shutterCapture = pendingCapture
         abandonAnalysis()
+        pendingCapture = shutterCapture
         container.locationTracker.stop()
         _uiState.update { current ->
             FloraGuideUiState(
