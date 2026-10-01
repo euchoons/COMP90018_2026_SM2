@@ -7,8 +7,6 @@ Source baseline: `eda740c51447cceb8cda51a0be5ba32cb7c8fb14` (`main`, 1 October 2
 
 The baseline already connects `FloraGuideViewModel` to `IdentifyStoredPhotoUseCase`, preserves `StoredPhoto` on retry, saves cloud metadata, and uses one Firebase BOM. This change retains those integrations. It does not replace the ALA client, ranking rules, flowering-season evidence, authentication model, Room schema, Storage Rules, API keys, or UI layouts.
 
-This delivery contains complete files, not snippets. Apply all listed production and test files together. Do not replace the entire `app` directory with only these files.
-
 ## Changes
 
 | File | Purpose |
@@ -17,26 +15,28 @@ This delivery contains complete files, not snippets. Apply all listed production
 | `data/firebase/PhotoContentValidation.kt` | Android-independent signature reader, including short reads, EOF and zero-byte-read progress. |
 | `domain/usecase/IdentifyStoredPhotoUseCase.kt` | Keep the upload/download/classify order; release a newly uploaded object if cancellation prevents delivery to the ViewModel. Keep the four-argument invocation contract. |
 | `domain/usecase/PendingPhotoRegistry.kt` | Persist unconfirmed upload ownership and distinguish active scans, saves in progress and abandoned scans. Never automatically delete legacy shared digest paths. |
-| `domain/usecase/PendingPhotoCleanupUseCase.kt` | Check current UID and saved local references before deletion; retain failed work; propagate cancellation. |
-| `data/firebase/PendingPhotoUploads.kt` | SharedPreferences-backed journal and one registry per app process. Registration is persisted before an upload is started. |
-| `data/firebase/PendingPhotoCleanupWorker.kt` | Network-constrained WorkManager cleanup with retry. Failed cleanup never overwrites the analysis UI. |
+| `domain/usecase/PendingPhotoCleanupUseCase.kt` | Check current UID and saved local references before deletion; retain failed work; drop references Storage rejects outright (another bucket or owner); propagate cancellation. |
+| `data/firebase/PendingPhotoUploads.kt` | SharedPreferences-backed journal, one registry per app process, and the one cleanup factory. Registration is persisted before an upload is started; later state changes stay in memory. |
+| `data/firebase/PendingPhotoCleanupWorker.kt` | Network-constrained WorkManager cleanup with at most 5 attempts per run. Failed cleanup never overwrites the analysis UI. |
+| `data/local/ObservationEntity.kt` | `isPhotoReferenced`: one `EXISTS` query for the cleanup's reference check. |
 | `di/AppContainer.kt` | Wire the registry, scan uploader and cleanup use case into the existing dependency container. |
-| `ui/FloraGuideViewModel.kt` | Invalidate old request callbacks; keep retry ownership; queue abandoned photos; protect saving; release committed ownership; drain queued cleanup before account deletion. |
+| `ui/FloraGuideViewModel.kt` | Invalidate old request callbacks; keep retry ownership; queue abandoned photos; protect saving; release committed ownership; drain queued cleanup before account deletion and before a cloud guest signs out. |
 
 All paths in the table are relative to `app/src/main/java/au/edu/unimelb/floraguide/`.
 
 ## Photo lifecycle
 
 1. A new live scan uses an independently named object: `plant_photos/{uid}/scan-{uuid}-{sha256}.{jpg|png}`. This flat path is compatible with the existing owner-only Storage rule.
-2. The journal is written before the SDK upload starts. A failed journal write prevents the upload. SDK tasks that have not reached a terminal state remain protected against cleanup.
+2. The journal is written before the SDK upload starts. A failed journal write prevents the upload. SDK tasks that have not reached a terminal state remain protected against cleanup. Later state changes stay in memory: after a restart every journalled record is eligible and is checked against the local database.
 3. The use case downloads the Firebase object and passes the downloaded local cache path to Pl@ntNet. It does not fall back to sending the camera original.
 4. Upload/download/classification errors are reported at their stage. A completed upload remains attached to the results session for retry. Repeated retry clicks do not start concurrent analyses.
 5. Retry reuses `StoredPhoto`: it downloads and identifies again, without uploading again. A new scan, even with identical bytes, owns a different scan object.
 6. Leaving results queues the uncommitted scan photo for cleanup. Cleanup checks the current account and local observation references before deleting. It never deletes the local camera original.
 7. Saving enters a protected state before the local repository write. Duplicate save actions and navigation during that write are blocked. A successful save transfers ownership to the observation and clears the ViewModel's temporary reference.
 8. If the process stops after the observation is saved but before the journal is cleared, recovery checks the local database and retains the referenced photo.
-9. On restart, journal entries belonging to the previous app process can be cleaned up. On sign-out, entries remain queued for their original UID and resume when that account signs in again.
-10. Explicit account deletion checks pending scan cleanup before deleting the Firebase account. Cleanup failures leave account deletion retryable.
+9. On restart, journal entries belonging to the previous app process can be cleaned up. On sign-out, entries remain queued for their original UID and resume when that account signs in again. A cloud guest cannot sign back in, so its queued photos are deleted before it signs out.
+10. Explicit account deletion first deletes this device's pending scan photos, waiting briefly for a background cleanup or a cancelling upload. After 20 seconds, for example offline, it stops with a retryable message. Other account actions are blocked meanwhile.
+11. A reference Storage rejects outright (another bucket or owner) is dropped from the journal instead of retried. The worker stops after 5 attempts; the next sign-in or app start schedules it again.
 
 Cleanup is performed by WorkManager, not by an untracked ViewModel network coroutine. It is not guaranteed to run immediately when the user leaves the page. Cleanup errors are not put into the identification `message`/`analysisError` fields.
 
@@ -50,25 +50,24 @@ Cleanup is performed by WorkManager, not by an untracked ViewModel network corou
 
 ## Automated tests included
 
-| Suite | Cases | Execution status in this delivery |
+| Suite | Cases | Covers |
 |---|---:|---|
-| `Issue14CoreTest` / `Issue14CoreContract` | 27 | The shared contract was compiled and executed through a portable Kotlin harness; all 27 passed. |
-| `FirebasePhotoStorageLocalTest` | 31 | 22 existing cases retained and 9 added. Updated metadata mocks. Not run through Android Gradle here. |
-| `Issue14CloudWorkflowViewModelTest` | 12 | Real ViewModel and real identification use case with fake services. Not run through Android Gradle here. |
-| `Issue14UndeliveredUploadTest` | 1 | Cancellation between upload completion and ViewModel delivery. Not run through Android Gradle here. |
+| `Issue14CoreTest` / `Issue14CoreContract` | 28 | Registry, cleanup use case and signature reader, as parameterized JUnit cases. |
+| `FirebasePhotoStorageLocalTest` | 32 | The real adapter with SDK mocks, including SDK `StorageException` mapping for upload and download. |
+| `Issue14CloudWorkflowViewModelTest` | 16 | Real ViewModel and real identification use case with fake services, including guest sign-out and account deletion. |
+| `Issue14UndeliveredUploadTest` | 1 | Cancellation between upload completion and ViewModel delivery. |
 
-The existing `IdentifyStoredPhotoUseCaseTest`, `IdentifyStoredPhotoContract` and `FloraGuideViewModelTest` remain in the repository; do not delete them. The production `PhotoStore` interface remains unchanged.
+The existing `IdentifyStoredPhotoUseCaseTest`, `IdentifyStoredPhotoContract` and `FloraGuideViewModelTest` remain. The production `PhotoStore` interface remains unchanged.
 
-Portable core execution used Kotlin 1.9.0, Java 21 and the environment's bundled coroutine library. It verifies the real registry, cleanup use case and signature reader. It does **not** verify Android SDK linkage, Firebase SDK behaviour, WorkManager scheduling, Robolectric, the full ViewModel suite, Gradle lint, or an APK build. This environment did not have a usable full Android build setup. See `evidence/issue14/core-contract-results.txt` for the executed output.
-
-### Run in the actual project root
-
-```powershell
-.\gradlew.bat :app:testDebugUnitTest --tests "*Issue14*" --tests "*FirebasePhotoStorageLocalTest*" --no-daemon --console=plain
-.\gradlew.bat test lint assembleDebug --no-daemon --console=plain
+```bash
+./gradlew testDebugUnitTest --tests "*Issue14*" --tests "*FirebasePhotoStorageLocalTest*"
 ```
 
-Do not report the Android suites or full build as passed until those commands have completed successfully in the project. Normal JVM tests use mocks/fakes and do not consume live Pl@ntNet requests.
+```bash
+./tools/check.sh
+```
+
+The JVM tests use mocks and fakes and do not consume live Pl@ntNet requests.
 
 ## Device acceptance checks
 
