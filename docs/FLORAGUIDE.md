@@ -6,7 +6,7 @@ This repository is the **team baseline** for COMP90018. It is intended to be rea
 
 ## Current prototype boundary
 
-The current `DemoImageClassifier` is deterministic. It does **not** analyse image content and must not be described as a trained species-recognition model. It exists so the team can test the complete camera-to-ranking workflow before integrating a real on-device model.
+The current `DemoImageClassifier` is deterministic. It does **not** analyse image content and must not be described as a trained species-recognition model. It backs the guided demo and keyless builds, so the complete camera-to-ranking workflow runs offline; live captures use Pl@ntNet.
 
 The following parts are implemented in source code:
 
@@ -24,11 +24,12 @@ The following parts are implemented in source code:
 
 The following are **not** implemented yet:
 
-- a trained TensorFlow Lite image model and robust model-label/taxon mapping;
 - Firebase authentication, photo storage or shared observation data;
 - a validated campus species dataset and calibrated uncertainty;
 - the final campus map or team mission feature;
 - complete accessibility, field evaluation and cross-device sensor calibration.
+
+The on-device image model in the Assignment 1 plan is out of scope (#50); identification is cloud-only.
 
 ## Start in five minutes
 
@@ -95,7 +96,7 @@ Compose UI
       -> SensorMonitor / LocationTracker
 ```
 
-The domain model and ranking use case do not import Android APIs. The classifier, context source and observation store are behind interfaces so the team can replace the demo classifier with TensorFlow Lite and local storage with Firebase without rewriting the UI flow.
+The domain model and ranking use case do not import Android APIs. The classifier, context source and observation store are behind interfaces so a classifier or storage back end can be replaced without rewriting the UI flow.
 
 ## Assignment 1 workspace
 

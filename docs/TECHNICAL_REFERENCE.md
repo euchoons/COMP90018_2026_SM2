@@ -149,7 +149,7 @@ The flowering cue can be ablated with the bundled VicFlora table. Habitat is not
 
 ### Performance
 
-- image preprocessing and inference latency;
+- Pl@ntNet identification latency (upload and response);
 - ALA request latency and success rate;
 - time until image-only result;
 - time until fused result;

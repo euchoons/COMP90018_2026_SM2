@@ -18,7 +18,7 @@ This project is assessed both as a group system and through individual code owne
 Create a short-lived branch from the current integration branch:
 
 ```text
-feature/tflite-classifier
+feature/latency-telemetry
 feature/ala-cache
 fix/location-permission-loop
 test/sensor-threshold-study

@@ -110,7 +110,7 @@ Why 1920×1440:
 - The only measured Pl@ntNet round trip (`TECHNICAL_REFERENCE.md`) used a 1123×1600 photo and returned HTTP 200 in about 3.4 s. The cap stays above that proven resolution while removing most of the upload size of a 12–50 MP capture.
 - Identification now uploads *and* downloads the photo, so capture size is paid for twice on the phone's connection.
 - `FirebasePhotoStorage` rejects anything over 20 MiB. A capped capture stays far below that limit on every device.
-- The planned on-device LiteRT model takes a far smaller input tensor, so it does not need more.
+- ~~The planned on-device LiteRT model takes a far smaller input tensor, so it does not need more.~~ No longer applies: the on-device model was dropped (#50).
 - 4:3 matches the preview's default aspect ratio, so the photo covers the same field of view the user framed.
 
 **Affects other workstreams:** Pl@ntNet (Mingyang) and Firebase (Seb/Asleif) now receive smaller photos. Identification quality at this size should be confirmed with the evaluation photos before the final report.

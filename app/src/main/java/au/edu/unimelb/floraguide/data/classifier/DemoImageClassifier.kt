@@ -9,8 +9,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 
 /**
- * Honest prototype boundary: this class simulates an on-device Top-K image model so the team can
- * demonstrate the complete architecture before training/integrating TensorFlow Lite.
+ * Honest prototype boundary: this class simulates a Top-K image model so the guided demo can run the
+ * complete flow offline. It does not inspect the photo.
  */
 class DemoImageClassifier : ImageClassifier {
     override suspend fun classify(photoPath: String?): ImageClassification {

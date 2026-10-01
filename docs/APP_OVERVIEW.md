@@ -21,7 +21,7 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 1. The user opens the Observe screen.
 2. Sensor feedback indicates whether the phone is steady and the lighting is usable.
 3. The user selects the visible microhabitat and captures a photo.
-4. An on-device model produces a Top-K candidate list.
+4. Pl@ntNet's cloud model produces a Top-K candidate list.
 5. The app immediately shows an image-only shortlist.
 6. The app retrieves nearby Atlas of Living Australia occurrence counts for the candidates.
 7. Image, location and flowering-season evidence are fused and the Top 3 is reranked; the microhabitat is recorded, not ranked.
@@ -33,7 +33,7 @@ The final MVP should focus on one taxonomic group, preferably 20–50 common cam
 
 | Cue | Source | Role in the product |
 |---|---|---|
-| Image | Camera and on-device model | Produces the initial candidate set. |
+| Image | Camera and Pl@ntNet cloud model | Produces the initial candidate set. |
 | Stability | Accelerometer + gyroscope | Reduces motion blur and demonstrates sensor fusion. |
 | Light | Ambient-light sensor | Warns about low light or possible glare. |
 | Heading | Accelerometer + magnetometer | Records observation direction as optional metadata. |
@@ -60,7 +60,7 @@ The surprising interaction is that the visual leader can be demoted when ecologi
 The group should treat the following as the minimum credible final scope:
 
 - one agreed plant group with a controlled species list;
-- CameraX capture and an on-device TensorFlow Lite Top-K model;
+- CameraX capture and Pl@ntNet cloud Top-K identification (the on-device model was dropped, #50);
 - GPS, date and ALA nearby-occurrence context;
 - accelerometer/gyroscope stability feedback;
 - one additional useful sensor cue, such as light or heading;
@@ -90,7 +90,7 @@ A final evaluation should report:
 - candidate recall at K;
 - image-only versus fused Top-1 and Top-3 accuracy;
 - ablation results for location, season and habitat cues;
-- model inference, ALA lookup and end-to-end latency;
+- Pl@ntNet identification, ALA lookup and end-to-end latency;
 - behaviour under no network, partial requests and missing sensors;
 - task completion and comprehension in a small usability study;
 - whether users understand that the score is relative and that they retain final control.

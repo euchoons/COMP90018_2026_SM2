@@ -71,7 +71,7 @@ Contains image-only normalisation and the context-fusion algorithm. It is a pure
 
 `DemoImageClassifier` returns deterministic scores with a small photo-path-derived variation. This demonstrates asynchronous state and reranking but does not inspect pixels. It backs the guided demo and any build without an API key.
 
-A future `TfliteImageClassifier` implements the same interface, performs bitmap preprocessing, runs an on-device model and returns mapped candidates. Cloud and on-device adapters are intended to coexist behind `ImageClassifier`.
+The group dropped the planned on-device model (#50), so Pl@ntNet is the only live classifier. `ImageClassifier` still allows another adapter to be added.
 
 ### `data/plantnet`
 
@@ -198,7 +198,7 @@ This design supports a responsive interface, but final claims require measured i
 | Location | Fresh, usable device location frozen at the shutter | Missing/unreliable capture location skips ALA; campus coordinates are demo-only. |
 | ALA | Species resolution (exact or canonical names and objective synonyms) and live counts | Unknown counts stay unknown, persistent warning and bounded retry; incomplete context adds no geographic adjustment. |
 | Pl@ntNet | Cloud Top-8 candidates | Errors surface verbatim (no match, quota reached, key rejected); guided demo remains available. |
-| Image model | Future on-device TFLite model | Clearly labelled deterministic demo adapter. |
+| Offline identification | None: the on-device model was dropped (#50) | Clearly labelled deterministic demo adapter. |
 | Cloud store | Future Firebase implementation | Local observation repository. |
 
 Fallbacks must remain visible. The app should never silently present demo data as live data.
@@ -230,9 +230,9 @@ Final evaluation also requires physical-device and end-to-end tests that cannot 
 
 ## Planned replacement points
 
-### TensorFlow Lite
+### On-device model (dropped)
 
-Implement `TfliteImageClassifier` alongside the Pl@ntNet adapter, add image preprocessing and map every model label to a stable internal species and ALA taxon identifier. Preserve a Top-K list, tag results with a new `ImageSource`, and add unknown/genus-level handling. Selecting between cloud and on-device is a single decision in `AppContainer`; the ViewModel and UI already display whichever source produced the candidates.
+The group dropped the planned LiteRT adapter on 2026-10-01 (#50). A model trained on Australian flora could still be added as another `ImageClassifier`, tagged with its own `ImageSource` and with its labels mapped to ALA taxa as Pl@ntNet's names are. Selecting the classifier is a single decision in `AppContainer`.
 
 ### Firebase or equivalent cloud backend
 

@@ -11,7 +11,7 @@ This document is the baseline source of truth for scope. Update it whenever the 
 | Motion sensing | Implemented in source | Accelerometer/gyroscope stability fusion with a heuristic threshold. |
 | Light and heading | Implemented in source | Optional ambient-light and magnetometer feedback with fallback states. |
 | Location | Implemented in source | GPS/network location and a visibly labelled campus demo fallback. |
-| Image recognition | Implemented in source (cloud) | Pl@ntNet v2 cloud identification of the captured JPEG, Top-8 candidates. Requires network and an API key; the guided demo and any keyless build stay on the labelled demo adapter. No on-device model yet. |
+| Image recognition | Implemented in source (cloud) | Pl@ntNet v2 cloud identification of the captured JPEG, Top-8 candidates. Requires network and an API key; the guided demo and any keyless build stay on the labelled demo adapter. No on-device model: the group dropped it (#50). |
 | ALA connectivity | Implemented in source | Read-only count requests, concurrent lookups, telemetry and fallback; live behaviour must be rechecked by the team. |
 | Fusion algorithm | Implemented and unit-tested | Log-linear reranking with smoothing and relative scores. |
 | Observation storage | Local prototype | App-private photos and preferences; no shared cloud data. |
@@ -61,7 +61,7 @@ Do not submit the Assignment 1 plan with these decisions left implicit.
 ### Milestone 1 — scope and feasibility spikes
 
 - freeze the target species list;
-- run a small TensorFlow Lite inference spike on a phone;
+- ~~run a small TensorFlow Lite inference spike on a phone~~ (dropped, #50);
 - verify label-to-ALA mapping for representative species;
 - verify Firebase or the selected cloud backend with one photo and one metadata record;
 - measure live ALA latency and failure behaviour.
@@ -70,8 +70,8 @@ These spikes should happen before the group promises the final implementation in
 
 ### Milestone 2 — core integration
 
-- add the on-device TensorFlow Lite adapter alongside the Pl@ntNet cloud adapter and let the
-  user or the network state choose between them (both implement `ImageClassifier`);
+- ~~add the on-device TensorFlow Lite adapter alongside the Pl@ntNet cloud adapter and let the
+  user or the network state choose between them (both implement `ImageClassifier`)~~ (dropped, #50);
 - add unknown/genus fallback;
 - add Room context caching;
 - implement cloud-backed observation storage and retry;
@@ -88,7 +88,7 @@ These spikes should happen before the group promises the final implementation in
 ### Milestone 4 — evaluation and submission evidence
 
 - compare image-only and fused Top-1/Top-3 performance;
-- run cue ablations and latency measurements;
+- run cue ablations and Pl@ntNet and ALA latency measurements;
 - test at least two physical phones with different sensor configurations;
 - record the final video against every rubric criterion;
 - capture compile evidence and export commit logs;
@@ -100,7 +100,7 @@ These spikes should happen before the group promises the final implementation in
 |---|---|---|
 | Real model performs poorly outdoors | Core identification story is weak. | Restrict species set, collect representative photos, show Top 3/unknown and evaluate early. |
 | Pl@ntNet free quota is 500 identifications a day | Live demo fails mid-presentation. | `remainingIdentificationRequests` is logged on every call; the guided demo runs offline; a quota error tells the user to switch to it. |
-| Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | On-device TFLite adapter is planned behind the same interface; measure both and state the trade-off. |
+| Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | Accepted: the on-device model was dropped (#50). Show the image-only result first, keep the offline guided demo and measure Pl@ntNet latency. |
 | Model labels do not match ALA taxonomy | Nearby counts are missing or misleading. | Create a versioned mapping table using accepted identifiers and test representative synonyms. |
 | ALA latency or availability varies | Reranking is slow or unavailable. | Show image-only first, use timeouts, cache results, retain partial/offline states and measure latency. |
 | Sensor availability differs by phone | Features fail on some devices. | Runtime checks, manual fallbacks and testing on multiple physical devices. |
@@ -109,6 +109,13 @@ These spikes should happen before the group promises the final implementation in
 | Exact locations create privacy/ecology risks | Personal or sensitive information is exposed. | Coarsen data, add consent and deletion, restrict public precision and document policy. |
 | Work is concentrated in one member | Contribution rubric and viva risk. | Assign concrete code/test/evidence ownership and review balance weekly. |
 | AI-generated code is not understood | Academic-integrity and viva risk. | Log AI use, require human review, tests and author explanation before merge. |
+
+## Scope decisions
+
+| Date | Decision | Reason | Record |
+|---|---|---|---|
+| 2026-09-25 | Habitat is observation metadata only and does not affect live ranking. | No source maps species onto the app's habitat categories. | #17 |
+| 2026-10-01 | Drop the on-device LiteRT model (Pl@ntNet-300K ResNet18); identification stays cloud-only through Pl@ntNet. | Integration cost, and little benefit: Pl@ntNet-300K covers only 22 of the 309 species in the #20 Parkville evaluation set. | #50 |
 
 ## Scope-control rule
 
