@@ -1,6 +1,6 @@
 # FloraGuide
 
-FloraGuide is a context-aware Android application for campus biodiversity exploration. It combines an image-derived candidate list with location, season, user-selected microhabitat and nearby Atlas of Living Australia occurrence records, then explains how those context cues change the final ranking.
+FloraGuide is a context-aware Android application for campus biodiversity exploration. It combines an image-derived candidate list with location, flowering season and nearby Atlas of Living Australia occurrence records, explains how those context cues change the final ranking, and records the user-selected microhabitat.
 
 This repository is the **team baseline** for COMP90018. It is intended to be readable, reproducible and honest about what is implemented today versus what remains planned.
 
@@ -17,7 +17,7 @@ The following parts are implemented in source code:
 - GPS/network location with an explicit University of Melbourne demo fallback;
 - read-only Atlas of Living Australia occurrence-count requests;
 - concurrent context lookup with live, partial and offline fallback states;
-- log-linear image/location/season/habitat fusion with smoothing and softmax;
+- live fusion of image scores with bounded ALA support and a flowering-season check; log-linear image/location/season/habitat fusion only in the guided demo;
 - an image-only versus context-fused ranking comparison;
 - local observation persistence and coarse-location storage;
 - JVM tests for ranking, ALA parsing, telemetry, fallback and cancellation.
@@ -75,7 +75,7 @@ Home
   -> capture photo with sensor feedback
   -> show image-only candidates immediately
   -> query nearby ALA occurrence counts
-  -> fuse image, location, season and microhabitat
+  -> fuse image, location and flowering season (microhabitat is recorded, not ranked)
   -> explain the final Top 3
   -> user confirms an observation
   -> save it to the personal Field Guide

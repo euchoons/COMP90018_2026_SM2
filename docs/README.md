@@ -13,6 +13,8 @@
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — package map, runtime flow, algorithms, fallbacks and replacement seams.
 - [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md) — current truth, decisions required, milestones and risk controls.
 - [`TECHNICAL_REFERENCE.md`](TECHNICAL_REFERENCE.md) — toolchain, ALA request shape, fusion formula and evaluation measures.
+- [`MISSING_CONTEXT_POLICY.md`](MISSING_CONTEXT_POLICY.md) — live ranking rules, missing-context handling and the VicFlora flowering data.
+- [`FUSION_DATA_SOURCES.md`](FUSION_DATA_SOURCES.md) — data sources compared for the season, location and habitat cues, with the measurements behind each decision.
 - [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) — CameraX lifecycle, capture, rotation, resize and permission review, Firebase upload check and device test checklist.
 - [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) — stability gate constants, what they allow in m/s² and °/s, why they were relaxed, and the calibration runs still required.
 - [`HARDWARE_ADAPTERS_VERIFICATION.md`](HARDWARE_ADAPTERS_VERIFICATION.md) — ambient-light guidance, compass heading and missing-sensor fallbacks, with the device checks still outstanding.

@@ -25,11 +25,12 @@ data class Species(
     }
 
     fun habitatPrior(habitat: Habitat): Double = habitatAffinity[habitat] ?: 0.2
+}
 
-    private fun circularMonthDistance(a: Int, b: Int): Int {
-        val direct = abs(a - b)
-        return min(direct, 12 - direct)
-    }
+/** Months apart around the year, so December and January are one month apart. */
+internal fun circularMonthDistance(a: Int, b: Int): Int {
+    val direct = abs(a - b)
+    return min(direct, 12 - direct)
 }
 
 enum class Habitat(val label: String, val shortLabel: String) {
@@ -51,10 +52,18 @@ enum class ImageSource(val label: String) {
     DEMO_ADAPTER("Prototype image adapter"),
 }
 
+/** Pl@ntNet's guess at the photographed part, e.g. "flower", "leaf", "fruit", "bark" or "habit". */
+data class PredictedOrgan(
+    val organ: String,
+    val score: Double,
+)
+
 data class ImageClassification(
     val predictions: List<ImagePrediction>,
     val source: ImageSource,
     val elapsedMillis: Long? = null,
+    /** Null when the source predicts no organ, such as the guided demo. */
+    val predictedOrgan: PredictedOrgan? = null,
 )
 
 data class GeoPoint(
@@ -142,7 +151,7 @@ enum class LightCondition {
 enum class ContextDataSource(val label: String) {
     ALA_LIVE("Live ALA records"),
     ALA_PARTIAL("Partial ALA results; missing counts unknown"),
-    ALA_UNAVAILABLE("ALA unavailable; image-only ranking"),
+    ALA_UNAVAILABLE("ALA unavailable; no geographic adjustment"),
     NOT_REQUESTED("ALA not queried"),
     LEGACY_UNVERIFIED("Legacy context; provenance unverified"),
     DEMO_FALLBACK("Explicit offline demo records"),
@@ -159,10 +168,24 @@ data class NearbyContext(
     val httpStatusCodes: Set<Int> = emptySet(),
     val warning: String? = null,
     val failuresBySpeciesId: Map<String, String> = emptyMap(),
+    /** ALA's accepted name where a candidate's name was counted as an objective synonym. */
+    val acceptedNamesBySpeciesId: Map<String, String> = emptyMap(),
     val attemptsBySpeciesId: Map<String, Int> = emptyMap(),
     val queriedAt: Instant? = null,
     val retryNotBefore: Instant? = null,
 )
+
+/** A documented flowering statement, e.g. VicFlora's "Flowers summer.", and the months it names. */
+data class FloweringRecord(
+    /** The source's accepted name, which can differ from the candidate's name when matched as a synonym. */
+    val sourceName: String,
+    val months: Set<Int>,
+    val statement: String,
+    val sourceUrl: String,
+)
+
+/** Why a live candidate's flowering-season factor has its value. */
+enum class FloweringCheck { NOT_APPLIED, NO_DATA, IN_SEASON, OUT_OF_SEASON }
 
 data class EvidenceBreakdown(
     val imagePrior: Double,
@@ -170,6 +193,10 @@ data class EvidenceBreakdown(
     val seasonalPrior: Double,
     val habitatPrior: Double,
     val locationMultiplier: Double = 1.0,
+    /** Live flowering-season factor; the guided demo uses [seasonalPrior] instead. */
+    val seasonMultiplier: Double = 1.0,
+    val flowering: FloweringRecord? = null,
+    val floweringCheck: FloweringCheck = FloweringCheck.NOT_APPLIED,
 )
 
 data class RankedCandidate(

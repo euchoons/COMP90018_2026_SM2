@@ -38,6 +38,7 @@ class PlantNetImageClassifier(
             predictions = predictions,
             source = ImageSource.PLANTNET_LIVE,
             elapsedMillis = identification.elapsedMillis,
+            predictedOrgan = identification.predictedOrgan,
         )
     }
 }
@@ -46,10 +47,9 @@ class PlantNetImageClassifier(
  * Pl@ntNet covers the world flora, so there is no fixed catalogue to map into and no label
  * mapping table is required: the ALA occurrence lookup already queries by scientific name.
  *
- * Season and habitat priors are left empty deliberately. `Species.seasonalPrior` and
- * `Species.habitatPrior` then return the same constant for every candidate, which adds a constant
- * to every raw score and therefore cancels out in the softmax. Ranking is driven by the image
- * score and nearby ALA records alone, instead of by invented ecology.
+ * Season and habitat priors are left empty deliberately; only the guided demo reads them. Live
+ * ranking takes documented flowering months from a separate sourced table, instead of inventing
+ * ecology for arbitrary world flora.
  */
 private fun PlantNetResult.toSpecies(): Species = Species(
     id = scientificName,

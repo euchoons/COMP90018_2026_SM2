@@ -110,16 +110,35 @@ class AlaOccurrenceClientTest {
         assertEquals(125L, error.elapsedMillis)
     }
 
-    @Test fun exactMatchesOnlyAndMalformedResponsesStayDistinct() {
-        assertEquals("taxon-123", parseTaxonId(taxonMatch()))
+    @Test fun exactMatchesAndObjectiveSynonymsOnlyAndMalformedResponsesStayDistinct() {
+        assertEquals(AlaTaxon("taxon-123", NAME), parseTaxon(taxonMatch(), NAME))
+        // Same type specimen, so the same species under ALA's accepted name.
+        val objective = taxonMatch().replace(NAME, "Accepted species").replace("}", ",\"synonymType\":\"OBJECTIVE_SYNONYM\"}")
+        assertEquals(AlaTaxon("taxon-123", "Accepted species"), parseTaxon(objective, NAME))
         for (body in listOf(
             "{\"success\":false}", taxonMatch().replace("exactMatch", "fuzzyMatch"),
-            taxonMatch().replace("\"species\"", "\"genus\""), "{\"success\":true}",
-        )) assertNull(parseTaxonId(body))
-        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}",
+            taxonMatch().replace("\"species\"", "\"genus\""), taxonMatch().replace(NAME, "Different species"),
+            objective.replace("OBJECTIVE", "SUBJECTIVE"), objective.replace("OBJECTIVE", "PRO_PARTE"),
+            objective.replace("exactMatch", "fuzzyMatch"),
+        )) assertNull(parseTaxon(body, NAME))
+        for (body in listOf("not-json", "{}", "{\"success\":\"true\"}", "{\"success\":true}",
             taxonMatch().replace("taxon-123", ""))) {
-            assertThrows(AlaResponseException::class.java) { parseTaxonId(body) }
+            assertThrows(AlaResponseException::class.java) { parseTaxon(body, NAME) }
         }
+    }
+
+    @Test fun objectiveSynonymIsCountedUnderTheAcceptedSpecies() = runBlocking {
+        val urls = mutableListOf<URL>()
+        val synonym = """{"success":true,"scientificName":"$NAME","rank":"species","matchType":"exactMatch",""" +
+            """"synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"taxon-123"}"""
+        val client = AlaOccurrenceClient(connectionFactory = { url ->
+            urls += url
+            FakeHttpURLConnection(url, 200, if (url.isNameMatch()) synonym else "{\"totalRecords\":7}")
+        }, logger = {})
+        val response = client.countNearbyOccurrencesAsync("Eucalyptus synonymous", LOCATION, 8)
+        assertEquals(7, response.totalRecords)
+        assertEquals(NAME, response.acceptedName)
+        assertTrue(URLDecoder.decode(urls.last().query, "UTF-8").contains("taxonConceptID:\"taxon-123\""))
     }
 
     @Test fun unresolvedTaxonSkipsOccurrencesAndIsNotRetryable() {
@@ -202,27 +221,27 @@ class AlaOccurrenceClientTest {
     }
     @Test fun `validates and extracts taxon id for exact matches, canonical matches, and synonyms`() {
         val exactMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"exactMatch","taxonConceptID":"taxon-123"}"""
-        val synonymMatch = """{"success":true,"scientificName":"Eucalyptus rostrata","rank":"species","matchType":"synonym","taxonConceptID":"taxon-synonym","acceptedConceptID":"taxon-123"}"""
-        val synonymMissingAccepted = """{"success":true,"scientificName":"Eucalyptus rostrata","rank":"species","matchType":"synonym","taxonConceptID":"taxon-123"}"""
-        val canonicalMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis Dehnh.","rank":"species","matchType":"canonicalMatch","taxonConceptID":"taxon-123"}"""
+        // As ALA answers Melaleuca citrina: an exact match plus synonymType, with the accepted taxon's ID.
+        val synonymMatch = """{"success":true,"scientificName":"Callistemon citrinus","rank":"species","matchType":"exactMatch","synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"taxon-456"}"""
+        // A canonical match differs from an exact one only in authorship or formatting.
+        val canonicalMatch = exactMatch.replace("exactMatch", "canonicalMatch")
 
-        assertEquals("taxon-123", parseTaxonId(exactMatch))
-        assertEquals("taxon-123", parseTaxonId(synonymMatch))
-        assertEquals("taxon-123", parseTaxonId(synonymMissingAccepted)) // Falls back gracefully
-        assertEquals("taxon-123", parseTaxonId(canonicalMatch))
+        assertEquals(AlaTaxon("taxon-123", "Eucalyptus camaldulensis"), parseTaxon(exactMatch, "Eucalyptus camaldulensis"))
+        assertEquals(AlaTaxon("taxon-456", "Callistemon citrinus"), parseTaxon(synonymMatch, "Melaleuca citrina"))
+        assertEquals(AlaTaxon("taxon-123", "Eucalyptus camaldulensis"), parseTaxon(canonicalMatch, "Eucalyptus camaldulensis"))
     }
 
     @Test fun `rejects higher ranks and fuzzy taxonomy matches`() {
         val genusMatch = """{"success":true,"scientificName":"Eucalyptus","rank":"genus","matchType":"exactMatch","taxonConceptID":"taxon-genus"}"""
         val fuzzyMatch = """{"success":true,"scientificName":"Eucalyptus camaldulensis","rank":"species","matchType":"fuzzyMatch","taxonConceptID":"taxon-123"}"""
 
-        assertNull(parseTaxonId(genusMatch))
-        assertNull(parseTaxonId(fuzzyMatch))
+        assertNull(parseTaxon(genusMatch, "Eucalyptus"))
+        assertNull(parseTaxon(fuzzyMatch, "Eucalyptus camaldulensis"))
     }
 
     @Test fun `malformed JSON structure throws AlaResponseException`() {
         for (body in listOf("not-json", "{}", "{\"success\":\"true\"}")) {
-            assertThrows(AlaResponseException::class.java) { parseTaxonId(body) }
+            assertThrows(AlaResponseException::class.java) { parseTaxon(body, NAME) }
         }
     }
     private fun URL.isNameMatch() = path.endsWith("searchByClassification")

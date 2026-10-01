@@ -85,12 +85,16 @@ class ReliableAlaSpeciesContextRepository(
                     "ALA context unavailable. Pl@ntNet results are retained; no demo evidence is used."
                 ContextDataSource.ALA_PARTIAL ->
                     "${successes.size}/${unique.size} ALA lookups succeeded. Missing counts are unknown; " +
-                        "the image-only order is retained to avoid rewarding selective availability."
+                        "geographic support is withheld to avoid rewarding selective availability."
                 else -> null
             }?.let { warning ->
                 if (unresolved > 0) "$warning $unresolved taxon name(s) unresolved; not treated as zero records." else warning
             },
             failuresBySpeciesId = outcomes.mapNotNull { it.failure?.let { reason -> it.id to reason } }.toMap(),
+            acceptedNamesBySpeciesId = unique.zip(outcomes).mapNotNull { (species, outcome) ->
+                outcome.acceptedName?.takeUnless { it.equals(species.scientificName, ignoreCase = true) }
+                    ?.let { species.id to it }
+            }.toMap(),
             attemptsBySpeciesId = outcomes.associate { it.id to it.attempts },
             queriedAt = queriedAt,
             retryNotBefore = outcomes.mapNotNull { it.retryNotBefore }.maxOrNull(),
@@ -113,6 +117,7 @@ class ReliableAlaSpeciesContextRepository(
                         statuses += response.httpStatus
                         return@withTimeoutOrNull Outcome(
                             species.id, response.totalRecords, attempts, statuses.toSet(),
+                            acceptedName = response.acceptedName,
                         )
                     } catch (cancelled: CancellationException) {
                         throw cancelled
@@ -152,5 +157,6 @@ class ReliableAlaSpeciesContextRepository(
         val statuses: Set<Int>,
         val failure: String? = null,
         val retryNotBefore: Instant? = null,
+        val acceptedName: String? = null,
     )
 }
