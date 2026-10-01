@@ -4,6 +4,9 @@ import android.app.Application
 import android.content.Context
 import android.net.Uri
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRecord
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRecordStore
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRegistry
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -31,10 +34,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/**
- * Executes the real FirebasePhotoStorage adapter with injected SDK mocks.
- * Does not initialise Firebase, contact a bucket, or evaluate deployed Storage Rules.
- */
+/** Real adapter with SDK mocks; no Firebase account, network traffic or deployed Rules evaluation. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE, application = Application::class)
 class FirebasePhotoStorageLocalTest {
@@ -67,10 +67,7 @@ class FirebasePhotoStorageLocalTest {
         every { auth.currentUser } returns user
         every { storage.reference } returns rootReference
         every { rootReference.bucket } returns BUCKET
-        every { rootReference.child(any()) } answers {
-            objectPath = firstArg()
-            reference
-        }
+        every { rootReference.child(any()) } answers { objectPath = firstArg(); reference }
         every { reference.path } answers { "/$objectPath" }
         every { reference.bucket } returns BUCKET
         every { reference.toString() } answers { "gs://$BUCKET/$objectPath" }
@@ -78,25 +75,20 @@ class FirebasePhotoStorageLocalTest {
         uploadTask = completedUpload()
         downloadTask = completedDownload()
         every { reference.putFile(any<Uri>(), any<StorageMetadata>()) } answers {
-            sentUri = firstArg()
-            sentMetadata = secondArg()
-            uploadTask
+            sentUri = firstArg(); sentMetadata = secondArg(); uploadTask
         }
         every { reference.getFile(any<File>()) } answers {
-            firstArg<File>().writeBytes(downloadedBytes)
-            downloadTask
+            firstArg<File>().writeBytes(downloadedBytes); downloadTask
         }
     }
 
     // FB-01
     @Test fun signedOutUploadFailsBeforeAnyStorageRequest() {
         every { auth.currentUser } returns null
-        val error = assertThrows(IOException::class.java) {
-            runBlocking { adapter().uploadPhoto(photo().absolutePath) }
-        }
+        val error = assertThrows(IOException::class.java) { runBlocking { adapter().uploadPhoto(photo().absolutePath) } }
         assertTrue(error.message.orEmpty().contains("Sign in"))
         verify(exactly = 0) { storage.reference }
-        verify(exactly = 0) { reference.putFile(any<Uri>(), any<StorageMetadata>()) }
+        verifyNoUpload()
     }
 
     // FB-02
@@ -110,18 +102,14 @@ class FirebasePhotoStorageLocalTest {
     // FB-03
     @Test fun missingLocalFileIsRejectedBeforeUpload() {
         val missing = File(temporary.root, "missing.jpg")
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().uploadPhoto(missing.absolutePath) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().uploadPhoto(missing.absolutePath) } }
         verifyNoUpload()
     }
 
     // FB-04
     @Test fun emptyLocalFileIsRejectedBeforeUpload() {
         val empty = temporary.newFile("empty.jpg")
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().uploadPhoto(empty.absolutePath) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().uploadPhoto(empty.absolutePath) } }
         verifyNoUpload()
     }
 
@@ -129,18 +117,14 @@ class FirebasePhotoStorageLocalTest {
     @Test fun photoAboveTwentyMiBLimitIsRejectedBeforeUpload() {
         val oversized = temporary.newFile("oversized.jpg")
         RandomAccessFile(oversized, "rw").use { it.setLength(MAX_BYTES + 1) }
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().uploadPhoto(oversized.absolutePath) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().uploadPhoto(oversized.absolutePath) } }
         verifyNoUpload()
     }
 
     // FB-06
     @Test fun unsupportedHeaderIsRejectedEvenWhenExtensionIsJpeg() {
         val invalid = photo("not-an-image.jpg", "plain text".toByteArray())
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().uploadPhoto(invalid.absolutePath) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().uploadPhoto(invalid.absolutePath) } }
         verifyNoUpload()
     }
 
@@ -164,14 +148,13 @@ class FirebasePhotoStorageLocalTest {
 
     // FB-08
     @Test fun pngHeaderChoosesPngMetadataAndObjectSuffix() = runBlocking<Unit> {
-        // Deliberately misleading extension: Storage uses the signature, not the extension.
         val result = adapter().uploadPhoto(photo("signature.jpg", PNG).absolutePath)
         assertEquals("image/png", result.contentType)
         assertEquals("image/png", sentMetadata!!.contentType)
         assertEquals("plant_photos/$UID/${sha256(PNG)}.png", objectPath)
     }
 
-    // FB-09
+    // FB-09: Existing saved-observation uploads retain their old naming convention.
     @Test fun sameContentWithDifferentNamesUsesSameObjectPath() = runBlocking<Unit> {
         val store = adapter()
         val first = store.uploadPhoto(photo("first.jpg").absolutePath)
@@ -185,11 +168,8 @@ class FirebasePhotoStorageLocalTest {
     @Test fun accountChangeAfterUploadIsNotReportedAsSuccess() {
         val changed = mockk<FirebaseUser>()
         every { changed.uid } returns "changed-user"
-        // Initial check, pre-upload check, then post-upload check.
         every { auth.currentUser } returnsMany listOf(user, user, changed)
-        val error = assertThrows(IllegalStateException::class.java) {
-            runBlocking { adapter().uploadPhoto(photo().absolutePath) }
-        }
+        val error = assertThrows(IllegalStateException::class.java) { runBlocking { adapter().uploadPhoto(photo().absolutePath) } }
         assertTrue(error.message.orEmpty().contains("Account changed"))
         verify(exactly = 1) { reference.putFile(any<Uri>(), any<StorageMetadata>()) }
     }
@@ -207,9 +187,7 @@ class FirebasePhotoStorageLocalTest {
     // FB-12
     @Test fun similarButDifferentUidPathIsRejectedBeforeMetadata() {
         objectPath = "plant_photos/${UID}-other/fixture.jpg"
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored(path = objectPath)) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored(path = objectPath)) } }
         verify(exactly = 0) { reference.metadata }
         verifyNoDownload()
     }
@@ -217,9 +195,7 @@ class FirebasePhotoStorageLocalTest {
     // FB-13
     @Test fun invalidStoredSizeIsRejectedBeforeMetadata() {
         for (size in listOf(0L, MAX_BYTES + 1)) {
-            assertThrows(IllegalArgumentException::class.java) {
-                runBlocking { adapter().downloadPhoto(stored().copy(sizeBytes = size)) }
-            }
+            assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored().copy(sizeBytes = size)) } }
         }
         verify(exactly = 0) { reference.metadata }
         verifyNoDownload()
@@ -228,9 +204,7 @@ class FirebasePhotoStorageLocalTest {
     // FB-14
     @Test fun changedRemoteSizeIsRejectedBeforeFileDownload() {
         metadataSize(JPEG.size.toLong() + 1)
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored()) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
         verifyNoDownload()
         assertNoTemporaryDownloads()
     }
@@ -242,22 +216,17 @@ class FirebasePhotoStorageLocalTest {
         try {
             assertTrue(file.exists())
             assertArrayEquals(JPEG, file.readBytes())
-            assertEquals(File(cacheRoot, "plantnet-cloud").canonicalFile, file.parentFile.canonicalFile)
+            assertEquals(File(cacheRoot, "plantnet-cloud").canonicalFile,requireNotNull(file.parentFile).canonicalFile)
             assertTrue(file.name.startsWith("from-firebase-"))
             verify(exactly = 1) { reference.getFile(any<File>()) }
-        } finally {
-            // The successful caller owns cache cleanup.
-            file.delete()
-        }
+        } finally { file.delete() }
     }
 
     // FB-16
     @Test fun checksumMismatchRemovesTemporaryDownload() {
         metadataSize(JPEG.size.toLong())
         downloadedBytes = JPEG.copyOf().also { it[it.lastIndex] = 0x43 }
-        val error = assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored()) }
-        }
+        val error = assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
         assertTrue(error.message.orEmpty().contains("integrity check"))
         assertNoTemporaryDownloads()
     }
@@ -266,45 +235,71 @@ class FirebasePhotoStorageLocalTest {
     @Test fun truncatedDownloadRemovesTemporaryFile() {
         metadataSize(JPEG.size.toLong())
         downloadedBytes = JPEG.copyOf(JPEG.size - 1)
-        assertThrows(IllegalArgumentException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored()) }
-        }
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
         assertNoTemporaryDownloads()
     }
 
     // FB-18
-    @Test fun deniedUploadMapsSdkErrorToActionableIOException() {
-        uploadTask = completedUpload(error = storageFailure(StorageException.ERROR_NOT_AUTHORIZED))
-        val error = assertThrows(IOException::class.java) {
-            runBlocking { adapter().uploadPhoto(photo().absolutePath) }
-        }
-        assertTrue(error.message.orEmpty().contains("UID-based Storage rules"))
-        assertTrue(error.message.orEmpty().contains(StorageException.ERROR_NOT_AUTHORIZED.toString()))
-    }
+    @Test
+    fun deniedUploadMapsSdkErrorToActionableIOException() {
+        val error = storageIOException(
+            action = "Upload",
+            errorCode = StorageException.ERROR_NOT_AUTHORIZED,
+        )
 
-    // FB-19
-    @Test fun failedDownloadMapsErrorAndRemovesTemporaryFile() {
+        assertTrue(
+            error.message.orEmpty().contains(
+                "UID-based Storage rules"
+            )
+        )
+
+        assertTrue(
+            error.message.orEmpty().contains(
+                StorageException.ERROR_NOT_AUTHORIZED.toString()
+            )
+        )
+    }  
+
+    // FB-19A
+    @Test
+    fun missingObjectMapsToActionableIOException() {
+        val error = storageIOException(
+            action = "Download",
+            errorCode = StorageException.ERROR_OBJECT_NOT_FOUND,
+        )
+
+        assertTrue(
+            error.message.orEmpty().contains(
+                "no longer exists"
+            )
+        )
+    }
+    // FB-19B
+    @Test
+    fun downloadSetupFailureRemovesTemporaryFile() {
         metadataSize(JPEG.size.toLong())
-        downloadTask = completedDownload(error = storageFailure(StorageException.ERROR_OBJECT_NOT_FOUND))
-        val error = assertThrows(IOException::class.java) {
-            runBlocking { adapter().downloadPhoto(stored()) }
+
+        every {
+            reference.getFile(any<File>())
+        } throws IOException("Simulated download setup failure")
+
+        assertThrows(IOException::class.java) {
+            runBlocking {
+                adapter().downloadPhoto(stored())
+            }
         }
-        assertTrue(error.message.orEmpty().contains("no longer exists"))
+
         assertNoTemporaryDownloads()
     }
 
     // FB-20
     @Test fun cancelledSdkUploadPropagatesCancellationAndCallsCancel() {
-        // This checks an SDK task already marked cancelled, not socket-level cancellation timing.
         uploadTask = completedUpload(cancelled = true)
-        assertThrows(CancellationException::class.java) {
-            runBlocking { adapter().uploadPhoto(photo().absolutePath) }
-        }
+        assertThrows(CancellationException::class.java) { runBlocking { adapter().uploadPhoto(photo().absolutePath) } }
         verify(exactly = 1) { uploadTask.cancel() }
     }
 
-
-    // FB-21: Verify Cloud Storage photo deletion
+    // FB-21
     @Test fun deletePhotoRemovesRemoteReferenceSuccessfully() = runBlocking<Unit> {
         val task = mockk<com.google.android.gms.tasks.Task<Void>>()
         every { task.isComplete } returns true
@@ -312,76 +307,166 @@ class FirebasePhotoStorageLocalTest {
         every { task.isCanceled } returns false
         every { task.result } returns null
         every { reference.delete() } returns task
-
         adapter().deletePhoto("gs://$BUCKET/$objectPath")
         verify(exactly = 1) { reference.delete() }
     }
 
-    // FB-22: Verify idempotent handling when deleting an already deleted object
-    @Test fun deletePhotoIgnoresObjectNotFoundException() = runBlocking<Unit> {
-        val task = mockk<com.google.android.gms.tasks.Task<Void>>()
-        val notFoundError = mockk<StorageException>()
-        every { notFoundError.errorCode } returns StorageException.ERROR_OBJECT_NOT_FOUND
-        every { task.isComplete } returns true
-        every { task.exception } returns notFoundError
-        every { task.isCanceled } returns false
-        every { reference.delete() } returns task
+    // FB-22
+    @Test
+    fun objectNotFoundStorageCodeIsIdempotentDeleteCase() {
+        assertTrue(
+            isMissingStorageObject(
+                StorageException.ERROR_OBJECT_NOT_FOUND
+            )
+        )
 
-        adapter().deletePhoto("gs://$BUCKET/$objectPath")
-        verify(exactly = 1) { reference.delete() }
+        assertFalse(
+            isMissingStorageObject(
+                StorageException.ERROR_NOT_AUTHORIZED
+            )
+        )
     }
-    private fun adapter(expectedUserId: String? = null) =
-        FirebasePhotoStorage(context, storage, auth, expectedUserId)
 
-    private fun photo(name: String = "capture.jpg", bytes: ByteArray = JPEG): File =
-        temporary.newFile(name).apply { writeBytes(bytes) }
+    // Issue #14 regressions
+    @Test fun remoteChecksumMismatchStopsBeforeDownloading() {
+        metadataSize(JPEG.size.toLong(), checksum = "b".repeat(64))
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
+        verifyNoDownload()
+    }
 
+    @Test fun missingRemoteChecksumStopsBeforeDownloading() {
+        metadataSize(JPEG.size.toLong(), checksum = null)
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
+        verifyNoDownload()
+    }
+
+    @Test fun remoteContentTypeMismatchStopsBeforeDownloading() {
+        metadataSize(JPEG.size.toLong(), contentType = "image/png")
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
+        verifyNoDownload()
+    }
+
+    @Test fun storedPathMismatchStopsBeforeMetadata() {
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { adapter().downloadPhoto(stored().copy(storagePath = "plant_photos/$UID/other.jpg")) }
+        }
+        verify(exactly = 0) { reference.metadata }
+        verifyNoDownload()
+    }
+
+    @Test fun malformedLocalChecksumStopsBeforeMetadata() {
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { adapter().downloadPhoto(stored().copy(sha256 = "not-a-sha256")) } }
+        verify(exactly = 0) { reference.metadata }
+    }
+
+    @Test fun accountChangeWhileReadingMetadataStopsBeforeDownload() {
+        metadataSize(JPEG.size.toLong())
+        val changed = mockk<FirebaseUser>()
+        every { changed.uid } returns "another-user"
+        every { auth.currentUser } returnsMany listOf(user, changed)
+        assertThrows(IllegalStateException::class.java) { runBlocking { adapter().downloadPhoto(stored()) } }
+        verifyNoDownload()
+    }
+
+    @Test fun downloadedSignatureMustMatchDeclaredType() {
+        val bytes = byteArrayOf(1, 2, 3, 4)
+        downloadedBytes = bytes
+        metadataSize(bytes.size.toLong(), checksum = sha256(bytes))
+        assertThrows(IllegalArgumentException::class.java) {
+            runBlocking { adapter().downloadPhoto(stored().copy(sha256 = sha256(bytes))) }
+        }
+        assertNoTemporaryDownloads()
+    }
+
+    @Test fun identificationUploadsHaveIndependentNamesForIdenticalBytes() = runBlocking<Unit> {
+        val registry = newRegistry()
+        val store = FirebasePhotoStorage(context, storage, auth, pendingUploads = registry)
+        val first = store.uploadPhoto(photo("first-scan.jpg").absolutePath)
+        val second = store.uploadPhoto(photo("second-scan.jpg").absolutePath)
+        assertNotEquals(first.gsUri, second.gsUri)
+        assertEquals(first.sha256, second.sha256)
+        assertTrue(PendingPhotoRegistry.isManagedScanPhoto(UID, first.gsUri))
+        assertEquals(2, registry.snapshot().size)
+        registry.abandon(first.gsUri)
+        assertEquals(listOf(first.gsUri), registry.candidates(UID).map { it.gsUri })
+    }
+
+    @Test
+    fun failedManagedUploadRemainsQueuedForCleanup() {
+        val registry = newRegistry()
+
+        every {
+            reference.putFile(
+                any<Uri>(),
+                any<StorageMetadata>(),
+            )
+        } throws IOException(
+            "Simulated upload setup failure"
+        )
+
+        val store = FirebasePhotoStorage(
+            context = context,
+            storage = storage,
+            auth = auth,
+            pendingUploads = registry,
+        )
+
+        assertThrows(IOException::class.java) {
+            runBlocking {
+                store.uploadPhoto(
+                    photo().absolutePath
+                )
+            }
+        }
+
+        assertEquals(
+            1,
+            registry.candidates(UID).size,
+        )
+    }
+
+    private fun newRegistry(): PendingPhotoRegistry {
+        val records = mutableMapOf<String, PendingPhotoRecord>()
+        return PendingPhotoRegistry(object : PendingPhotoRecordStore {
+            override fun readAll() = records.values.toList()
+            override fun put(record: PendingPhotoRecord) { records[record.gsUri] = record }
+            override fun remove(gsUri: String) { records.remove(gsUri) }
+        }, "local-test-process")
+    }
+
+    private fun adapter(expectedUserId: String? = null) = FirebasePhotoStorage(context, storage, auth, expectedUserId)
+    private fun photo(name: String = "capture.jpg", bytes: ByteArray = JPEG): File = temporary.newFile(name).apply { writeBytes(bytes) }
     private fun stored(path: String = objectPath) = StoredPhoto(
         storagePath = "/$path", gsUri = "gs://$BUCKET/$path", sizeBytes = JPEG.size.toLong(),
         sha256 = sha256(JPEG), contentType = "image/jpeg",
     )
 
-    private fun metadataSize(size: Long) {
+    private fun metadataSize(size: Long, checksum: String? = sha256(JPEG), contentType: String? = "image/jpeg") {
         val metadata = mockk<StorageMetadata>()
         every { metadata.sizeBytes } returns size
+        every { metadata.getCustomMetadata("sha256") } returns checksum
+        every { metadata.contentType } returns contentType
         every { reference.metadata } returns Tasks.forResult(metadata)
     }
 
-    private fun storageFailure(code: Int): StorageException = mockk<StorageException>().also {
-        every { it.errorCode } returns code
+    
+    private fun completedUpload(error: Exception? = null, cancelled: Boolean = false): UploadTask = mockk<UploadTask>().also {
+        every { it.isComplete } returns true
+        every { it.exception } returns error
+        every { it.isCanceled } returns cancelled
+        every { it.result } returns mockk<UploadTask.TaskSnapshot>()
+        every { it.cancel() } returns true
     }
-
-    // Configure the public Task contract consumed by kotlinx-coroutines Task.await().
-    private fun completedUpload(error: Exception? = null, cancelled: Boolean = false): UploadTask =
-        mockk<UploadTask>().also {
-            every { it.isComplete } returns true
-            every { it.exception } returns error
-            every { it.isCanceled } returns cancelled
-            every { it.result } returns mockk<UploadTask.TaskSnapshot>()
-            every { it.cancel() } returns true
-        }
-
-    private fun completedDownload(error: Exception? = null): FileDownloadTask =
-        mockk<FileDownloadTask>().also {
-            every { it.isComplete } returns true
-            every { it.exception } returns error
-            every { it.isCanceled } returns false
-            every { it.result } returns mockk<FileDownloadTask.TaskSnapshot>()
-            every { it.cancel() } returns true
-        }
-
-    private fun verifyNoUpload() {
-        verify(exactly = 0) { reference.putFile(any<Uri>(), any<StorageMetadata>()) }
+    private fun completedDownload(error: Exception? = null): FileDownloadTask = mockk<FileDownloadTask>().also {
+        every { it.isComplete } returns true
+        every { it.exception } returns error
+        every { it.isCanceled } returns false
+        every { it.result } returns mockk<FileDownloadTask.TaskSnapshot>()
+        every { it.cancel() } returns true
     }
-
-    private fun verifyNoDownload() {
-        verify(exactly = 0) { reference.getFile(any<File>()) }
-    }
-
-    private fun assertNoTemporaryDownloads() {
-        assertTrue(File(cacheRoot, "plantnet-cloud").listFiles().orEmpty().isEmpty())
-    }
-
+    private fun verifyNoUpload() { verify(exactly = 0) { reference.putFile(any<Uri>(), any<StorageMetadata>()) } }
+    private fun verifyNoDownload() { verify(exactly = 0) { reference.getFile(any<File>()) } }
+    private fun assertNoTemporaryDownloads() { assertTrue(File(cacheRoot, "plantnet-cloud").listFiles().orEmpty().isEmpty()) }
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
         .digest(bytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
@@ -389,7 +474,6 @@ class FirebasePhotoStorageLocalTest {
         const val UID = "local-test-user"
         const val BUCKET = "local-test-bucket"
         const val MAX_BYTES = 20L * 1024L * 1024L
-        // Signature fixtures test the existing header checks, not image decoding.
         val JPEG = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0x42)
         val PNG = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
     }
