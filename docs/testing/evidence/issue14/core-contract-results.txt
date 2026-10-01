@@ -1,0 +1,28 @@
+PASS: PNG supports one-byte reads
+PASS: PNG supports uneven reads
+PASS: Zero-byte reads make progress
+PASS: JPEG supports a short signature fixture
+PASS: Truncated PNG is rejected
+PASS: Empty input is rejected
+PASS: Unrelated bytes are rejected
+PASS: Active scan is not cleanup eligible
+PASS: Abandoned completed scan is eligible
+PASS: In-flight cancelled upload is protected until terminal
+PASS: Saving blocks navigation cleanup
+PASS: Successful save transfers ownership
+PASS: Save failure keeps current photo retryable
+PASS: Abandoned failed save becomes eligible
+PASS: Legacy shared digest path is never registered or deleted
+PASS: Another owner cannot register the reference
+PASS: Journal failure prevents an untracked upload
+PASS: Restart recovers a formerly active scan
+PASS: Cleanup is idempotent
+PASS: Saved DB reference survives restart cleanup
+PASS: Network failure preserves the deletion queue
+PASS: Wrong account does not delete or forget pending work
+PASS: Account changes during DB lookup do not delete
+PASS: Cancellation is propagated and releases the claim
+PASS: Cleanup scheduling failure does not lose the journal
+PASS: Another cleanup cannot claim the same object
+PASS: Failed journal removal remains recoverable
+27/27 core contract cases passed
