@@ -8,6 +8,7 @@ import au.edu.unimelb.floraguide.data.catalog.FLOWERING_TABLE_ASSET
 import au.edu.unimelb.floraguide.data.catalog.parseFloweringTable
 import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
+import au.edu.unimelb.floraguide.data.firebase.PendingPhotoUploads
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
 import au.edu.unimelb.floraguide.data.observation.OfflineFirstObservationRepository
 import au.edu.unimelb.floraguide.data.plantnet.PlantNetClient
@@ -18,6 +19,7 @@ import au.edu.unimelb.floraguide.domain.repository.ObservationRepository
 import au.edu.unimelb.floraguide.domain.repository.PhotoStore
 import au.edu.unimelb.floraguide.domain.repository.SpeciesContextRepository
 import au.edu.unimelb.floraguide.domain.usecase.IdentifyStoredPhotoUseCase
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoCleanupUseCase
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
 import au.edu.unimelb.floraguide.platform.LocationTracker
 import au.edu.unimelb.floraguide.platform.SensorMonitor
@@ -29,9 +31,6 @@ class AppContainer(context: Context) {
         FloraGuideDatabase.getInstance(appContext)
     }
 
-    // val authRepository: AuthRepository = FirebaseAuthRepository()
-
-    // In app/src/main/java/au/edu/unimelb/floraguide/di/AppContainer.kt
     val authRepository: AuthRepository by lazy {
         FirebaseAuthRepository(context = appContext)
     }
@@ -40,8 +39,19 @@ class AppContainer(context: Context) {
     val imageClassifier: ImageClassifier = PlantNetImageClassifier(
         client = PlantNetClient(apiKey = BuildConfig.PLANTNET_API_KEY.trim()),
     )
-    val photoStorage: PhotoStore = FirebasePhotoStorage(appContext)
-    val identifyStoredPhoto = IdentifyStoredPhotoUseCase(photoStorage, imageClassifier)
+    val pendingPhotos = PendingPhotoUploads.get(appContext)
+    val photoStorage: PhotoStore = FirebasePhotoStorage(appContext, pendingUploads = pendingPhotos)
+    val identifyStoredPhoto = IdentifyStoredPhotoUseCase(
+        photoStorage,
+        imageClassifier,
+        onUndeliveredUpload = { pendingPhotos.abandon(it.gsUri) },
+    )
+    val cleanupPendingPhotos = PendingPhotoCleanupUseCase(
+        registry = pendingPhotos,
+        currentUserId = { authRepository.getCurrentUser()?.uid },
+        isReferenced = { uid, uri -> database.observationDao().getAllForUser(uid).any { it.remotePhotoUrl == uri } },
+        deletePhoto = { uid, uri -> FirebasePhotoStorage(appContext, expectedUserId = uid).deletePhoto(uri) },
+    )
 
     /** Real scans use the reliability-focused ALA adapter. */
     val speciesContextRepository: SpeciesContextRepository =
