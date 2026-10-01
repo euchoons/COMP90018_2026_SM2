@@ -151,6 +151,8 @@ change's feature scope. A focused pass is not a claim that the full project pass
 
 ## Authoring verification
 
+The dated [authoring verification](../archive/API_TEST_AUTHOR_VERIFICATION.md) and [original PR drafting aid](../archive/API_TEST_PR.md) are archived separately. The source fingerprint manifest remains at `docs/testing/api-test-baseline.json`; a later production change may require a reviewed baseline update before the scoped runner can proceed.
+
 Source contracts and existing tests were inspected through the GitHub connector.
 Package paths, method/ID counts and the manifest were checked programmatically.
 All four test files also passed Kotlin 1.9 compiler-PSI syntax parsing; this is not

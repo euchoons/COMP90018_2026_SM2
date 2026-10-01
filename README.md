@@ -1,6 +1,10 @@
-# COMP9018_2026_SM2 - Project Contribution & Workflow Rules
+# COMP90018_2026_SM2 - Project Contribution & Workflow Rules
 
 > 📝 **Please Read:** All team members must strictly follow the development workflows, documentation regulations, and naming conventions outlined below.
+
+## Project documentation
+
+Start with the [documentation index](docs/README.md) for setup, current status, technical references, testing and assignment records.
 
 ---
 

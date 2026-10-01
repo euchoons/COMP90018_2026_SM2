@@ -2,7 +2,7 @@
 
 > Historical verification of the original cache repair, not a description of every later PR.
 > Authentication logging and photo deletion have since changed. See
-> [current data handling and limitations](PRIVACY_POLICY.md) before relying on the retention
+> [current data handling and limitations](../PRIVACY_POLICY.md) before relying on the retention
 > or deletion claims below. Earlier test counts and device results are not validation of the
 > newer account-erasure or SQLCipher upgrade paths.
 

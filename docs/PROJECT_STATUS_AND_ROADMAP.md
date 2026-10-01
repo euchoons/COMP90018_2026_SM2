@@ -1,98 +1,42 @@
 # Project status and roadmap
 
-This document is the baseline source of truth for scope. Update it whenever the group changes a major feature, data source, model or evaluation commitment.
+Updated 2026-10-01 against the implementation on PR #51. This page owns current feature status, remaining work and scope decisions. The [Assignment 1 plan](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) and [initial milestones](archive/INITIAL_MILESTONES.md) preserve the earlier proposal.
 
 ## Current status
 
-| Area | Baseline status | What the team may claim now |
+“Implemented in source” does not mean deployed services, field performance or all devices have been validated.
+
+| Area | Status | Current capability and boundary |
 |---|---|---|
-| Android UI | Implemented | Four-screen Compose prototype with guided and live-observation routes. |
-| Camera | Implemented in source | CameraX preview and JPEG capture; team device verification is still required. |
-| Motion sensing | Implemented in source | Accelerometer/gyroscope stability fusion with a heuristic threshold. |
-| Light and heading | Implemented in source | Optional ambient-light and magnetometer feedback with fallback states. |
-| Location | Implemented in source | GPS/network location and a visibly labelled campus demo fallback. |
-| Image recognition | Implemented in source (cloud) | Pl@ntNet v2 cloud identification of the captured JPEG, Top-8 candidates. Requires network and an API key; the guided demo and any keyless build stay on the labelled demo adapter. No on-device model: the group dropped it (#50). |
-| ALA connectivity | Implemented in source | Read-only count requests, concurrent lookups, telemetry and fallback; live behaviour must be rechecked by the team. |
-| Fusion algorithm | Implemented and unit-tested | Log-linear reranking with smoothing and relative scores. |
-| Observation storage | Local prototype | App-private photos and preferences; no shared cloud data. |
-| Privacy | Initial measure | Coordinates are rounded before local persistence. |
-| Map/mission | Minimal demonstration only | Field-guide progress exists; final showcase extension is undecided. |
-| Evaluation | Planned | Unit tests exist; model accuracy, latency, usability and field studies are not complete. |
+| Android UI | Implemented in source | Home, Observe, Results, Field Guide and Account flows; device and accessibility acceptance remain separate checks. |
+| Camera | Implemented in source | CameraX capture, rotation, resize and permission handling; the [physical-device checklist](testing/CAMERA_VALIDATION.md#physical-device-checklist) remains required. |
+| Motion sensing | Implemented in source | Accelerometer/gyroscope stability gate with provisional thresholds; [measured calibration](technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) is still required. |
+| Light and heading | Implemented in source | Optional guidance and capture-time heading with missing-sensor fallbacks; [device checks](testing/HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) remain open. |
+| Location | Implemented in source | Capture-time freshness/accuracy eligibility; unusable location skips ALA. Campus coordinates belong to the guided demo only. |
+| Image recognition | Implemented in source (cloud) | Firebase upload → stored-photo download → Pl@ntNet identification. The API requests eight candidates; the UI/ranker retain five. Live use requires configuration, an authenticated Firebase session and network access. The on-device model was dropped (#50). |
+| ALA connectivity | Implemented in source | Species-level name resolution, concurrent count requests, bounded retry and explicit live/partial/unavailable states. |
+| Fusion algorithm | Implemented and unit-tested | Provisional bounded geographic support plus flower-gated season adjustment; see the [live policy](technical/MISSING_CONTEXT_POLICY.md). Log-linear season/habitat priors are confined to the guided demo. |
+| Accounts | Implemented in source | Firebase registration, sign-in, online guest, offline entry, sign-out and account actions. Backend/device verification and erasure limitations are separate from implementation presence. |
+| Observation storage | Implemented in source | Room local records, Firestore metadata, Firebase Storage photos and WorkManager synchronisation/retry. Preferences are a legacy import source, not the active store. |
+| Privacy | Implemented with limitations | Coarse coordinates, diagnostic handling and deletion paths are documented in [data handling and limitations](PRIVACY_POLICY.md). Complete erasure and encryption-upgrade guarantees are not established. |
+| Map | Implemented in source | Field Guide displays saved observation locations through Google Maps when configured, with a fallback when unavailable. Field usability remains to be verified. |
+| Evaluation | Separate work in progress | Scoped/unit checks exist. Fusion training is proposed in [PR #49](https://github.com/euchoons/COMP90018_2026_SM2/pull/49); its new rule and evaluation results are not part of this branch. Live latency, usability and field studies remain outstanding. |
 
 ## Claims that are not currently supported
 
-The baseline must not be described as:
+- Reliable identification of every campus species, calibrated confidence or a validated model trained by this team.
+- Offline/on-device live identification or direct observation uploads to ALA.
+- Complete account erasure, guaranteed encryption of every existing database or independently validated deployed Firebase rules.
+- A completed campus field study, sensor calibration across all phones or an executed device checklist without recorded evidence.
+- Performance or accuracy results from another PR as evidence for this branch's ranking rule.
 
-- a reliable plant-identification system;
-- a trained or validated AI model of our own;
-- an offline or on-device identification capability;
-- a measured accuracy figure for Pl@ntNet on our target species;
-- a calibrated confidence estimator;
-- a Firebase or multi-user application;
-- a direct ALA observation-upload client;
-- a completed campus biodiversity study;
-- proof that all target phones have the required sensors.
+## Next work
 
-## Decisions required before Assignment 1 submission
-
-The group should explicitly agree on and record:
-
-1. the final taxonomic scope and approximate number of species;
-2. the source and licence of the visual model or training data;
-3. the mapping strategy between model labels and ALA identifiers;
-4. the cloud backend and minimum cloud features;
-5. one showcase extension: campus map or team mission;
-6. the evaluation dataset, sample size and test protocol;
-7. privacy rules for photos, users and sensitive locations;
-8. the owner and reviewer for every workstream;
-9. the evidence that will demonstrate each Assignment 2 criterion.
-
-Do not submit the Assignment 1 plan with these decisions left implicit.
-
-## Proposed final MVP milestones
-
-### Milestone 0 — team baseline
-
-- every member can build and run the repository;
-- the canonical Git repository and branch policy are agreed;
-- the current prototype is tagged after team verification;
-- each member understands the guided flow and architecture.
-
-### Milestone 1 — scope and feasibility spikes
-
-- freeze the target species list;
-- ~~run a small TensorFlow Lite inference spike on a phone~~ (dropped, #50);
-- verify label-to-ALA mapping for representative species;
-- verify Firebase or the selected cloud backend with one photo and one metadata record;
-- measure live ALA latency and failure behaviour.
-
-These spikes should happen before the group promises the final implementation in strong terms.
-
-### Milestone 2 — core integration
-
-- ~~add the on-device TensorFlow Lite adapter alongside the Pl@ntNet cloud adapter and let the
-  user or the network state choose between them (both implement `ImageClassifier`)~~ (dropped, #50);
-- add unknown/genus fallback;
-- add Room context caching;
-- implement cloud-backed observation storage and retry;
-- preserve live/partial/offline transparency;
-- add unit, integration and device tests.
-
-### Milestone 3 — showcase extension and UX
-
-- implement either a campus map or a team mission;
-- complete Material 3, accessibility and permission-flow review;
-- conduct task-based usability testing;
-- refine explanations without implying false certainty.
-
-### Milestone 4 — evaluation and submission evidence
-
-- compare image-only and fused Top-1/Top-3 performance;
-- run cue ablations and Pl@ntNet and ALA latency measurements;
-- test at least two physical phones with different sensor configurations;
-- record the final video against every rubric criterion;
-- capture compile evidence and export commit logs;
-- finalise individual contribution records and viva preparation.
+1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), camera checklist and sensor calibration on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
+2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). This branch currently uploads after capture without that additional consent step.
+3. Review the #20 evaluation in PR #49. Update the live policy, reference and status together when its rule is adopted; retain the experiment's dataset, revision and limitations.
+4. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
+5. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.
 
 ## Risk register
 
@@ -100,9 +44,9 @@ These spikes should happen before the group promises the final implementation in
 |---|---|---|
 | Real model performs poorly outdoors | Core identification story is weak. | Restrict species set, collect representative photos, show Top 3/unknown and evaluate early. |
 | Pl@ntNet free quota is 500 identifications a day | Live demo fails mid-presentation. | `remainingIdentificationRequests` is logged on every call; the guided demo runs offline; a quota error tells the user to switch to it. |
-| Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | Accepted: the on-device model was dropped (#50). Show the image-only result first, keep the offline guided demo and measure Pl@ntNet latency. |
+| Cloud identification needs network and adds latency | No identification in poor coverage; ~3.4 s measured. | Accepted: the on-device model was dropped (#50). Show the image-only result as soon as the cloud pipeline returns, keep the offline guided demo and measure Pl@ntNet latency. |
 | Model labels do not match ALA taxonomy | Nearby counts are missing or misleading. | Create a versioned mapping table using accepted identifiers and test representative synonyms. |
-| ALA latency or availability varies | Reranking is slow or unavailable. | Show image-only first, use timeouts, cache results, retain partial/offline states and measure latency. |
+| ALA latency or availability varies | Reranking is slow or unavailable. | Show image-only first, use bounded retries, retain partial/unavailable states and measure latency. A persistent ALA response cache remains future work. |
 | Sensor availability differs by phone | Features fail on some devices. | Runtime checks, manual fallbacks and testing on multiple physical devices. |
 | Too many social/game features | Core system remains incomplete. | One showcase extension only; treat all other gamification as stretch scope. |
 | False confidence harms trust | Users accept incorrect identifications. | Relative-score language, explanation, multiple candidates, user confirmation and unknown fallback. |

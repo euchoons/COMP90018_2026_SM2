@@ -21,7 +21,7 @@ Versions are centralised in `gradle/libs.versions.toml`. Update them through a r
 
 ## Pl@ntNet identification request
 
-Image recognition is a cloud call to the Pl@ntNet v2 API:
+The application first uploads the captured photo to Firebase Storage and downloads the stored bytes through `IdentifyStoredPhotoUseCase`. That downloaded image is sent to the Pl@ntNet v2 API:
 
 ```text
 POST https://my-api.plantnet.org/v2/identify/all
@@ -31,9 +31,7 @@ multipart/form-data:
     images=<captured JPEG>
 ```
 
-Only `results[].score` and `results[].species.scientificNameWithoutAuthor` (plus the optional
-`commonNames`) are consumed. Scores are per-species confidences and do **not** sum to 1;
-normalisation is the ranking use case's job.
+`results[].score`, `results[].species.scientificNameWithoutAuthor`, optional `commonNames` and predicted-organ metadata are consumed, alongside model/quota telemetry. Raw scores do **not** sum to 1; normalisation is the ranking use case's job, and the UI treats them as relative ranking evidence.
 
 The API requests eight results; the current ViewModel keeps the first five for both image-only
 and live ranking. Each candidate requires a name-match request followed by an occurrence
@@ -94,20 +92,7 @@ app's full name-resolution path. It checks three names and requires `curl` and `
 
 ### Current live rule (provisional)
 
-```text
-support(s) = ln(1 + min(count(s), 50)) / ln(51)
-season(s) = 0.85 if the photo is a flower and every documented flowering month of s
-            is more than one month from the capture month, otherwise 1
-weight(s) = imageScore(s) * (1 + 0.15 * support(s)) * season(s)
-relativeScore(s) = weight(s) / sum(weight)
-```
-
-Geographic support is enabled only for complete live counts; otherwise it is neutral for
-every candidate. Zero counts give a neutral multiplier of 1; the maximum is 1.15. The
-flowering cue needs Pl@ntNet's predicted organ to be a flower with a score of at least 0.5,
-and species without documented months stay at 1. The months come from VicFlora flowering
-statements for 75 common Parkville species (see the missing-context policy). Habitat is not an input to `live()`. These bounds are coursework heuristics,
-not tuned values or evidence of superiority; #20 evaluates alternatives before selecting parameters.
+The [missing-context policy](MISSING_CONTEXT_POLICY.md#ranking-and-location) is the canonical reference for the live geographic rule, complete-context requirement, candidate limit and location eligibility. Its [flowering section](MISSING_CONTEXT_POLICY.md#flowering-season) defines the independently applied season factor. Habitat is metadata only. These provisional values are not the trained rule proposed in PR #49.
 
 ### Synthetic guided demo only
 
@@ -153,7 +138,7 @@ The flowering cue can be ablated with the bundled VicFlora table. Habitat is not
 - ALA request latency and success rate;
 - time until image-only result;
 - time until fused result;
-- cache hit rate;
+- ALA response-cache hit rate if a context cache is introduced; the current Room store holds observations;
 - energy or sampling considerations for sensors.
 
 ### Robustness
