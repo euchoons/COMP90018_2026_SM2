@@ -12,7 +12,10 @@ data class PendingPhotoRecord(
     val state: PendingPhotoState = PendingPhotoState.ACTIVE,
 )
 
-/** Implementations must durably write each record before returning from put/remove. */
+/**
+ * put must be durable before it returns, because it gates the upload. remove may finish
+ * asynchronously: restart recovery checks the observation database before deleting.
+ */
 interface PendingPhotoRecordStore {
     fun readAll(): List<PendingPhotoRecord>
     fun put(record: PendingPhotoRecord)
@@ -60,7 +63,7 @@ class PendingPhotoRegistry(
             PendingPhotoState.SAVING, PendingPhotoState.SAVING_ABANDONED -> PendingPhotoState.SAVING_ABANDONED
             else -> PendingPhotoState.ABANDONED
         }
-        updateBestEffort(old.copy(state = state))
+        update(old.copy(state = state))
         schedule(old.userId)
     }
 
@@ -71,9 +74,7 @@ class PendingPhotoRegistry(
         check(old.processId == processId && old.state == PendingPhotoState.ACTIVE && gsUri !in cleanupClaims) {
             "This photo session is no longer available. Retry the scan before saving."
         }
-        val saving = old.copy(state = PendingPhotoState.SAVING)
-        store.put(saving)
-        records[old.gsUri] = saving
+        update(old.copy(state = PendingPhotoState.SAVING))
     }
 
     /** The observation now owns the photo. A failed journal removal is safe: recovery checks the DB. */
@@ -96,7 +97,7 @@ class PendingPhotoRegistry(
         } else {
             PendingPhotoState.ACTIVE
         }
-        updateBestEffort(old.copy(state = state))
+        update(old.copy(state = state))
         if (state == PendingPhotoState.ABANDONED) schedule(old.userId)
     }
 
@@ -132,10 +133,8 @@ class PendingPhotoRegistry(
         isManagedScanPhoto(record.userId, record.gsUri) &&
             (record.processId != processId || record.state == PendingPhotoState.ABANDONED)
 
-    private fun updateBestEffort(record: PendingPhotoRecord) {
-        records[record.gsUri] = record
-        try { store.put(record) } catch (error: Exception) { reportFailure(error) }
-    }
+    // Every journalled record is eligible after a restart, so state changes need no disk write.
+    private fun update(record: PendingPhotoRecord) { records[record.gsUri] = record }
 
     private fun schedule(userId: String) {
         try { scheduleCleanup(userId) } catch (error: Exception) { reportFailure(error) }

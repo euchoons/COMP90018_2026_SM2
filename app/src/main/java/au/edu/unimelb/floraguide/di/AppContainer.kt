@@ -46,12 +46,8 @@ class AppContainer(context: Context) {
         imageClassifier,
         onUndeliveredUpload = { pendingPhotos.abandon(it.gsUri) },
     )
-    val cleanupPendingPhotos = PendingPhotoCleanupUseCase(
-        registry = pendingPhotos,
-        currentUserId = { authRepository.getCurrentUser()?.uid },
-        isReferenced = { uid, uri -> database.observationDao().getAllForUser(uid).any { it.remotePhotoUrl == uri } },
-        deletePhoto = { uid, uri -> FirebasePhotoStorage(appContext, expectedUserId = uid).deletePhoto(uri) },
-    )
+    val cleanupPendingPhotos: PendingPhotoCleanupUseCase =
+        PendingPhotoUploads.cleanup(appContext) { authRepository.getCurrentUser()?.uid }
 
     /** Real scans use the reliability-focused ALA adapter. */
     val speciesContextRepository: SpeciesContextRepository =

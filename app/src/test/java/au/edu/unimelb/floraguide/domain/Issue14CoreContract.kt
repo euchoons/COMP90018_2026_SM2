@@ -12,7 +12,7 @@ import java.io.InputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 
-/** Runs the same Android-independent assertions under JUnit or the portable Kotlin harness. */
+/** Android-independent assertions, run as parameterized JUnit cases by Issue14CoreTest. */
 internal object Issue14CoreContract {
     fun cases(): List<Pair<String, () -> Unit>> = listOf(
         "PNG supports one-byte reads" to { check(PhotoContentValidation.contentType(shortReads(PNG, 1)) == "image/png") },
@@ -134,7 +134,15 @@ internal object Issue14CoreContract {
             val store = MemoryStore()
             val registry = PendingPhotoRegistry(store, "process", scheduleCleanup = { throw IllegalStateException("scheduler unavailable") })
             registry.registerUpload(UID, URI); registry.uploadFinished(URI); registry.abandon(URI)
-            check(store.readAll().single().state == PendingPhotoState.ABANDONED)
+            check(store.readAll().single().gsUri == URI)
+            check(registry.snapshot().single().state == PendingPhotoState.ABANDONED)
+        },
+        "Rejected reference is dropped instead of retried" to {
+            runBlocking {
+                val f = fixture(); f.register(); f.registry.abandon(URI)
+                check(!f.cleanup(delete = { throw IllegalArgumentException("Unexpected Storage bucket.") })(UID))
+                check(f.registry.snapshot().isEmpty())
+            }
         },
         "Another cleanup cannot claim the same object" to {
             fixture().apply { register(); registry.abandon(URI); check(registry.claim(URI)); check(!registry.claim(URI)); registry.releaseClaim(URI); check(registry.claim(URI)) }

@@ -30,6 +30,10 @@ class PendingPhotoCleanupUseCase(
                 registry.saved(entry.gsUri)
             } catch (cancelled: CancellationException) {
                 throw cancelled
+            } catch (rejected: IllegalArgumentException) {
+                // Another bucket or owner: no retry can delete it, so stop tracking it.
+                registry.saved(entry.gsUri)
+                reportFailure(rejected)
             } catch (error: Exception) {
                 retry = true
                 reportFailure(error)

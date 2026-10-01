@@ -2,6 +2,8 @@ package au.edu.unimelb.floraguide.data.firebase
 
 import android.content.Context
 import android.util.Log
+import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
+import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoCleanupUseCase
 import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRecord
 import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRecordStore
 import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRegistry
@@ -45,9 +47,7 @@ object PendingPhotoUploads {
             }
 
             override fun remove(gsUri: String) {
-                if (!preferences.edit().remove(gsUri).commit()) {
-                    throw IOException("Could not update the pending-photo journal.")
-                }
+                preferences.edit().remove(gsUri).apply()
             }
         }
         return PendingPhotoRegistry(
@@ -55,6 +55,19 @@ object PendingPhotoUploads {
             processId = processId,
             scheduleCleanup = { uid -> PendingPhotoCleanupWorker.schedule(context, uid) },
             reportFailure = { Log.w(TAG, "Pending-photo cleanup remains queued: ${it.javaClass.simpleName}") },
+        )
+    }
+
+    /** The one cleanup used by the worker and by account deletion. */
+    fun cleanup(context: Context, currentUserId: () -> String?): PendingPhotoCleanupUseCase {
+        val app = context.applicationContext
+        return PendingPhotoCleanupUseCase(
+            registry = get(app),
+            currentUserId = currentUserId,
+            // Also protects a locally saved observation whose cloud sync is still pending.
+            isReferenced = { owner, uri -> FloraGuideDatabase.getInstance(app).observationDao().isPhotoReferenced(owner, uri) },
+            deletePhoto = { owner, uri -> FirebasePhotoStorage(app, expectedUserId = owner).deletePhoto(uri) },
+            reportFailure = { Log.w(TAG, "Cleanup will retry: ${it.javaClass.simpleName}") },
         )
     }
 }

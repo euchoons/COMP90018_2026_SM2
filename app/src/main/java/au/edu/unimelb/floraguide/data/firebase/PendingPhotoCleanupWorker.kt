@@ -12,8 +12,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
-import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoCleanupUseCase
 import com.google.firebase.auth.FirebaseAuth
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -25,18 +23,9 @@ class PendingPhotoCleanupWorker(context: Context, parameters: WorkerParameters) 
         val auth = FirebaseAuth.getInstance()
         if (auth.currentUser?.uid != uid) return Result.success()
         return try {
-            val dao = FloraGuideDatabase.getInstance(applicationContext).observationDao()
-            val cleanup = PendingPhotoCleanupUseCase(
-                registry = PendingPhotoUploads.get(applicationContext),
-                currentUserId = { auth.currentUser?.uid },
-                // Also protects a locally saved observation whose cloud sync is still pending.
-                isReferenced = { owner, uri -> dao.getAllForUser(owner).any { it.remotePhotoUrl == uri } },
-                deletePhoto = { owner, uri ->
-                    FirebasePhotoStorage(applicationContext, expectedUserId = owner).deletePhoto(uri)
-                },
-                reportFailure = { Log.w(TAG, "Cleanup will retry: ${it.javaClass.simpleName}") },
-            )
-            if (cleanup(uid)) Result.retry() else Result.success()
+            val unfinished = PendingPhotoUploads.cleanup(applicationContext) { auth.currentUser?.uid }(uid)
+            // Capped: the journal keeps the work, and the next sign-in or app start schedules it again.
+            if (unfinished && runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.success()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -48,6 +37,7 @@ class PendingPhotoCleanupWorker(context: Context, parameters: WorkerParameters) 
     companion object {
         private const val TAG = "FloraGuide-Cleanup"
         private const val USER_ID = "userId"
+        private const val MAX_ATTEMPTS = 5
 
         fun schedule(context: Context, uid: String) {
             val request = OneTimeWorkRequestBuilder<PendingPhotoCleanupWorker>()
