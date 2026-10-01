@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -92,7 +93,7 @@ data class FloraGuideUiState(
             .size
 
     val canSave: Boolean
-        get() = selectedCandidate != null &&
+        get() = screen == AppScreen.RESULTS && selectedCandidate != null &&
             capture?.location != null &&
             !isClassifying && !isContextLoading && !isSaving
 }
@@ -101,6 +102,8 @@ class FloraGuideViewModel(
     private val container: AppContainer,
 ) : ViewModel() {
     private var analysisJob: Job? = null
+    private var requestGeneration = 0L
+    private var deletingAccount = false
     private var pendingCapture: CaptureSnapshot? = null
     private val observationFactory = CreateObservationUseCase()
     private val _uiState = MutableStateFlow(FloraGuideUiState())
@@ -110,24 +113,45 @@ class FloraGuideViewModel(
     private fun sessionKey(): String? = container.authRepository.getCurrentUser()?.uid
         ?: if (authState.value == AuthState.OfflineGuest) "anonymous_user" else null
 
+    private fun isCurrentRequest(generation: Long, uid: String?): Boolean =
+        requestGeneration == generation && sessionKey() == uid
+
+    /** Invalidate callbacks BEFORE cancellation, and release only the old session's photo. */
+    private fun abandonAnalysis(keepPhoto: StoredPhoto? = null) {
+        requestGeneration++
+        analysisJob?.cancel()
+        analysisJob = null
+        val old = _uiState.value.storedPhoto
+        if (old != null && old.gsUri != keepPhoto?.gsUri) container.pendingPhotos.abandon(old.gsUri)
+        pendingCapture = null
+        _uiState.update {
+            it.copy(storedPhoto = keepPhoto, identificationStage = null, isClassifying = false, isContextLoading = false)
+        }
+    }
+
+    private fun canChangeAnalysis(): Boolean {
+        if (_uiState.value.isSaving || deletingAccount) {
+            showMessage("Finish saving or deleting the account before starting another action.")
+            return false
+        }
+        return true
+    }
+
     init {
         viewModelScope.launch {
             authState.map { sessionKey() }.distinctUntilChanged().collectLatest { uid ->
-                analysisJob?.cancel()
+                abandonAnalysis()
                 _uiState.update { current -> FloraGuideUiState(sensorSnapshot = current.sensorSnapshot) }
                 if (uid != null) {
+                    if (uid != "anonymous_user") container.pendingPhotos.resumeCleanup(uid)
                     try {
                         container.observationRepository.observeAll().collect { observations ->
-                            if (sessionKey() == uid) {
-                                _uiState.update { it.copy(observations = observations) }
-                            }
+                            if (sessionKey() == uid) _uiState.update { it.copy(observations = observations) }
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (_: Exception) {
-                        if (sessionKey() == uid) {
-                            showMessage("Could not load local observations. Please reopen the app.")
-                        }
+                        if (sessionKey() == uid) showMessage("Could not load local observations. Please reopen the app.")
                     }
                 }
             }
@@ -138,6 +162,7 @@ class FloraGuideViewModel(
     }
 
     fun signIn(email: String, pass: String) {
+        if (!canChangeAnalysis()) return
         viewModelScope.launch {
             container.authRepository.signInWithEmail(email, pass)
                 .onFailure { showMessage(it.message ?: "Sign-in failed.") }
@@ -145,6 +170,7 @@ class FloraGuideViewModel(
     }
 
     fun register(email: String, pass: String, name: String) {
+        if (!canChangeAnalysis()) return
         viewModelScope.launch {
             container.authRepository.registerWithEmail(email, pass, name)
                 .onFailure { showMessage(it.message ?: "Registration failed.") }
@@ -152,6 +178,7 @@ class FloraGuideViewModel(
     }
 
     fun signInAnonymously() {
+        if (!canChangeAnalysis()) return
         viewModelScope.launch {
             container.authRepository.signInAnonymously()
                 .onFailure { showMessage(it.message ?: "Guest sign-in failed. You can continue offline.") }
@@ -159,6 +186,8 @@ class FloraGuideViewModel(
     }
 
     fun continueOffline() {
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         viewModelScope.launch { container.authRepository.continueOffline() }
     }
 
@@ -188,45 +217,39 @@ class FloraGuideViewModel(
     }
 
     fun signOut() {
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         viewModelScope.launch { container.authRepository.signOut() }
     }
 
     fun goHome() {
-        analysisJob?.cancel()
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         container.locationTracker.stop()
         _uiState.update {
-            it.copy(
-                screen = AppScreen.HOME,
-                isClassifying = false,
-                isContextLoading = false,
-                isSaving = false,
-                message = null,
-            )
+            it.copy(screen = AppScreen.HOME, photoPath = null, isSaving = false, message = null)
         }
     }
 
     fun goToCollection() {
-        analysisJob?.cancel()
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         container.locationTracker.stop()
         _uiState.update {
-            it.copy(
-                screen = AppScreen.COLLECTION,
-                isClassifying = false,
-                isContextLoading = false,
-                isSaving = false,
-                message = null,
-            )
+            it.copy(screen = AppScreen.COLLECTION, photoPath = null, isSaving = false, message = null)
         }
     }
 
     fun goToAccount() {
-        analysisJob?.cancel()
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         container.locationTracker.stop()
-        _uiState.update { it.copy(screen = AppScreen.ACCOUNT, message = null) }
+        _uiState.update { it.copy(screen = AppScreen.ACCOUNT, photoPath = null, message = null) }
     }
 
     fun goToScan() {
-        analysisJob?.cancel()
+        if (!canChangeAnalysis()) return
+        abandonAnalysis()
         container.locationTracker.stop()
         _uiState.update { current ->
             FloraGuideUiState(
@@ -287,15 +310,14 @@ class FloraGuideViewModel(
         }
     }
 
-    /**
-     * Called at the shutter press. Saving the JPEG can take seconds, long enough for a fix near
-     * the 60 s freshness limit to expire, so time and location are frozen here like the heading.
-     */
+    /** Freeze time and location at shutter press, not at the later JPEG-saved callback. */
     fun beginCapture() {
+        if (!canChangeAnalysis()) return
         pendingCapture = liveCaptureNow()
     }
 
     fun analyzeCapturedPhoto(photoPath: String?, captureHeadingDegrees: Float?) {
+        if (!canChangeAnalysis()) return
         if (photoPath.isNullOrBlank()) {
             showMessage("Capture a photo before starting identification.")
             return
@@ -303,11 +325,7 @@ class FloraGuideViewModel(
         val capture = (pendingCapture ?: liveCaptureNow()).copy(headingDegrees = captureHeadingDegrees)
         pendingCapture = null
         container.locationTracker.stop()
-        startAnalysis(
-            photoPath = photoPath,
-            preferLiveData = true,
-            capture = capture,
-        )
+        startAnalysis(photoPath = photoPath, preferLiveData = true, capture = capture)
     }
 
     private fun liveCaptureNow(): CaptureSnapshot {
@@ -316,11 +334,7 @@ class FloraGuideViewModel(
             observationId = UUID.randomUUID().toString(),
             capturedAt = Instant.now(),
             location = location,
-            locationSource = if (location != null) {
-                CaptureLocationSource.DEVICE
-            } else {
-                CaptureLocationSource.UNAVAILABLE
-            },
+            locationSource = if (location != null) CaptureLocationSource.DEVICE else CaptureLocationSource.UNAVAILABLE,
             headingDegrees = null,
         )
     }
@@ -328,7 +342,8 @@ class FloraGuideViewModel(
     fun retryIdentification() {
         val current = _uiState.value
         val capture = current.capture ?: return
-        if (current.isClassifying || current.isSaving || current.photoPath == null) return
+        if (current.screen != AppScreen.RESULTS || current.isClassifying || current.isContextLoading ||
+            current.isSaving || current.photoPath == null || deletingAccount) return
         startAnalysis(
             photoPath = current.photoPath,
             preferLiveData = true,
@@ -338,6 +353,7 @@ class FloraGuideViewModel(
     }
 
     fun runGuidedDemo() {
+        if (!canChangeAnalysis()) return
         container.locationTracker.stop()
         val capture = CaptureSnapshot(
             observationId = UUID.randomUUID().toString(),
@@ -354,20 +370,14 @@ class FloraGuideViewModel(
                 selectedHabitat = Habitat.TREE_CANOPY,
             )
         }
-        startAnalysis(
-            photoPath = null,
-            preferLiveData = false,
-            capture = capture,
-        )
+        startAnalysis(photoPath = null, preferLiveData = false, capture = capture)
     }
 
     fun retryContextLookup() {
         val current = _uiState.value
         val capture = current.capture ?: return
-        if (
-            current.imagePredictions.isEmpty() || current.isContextLoading || current.isSaving ||
-            !current.analysisPrefersLiveData
-        ) return
+        if (current.screen != AppScreen.RESULTS || current.imagePredictions.isEmpty() || current.isContextLoading ||
+            current.isClassifying || current.isSaving || !current.analysisPrefersLiveData || deletingAccount) return
         if (capture.location == null) {
             showMessage("This photo has no usable capture location. Enable location and take a new photo.")
             return
@@ -378,26 +388,26 @@ class FloraGuideViewModel(
                 return
             }
         }
+        val uid = sessionKey() ?: return
+        requestGeneration++
+        val generation = requestGeneration
         analysisJob?.cancel()
+        _uiState.update { it.copy(isContextLoading = true) }
         analysisJob = viewModelScope.launch {
-            fetchAndFuse(
-                predictions = current.imagePredictions,
-                preferLiveData = true,
-                capture = capture,
-            )
+            fetchAndFuse(current.imagePredictions, true, capture, generation, uid)
         }
     }
 
     fun confirmSelectedObservation() {
         val uid = sessionKey() ?: return
         val current = _uiState.value
+        if (current.screen != AppScreen.RESULTS || current.isClassifying || current.isContextLoading || current.isSaving || deletingAccount) return
         val capture = current.capture ?: return
         val selected = current.selectedCandidate ?: return
         if (capture.location == null) {
             showMessage("A usable capture location is required before saving this observation. Retake with location enabled.")
             return
         }
-
         val observation = runCatching {
             observationFactory(
                 capture = capture,
@@ -414,16 +424,28 @@ class FloraGuideViewModel(
             showMessage(it.message ?: "Could not prepare this observation.")
             return
         }
-
+        val photoUri = current.storedPhoto?.gsUri
+        try {
+            container.pendingPhotos.beginSave(photoUri)
+        } catch (error: Exception) {
+            showMessage(error.message ?: "Could not protect this photo for saving. Please retry.")
+            return
+        }
+        val generation = requestGeneration
         _uiState.update { it.copy(isSaving = true) }
-        viewModelScope.launch {
-            if (sessionKey() != uid) return@launch
+        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            var saved = false
             try {
+                if (!isCurrentRequest(generation, uid)) return@launch
                 container.observationRepository.save(observation)
-                if (sessionKey() == uid) {
+                saved = true
+                container.pendingPhotos.saved(photoUri)
+                if (isCurrentRequest(generation, uid)) {
                     _uiState.update {
                         it.copy(
                             screen = AppScreen.COLLECTION,
+                            storedPhoto = null,
+                            photoPath = null,
                             isSaving = false,
                             message = "Observation saved using the capture-time location.",
                         )
@@ -432,10 +454,10 @@ class FloraGuideViewModel(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                if (sessionKey() == uid) {
-                    _uiState.update { it.copy(isSaving = false) }
-                    showMessage("Could not save this observation. Please retry.")
-                }
+                if (isCurrentRequest(generation, uid)) showMessage("Could not save this observation. Please retry.")
+            } finally {
+                if (!saved) container.pendingPhotos.saveFailed(photoUri)
+                if (isCurrentRequest(generation, uid)) _uiState.update { it.copy(isSaving = false) }
             }
         }
     }
@@ -455,24 +477,39 @@ class FloraGuideViewModel(
     }
 
     fun showMessage(message: String) = _uiState.update { it.copy(message = message) }
-
     fun clearMessage() = _uiState.update { it.copy(message = null) }
+
     fun deleteAccount() {
+        if (!canChangeAnalysis()) return
         val uid = sessionKey() ?: return
+        val oldAnalysis = analysisJob
+        abandonAnalysis()
+        deletingAccount = true
         viewModelScope.launch {
             try {
+                oldAnalysis?.join()
+                if (sessionKey() != uid) return@launch
+                // Deleting Auth first would make this user's pending objects inaccessible forever.
+                if (container.cleanupPendingPhotos(uid)) {
+                    showMessage("Pending photo cleanup has not finished. Reconnect and retry account deletion.")
+                    return@launch
+                }
+                if (sessionKey() != uid) return@launch
                 container.authRepository.deleteAccount()
-                    .onSuccess {
-                        clearMessage() // AuthState transition will automatically route the user out
-                    }
+                    .onSuccess { if (sessionKey() == uid) clearMessage() }
                     .onFailure { error ->
-                        showMessage(error.message ?: "Could not delete account. You may need to sign in again to verify your credentials.")
+                        if (sessionKey() == uid) showMessage(error.message ?: "Could not delete account. You may need to sign in again to verify your credentials.")
                     }
             } catch (cancelled: CancellationException) {
                 throw cancelled
+            } catch (_: Exception) {
+                if (sessionKey() == uid) showMessage("Could not clean up pending photos. Reconnect and retry account deletion.")
+            } finally {
+                deletingAccount = false
             }
         }
     }
+
     private fun startAnalysis(
         photoPath: String?,
         preferLiveData: Boolean,
@@ -480,34 +517,35 @@ class FloraGuideViewModel(
         previouslyUploaded: StoredPhoto? = null,
     ) {
         val uid = sessionKey() ?: return
-        analysisJob?.cancel()
+        abandonAnalysis(keepPhoto = previouslyUploaded)
+        val generation = requestGeneration
+        // Set busy state synchronously to reject a second click before launch is dispatched.
+        _uiState.update {
+            it.copy(
+                screen = AppScreen.RESULTS,
+                photoPath = photoPath,
+                storedPhoto = previouslyUploaded,
+                capture = capture,
+                identificationStage = null,
+                analysisError = null,
+                imagePredictions = emptyList(),
+                imageSource = null,
+                imageElapsedMillis = null,
+                predictedOrgan = null,
+                imageOnlyRanking = emptyList(),
+                fusedRanking = emptyList(),
+                nearbyContext = null,
+                analysisDate = capture.capturedAt.atZone(ZoneId.systemDefault()).toLocalDate(),
+                selectedSpeciesId = null,
+                isClassifying = true,
+                isContextLoading = false,
+                isSaving = false,
+                message = null,
+                analysisPrefersLiveData = preferLiveData,
+            )
+        }
         analysisJob = viewModelScope.launch {
-            if (sessionKey() != uid) return@launch
-            _uiState.update {
-                it.copy(
-                    screen = AppScreen.RESULTS,
-                    photoPath = photoPath,
-                    storedPhoto = previouslyUploaded,
-                    capture = capture,
-                    identificationStage = null,
-                    analysisError = null,
-                    imagePredictions = emptyList(),
-                    imageSource = null,
-                    imageElapsedMillis = null,
-                    predictedOrgan = null,
-                    imageOnlyRanking = emptyList(),
-                    fusedRanking = emptyList(),
-                    nearbyContext = null,
-                    analysisDate = capture.capturedAt.atZone(ZoneId.systemDefault()).toLocalDate(),
-                    selectedSpeciesId = null,
-                    isClassifying = true,
-                    isContextLoading = false,
-                    isSaving = false,
-                    message = null,
-                    analysisPrefersLiveData = preferLiveData,
-                )
-            }
-
+            if (!isCurrentRequest(generation, uid)) return@launch
             try {
                 val classification = if (preferLiveData) {
                     check(container.isPlantNetConfigured) {
@@ -518,11 +556,14 @@ class FloraGuideViewModel(
                         localPath = localPath,
                         previouslyUploaded = previouslyUploaded,
                         onUploaded = { stored ->
-                            if (sessionKey() != uid) throw CancellationException("Account changed")
+                            if (!isCurrentRequest(generation, uid)) {
+                                if (_uiState.value.storedPhoto?.gsUri != stored.gsUri) container.pendingPhotos.abandon(stored.gsUri)
+                                throw CancellationException("Analysis session changed")
+                            }
                             _uiState.update { it.copy(storedPhoto = stored) }
                         },
                         onStage = { stage ->
-                            if (sessionKey() != uid) throw CancellationException("Account changed")
+                            if (!isCurrentRequest(generation, uid)) throw CancellationException("Analysis session changed")
                             _uiState.update { it.copy(identificationStage = stage) }
                         },
                     )
@@ -530,9 +571,7 @@ class FloraGuideViewModel(
                     container.imageClassifier.classify(null)
                 }
                 currentCoroutineContext().ensureActive()
-                if (sessionKey() != uid) throw CancellationException("Account changed")
-
-                // Rank, display and save the same candidates that are checked against ALA.
+                if (!isCurrentRequest(generation, uid)) throw CancellationException("Analysis session changed")
                 val predictions = classification.predictions.take(MAX_ALA_CANDIDATES)
                 val imageOnly = container.rankCandidates.imageOnly(predictions)
                 _uiState.update {
@@ -549,18 +588,20 @@ class FloraGuideViewModel(
                         isContextLoading = true,
                     )
                 }
-                fetchAndFuse(predictions, preferLiveData, capture)
+                fetchAndFuse(predictions, preferLiveData, capture, generation, uid)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isClassifying = false,
-                        isContextLoading = false,
-                        message = error.message ?: "Analysis failed.",
-                        analysisError = error.message ?: "Analysis failed.",
-                        identificationStage = null,
-                    )
+                if (isCurrentRequest(generation, uid)) {
+                    _uiState.update {
+                        it.copy(
+                            isClassifying = false,
+                            isContextLoading = false,
+                            message = error.message ?: "Analysis failed.",
+                            analysisError = error.message ?: "Analysis failed.",
+                            identificationStage = null,
+                        )
+                    }
                 }
             }
         }
@@ -570,11 +611,13 @@ class FloraGuideViewModel(
         predictions: List<ImagePrediction>,
         preferLiveData: Boolean,
         capture: CaptureSnapshot,
+        generation: Long,
+        uid: String,
     ) {
-        val uid = sessionKey()
+        currentCoroutineContext().ensureActive()
+        if (!isCurrentRequest(generation, uid)) throw CancellationException("Analysis session changed")
         _uiState.update { it.copy(isContextLoading = true, message = null) }
         val candidates = predictions.take(MAX_ALA_CANDIDATES)
-
         try {
             val nearby = when {
                 !preferLiveData -> container.speciesContextRepository.nearbyOccurrenceCounts(
@@ -596,9 +639,8 @@ class FloraGuideViewModel(
                     preferLiveData = true,
                 )
             }
-
             currentCoroutineContext().ensureActive()
-            if (sessionKey() != uid) throw CancellationException("Account changed")
+            if (!isCurrentRequest(generation, uid)) throw CancellationException("Analysis session changed")
             val latest = _uiState.value
             val fused = if (!preferLiveData) {
                 container.rankCandidates(
@@ -610,18 +652,14 @@ class FloraGuideViewModel(
             } else {
                 container.rankCandidates.live(candidates, nearby, latest.analysisDate.monthValue, latest.predictedOrgan)
             }
-
             _uiState.update {
-                it.copy(
-                    fusedRanking = fused,
-                    nearbyContext = nearby,
-                    isContextLoading = false,
-                    message = nearby.warning,
-                )
+                it.copy(fusedRanking = fused, nearbyContext = nearby, isContextLoading = false, message = nearby.warning)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
+            if (!isCurrentRequest(generation, uid)) return
+            currentCoroutineContext().ensureActive()
             val unavailable = NearbyContext(
                 countsBySpeciesId = emptyMap(),
                 source = ContextDataSource.ALA_UNAVAILABLE,
@@ -629,19 +667,14 @@ class FloraGuideViewModel(
                 warning = "ALA lookup failed, so no geographic adjustment is applied.",
             )
             val latest = _uiState.value
-            // The flowering cue needs no ALA data, so a failed lookup must not drop it.
+            // Keep the existing flowering cue when ALA fails.
             val fused = if (preferLiveData) {
                 container.rankCandidates.live(candidates, unavailable, latest.analysisDate.monthValue, latest.predictedOrgan)
             } else {
                 container.rankCandidates.imageOnly(candidates)
             }
             _uiState.update {
-                it.copy(
-                    fusedRanking = fused,
-                    isContextLoading = false,
-                    nearbyContext = unavailable,
-                    message = error.message ?: "Context lookup failed.",
-                )
+                it.copy(fusedRanking = fused, isContextLoading = false, nearbyContext = unavailable, message = error.message ?: "Context lookup failed.")
             }
         }
     }
@@ -652,30 +685,21 @@ class FloraGuideViewModel(
         if (current.imagePredictions.isEmpty() || current.isContextLoading) return
         val candidates = current.imagePredictions.take(MAX_ALA_CANDIDATES)
         val fused = if (current.imageSource == ImageSource.DEMO_ADAPTER) {
-            container.rankCandidates(
-                predictions = candidates,
-                nearbyCounts = context.countsBySpeciesId,
-                habitat = current.selectedHabitat,
-                date = current.analysisDate,
-            )
+            container.rankCandidates(predictions = candidates, nearbyCounts = context.countsBySpeciesId, habitat = current.selectedHabitat, date = current.analysisDate)
         } else {
             container.rankCandidates.live(candidates, context, current.analysisDate.monthValue, current.predictedOrgan)
         }
-        _uiState.update {
-            it.copy(fusedRanking = fused)
-        }
+        _uiState.update { it.copy(fusedRanking = fused) }
     }
 
     override fun onCleared() {
-        analysisJob?.cancel()
+        abandonAnalysis()
         container.sensorMonitor.stop()
         container.locationTracker.stop()
         super.onCleared()
     }
 
-    class Factory(
-        private val container: AppContainer,
-    ) : ViewModelProvider.Factory {
+    class Factory(private val container: AppContainer) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(FloraGuideViewModel::class.java))
@@ -684,11 +708,7 @@ class FloraGuideViewModel(
     }
 }
 
-val CAMPUS_DEMO_LOCATION = GeoPoint(
-    latitude = -37.7963,
-    longitude = 144.9614,
-)
-
+val CAMPUS_DEMO_LOCATION = GeoPoint(latitude = -37.7963, longitude = 144.9614)
 private val GUIDED_DEMO_DATE: LocalDate = LocalDate.of(2026, 8, 17)
 
 /** Instants are UTC; users see capture and retry times in the device's zone. */
