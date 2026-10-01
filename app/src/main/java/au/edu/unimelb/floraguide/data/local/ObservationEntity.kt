@@ -81,6 +81,9 @@ interface ObservationDao {
     @Query("DELETE FROM cached_observations WHERE userId = :userId AND id = :id AND syncState = 'SYNCED' AND revision <= :revision")
     suspend fun removeRemote(userId: String, id: String, revision: Long)
 
+    @Query("SELECT EXISTS(SELECT 1 FROM cached_observations WHERE userId = :userId AND remotePhotoUrl = :uri AND syncState NOT IN ('PENDING_DELETE', 'DELETED'))")
+    suspend fun isPhotoReferenced(userId: String, uri: String): Boolean
+
     @Query("SELECT EXISTS(SELECT 1 FROM observation_imports WHERE name = :name)")
     suspend fun hasImported(name: String): Boolean
 
