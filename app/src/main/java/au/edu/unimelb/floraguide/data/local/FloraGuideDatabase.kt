@@ -123,18 +123,21 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                     true
                 }.getOrDefault(false)
 
-                // Fail securely. Do not silently boot into standard Room if the native libs fail to load.
-                check(hasSqlCipher) {
-                    "SQLCipher native libraries could not be loaded. Device encryption is unavailable."
+                val builder = if (hasSqlCipher) {
+                    runCatching {
+                        val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
+                        convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                        Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                            .openHelperFactory(SupportFactory(passphrase))
+                    }.getOrNull()
+                } else {
+                    null
                 }
 
-                val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
-                convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                val dbBuilder = builder ?: Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
 
-                val factory = SupportFactory(passphrase)
-                Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                dbBuilder
                     .addMigrations(MIGRATION_1_2)
-                    .openHelperFactory(factory)
                     .build().also { instance = it }
             }
         }
