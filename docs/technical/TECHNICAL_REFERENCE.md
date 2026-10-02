@@ -21,7 +21,7 @@ Versions are centralised in `gradle/libs.versions.toml`. Update them through a r
 
 ## Pl@ntNet identification request
 
-Image recognition is a cloud call to the Pl@ntNet v2 API:
+The application first uploads the captured photo to Firebase Storage and downloads the stored bytes through `IdentifyStoredPhotoUseCase`. That downloaded image is sent to the Pl@ntNet v2 API:
 
 ```text
 POST https://my-api.plantnet.org/v2/identify/all
@@ -31,9 +31,7 @@ multipart/form-data:
     images=<captured JPEG>
 ```
 
-Only `results[].score` and `results[].species.scientificNameWithoutAuthor` (plus the optional
-`commonNames`) are consumed. Scores are per-species confidences and do **not** sum to 1;
-normalisation is the ranking use case's job.
+`results[].score`, `results[].species.scientificNameWithoutAuthor`, optional `commonNames` and predicted-organ metadata are consumed, alongside model/quota telemetry. Raw scores do **not** sum to 1; normalisation is the ranking use case's job, and the UI treats them as relative ranking evidence.
 
 The API requests eight results; the current ViewModel keeps the first five for both image-only
 and live ranking. Each candidate requires a name-match request followed by an occurrence
@@ -42,7 +40,7 @@ logged after every call so the team can see the budget before a demo.
 
 The key is read from `plantnet.api.key` in the git-ignored `local.properties` and exposed through
 `BuildConfig`. It is therefore present inside the APK: acceptable for coursework, not secret
-storage. Without a key the app builds, but live identification reports the missing key;
+storage. Request logs record the endpoint without its query string, so the key never reaches logcat. Without a key the app builds, but live identification reports the missing key;
 the explicit guided demo remains available.
 
 Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.
@@ -95,22 +93,7 @@ app's full name-resolution path. It checks three names and requires `curl` and `
 
 ### Current live rule (trained in #20)
 
-```text
-support(s) = ln(1 + min(count(s), 50)) / ln(51)
-season(s) = f if the photo is a flower and every documented flowering month of s
-            is more than one month from the capture month, otherwise 1
-weight(s) = imageScore(s) * (1 + c * support(s)) * season(s)
-relativeScore(s) = weight(s) / sum(weight)
-```
-
-Training set `c = 20.5` and `f = 1.0`, with an 8 km radius; see
-[fusion training](FUSION_EVALUATION.md). A name ALA cannot match counts as zero records. If any
-lookup failed, geographic support is neutral for every candidate. Zero counts give a neutral
-multiplier of 1; the maximum is 21.5. The flowering check needs Pl@ntNet's predicted organ to be a flower with a
-score of at least 0.5, and species without documented months are never out of season. The
-months come from VicFlora flowering statements for 75 common Parkville species (see the
-missing-context policy). With `f = 1.0` the check is shown but does not reorder. Habitat is not
-an input to `live()`. On 156 held-out photos the trained rule raised Top-1 from 81% to 88%.
+The [missing-context policy](MISSING_CONTEXT_POLICY.md#ranking-and-location) is the canonical reference for the live geographic rule, complete-context requirement, candidate limit and location eligibility. Its [flowering section](MISSING_CONTEXT_POLICY.md#flowering-season) defines the independently applied season factor. Habitat is metadata only. [Fusion training](FUSION_EVALUATION.md) records how #20 trained the location cap of 20.5 and the season factor of 1.0, and how the rule was tested.
 
 ### Synthetic guided demo only
 
@@ -155,11 +138,11 @@ The flowering cue can be ablated with the bundled VicFlora table. Habitat is not
 
 ### Performance
 
-- image preprocessing and inference latency;
+- Pl@ntNet identification latency (upload and response);
 - ALA request latency and success rate;
 - time until image-only result;
 - time until fused result;
-- cache hit rate;
+- ALA response-cache hit rate if a context cache is introduced; the current Room store holds observations;
 - energy or sampling considerations for sensors.
 
 ### Robustness

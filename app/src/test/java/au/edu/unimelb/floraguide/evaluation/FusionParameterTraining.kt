@@ -24,7 +24,7 @@ import org.junit.Test
  * #20: fits the fusion parameters on cached cases and reports them on held-out test cases. Everything replays
  * through the app's own name matching and ranking, with no network calls. tools/build-evaluation-set.py
  * collects the data; the report goes to build/reports/evaluation/fusion-training.md, and
- * docs/FUSION_EVALUATION.md records the results the app adopted.
+ * docs/technical/FUSION_EVALUATION.md records the results the app adopted.
  *
  * Splits: train.json plus pilot.json's dev half form the training pool, used with five-fold cross-validation
  * to fit the location cap and choose the radius; pilot.json's holdout half is the test set.

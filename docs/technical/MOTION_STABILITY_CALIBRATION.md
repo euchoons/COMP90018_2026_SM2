@@ -143,7 +143,7 @@ Angular motion dominates handheld blur. For a rotation `ω` held for exposure `t
 blur_px ≈ ω · t · f_px          f_px = (width / 2) / tan(HFOV / 2)
 ```
 
-Assuming a 1920 px wide capture (the cap set in `CAMERA_VALIDATION.md`) and a 70° horizontal field of view, `f_px ≈ 1371 px/rad`:
+Assuming a 1920 px wide capture (the cap set in [camera validation](../testing/CAMERA_VALIDATION.md)) and a 70° horizontal field of view, `f_px ≈ 1371 px/rad`:
 
 | Exposure | Blur at 49 °/s (gate limit) | Blur at 11 °/s (old limit) |
 |---|---:|---:|
@@ -169,7 +169,7 @@ Reading of this:
 
 ## Device calibration procedure
 
-The current values have been confirmed informally in hand-held use, but no numbers are recorded yet. This procedure is the evidence that converts "works for me" into "calibrated"; `CONTRIBUTING.md` requires physical devices for sensor claims, and the plan requires at least two phones.
+The current values have been confirmed informally in hand-held use, but no numbers are recorded yet. This procedure is the evidence that converts "works for me" into "calibrated"; [contribution policy](../../CONTRIBUTING.md) requires physical devices for sensor claims, and the plan requires at least two phones.
 
 Temporarily log `accelerationDeviation`, `angularVelocity` and `score` from `SensorMonitor`, then record each condition for about 30 s:
 

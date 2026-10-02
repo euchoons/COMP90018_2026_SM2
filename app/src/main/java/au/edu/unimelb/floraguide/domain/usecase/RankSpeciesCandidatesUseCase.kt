@@ -39,7 +39,7 @@ class RankSpeciesCandidatesUseCase(
 
     /**
      * Coursework heuristic, not a calibrated probability model. The defaults were fitted in #20
-     * (docs/FUSION_EVALUATION.md).
+     * (docs/technical/FUSION_EVALUATION.md).
      * support = log(1 + min(count, 50)) / log(51)
      * weight = originalImageScore * (1 + 20.5 * support) * season
      * Normalise within the candidate set. Zero records apply no penalty.

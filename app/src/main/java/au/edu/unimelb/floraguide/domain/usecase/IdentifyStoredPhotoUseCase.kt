@@ -24,6 +24,7 @@ class PhotoIdentificationException(
 class IdentifyStoredPhotoUseCase(
     private val photoStore: PhotoStore,
     private val classifier: ImageClassifier,
+    private val onUndeliveredUpload: (StoredPhoto) -> Unit = {},
 ) {
     suspend operator fun invoke(
         localPath: String,
@@ -33,18 +34,22 @@ class IdentifyStoredPhotoUseCase(
     ): ImageClassification {
         var stage = IdentificationStage.UPLOADING
         var downloaded: File? = null
+        var stored: StoredPhoto? = null
+        var deliveredToCaller = false
         try {
             currentCoroutineContext().ensureActive()
-            val stored = previouslyUploaded ?: run {
+            val uploaded = previouslyUploaded ?: run {
                 onStage(stage)
                 photoStore.uploadPhoto(localPath)
             }
+            stored = uploaded
             currentCoroutineContext().ensureActive()
-            onUploaded(stored)
+            onUploaded(uploaded)
+            deliveredToCaller = true
 
             stage = IdentificationStage.DOWNLOADING
             onStage(stage)
-            downloaded = photoStore.downloadPhoto(stored)
+            downloaded = photoStore.downloadPhoto(uploaded)
             currentCoroutineContext().ensureActive()
 
             stage = IdentificationStage.IDENTIFYING
@@ -58,7 +63,16 @@ class IdentifyStoredPhotoUseCase(
         } catch (error: Exception) {
             throw PhotoIdentificationException(stage, error)
         } finally {
-            // Only delete the cloud-download cache; keep the camera original and cloud object.
+            // A completed upload can be cancelled before the ViewModel receives its reference.
+            // Only a newly uploaded, undelivered object is released here. Retry-owned photos stay.
+            if (!deliveredToCaller && previouslyUploaded == null) {
+                stored?.let { photo ->
+                    try { onUndeliveredUpload(photo) } catch (_: Exception) {
+                        // Keep the primary error/cancellation. The durable journal recovers on restart.
+                    }
+                }
+            }
+            // The camera original is never deleted. The ViewModel owns delivered cloud references.
             downloaded?.delete()
         }
     }

@@ -65,7 +65,7 @@ checking per source. VicFlora was sufficient for the initial scope.
 | Option | Behaviour | Decision |
 |---|---|---|
 | Boost in-season species, only when all five candidates have data (the ALA pattern) | Unknown species are never favoured against, but a small table seldom covers all five world-flora candidates, so the cue would rarely apply | Rejected |
-| Lower documented mismatches only, per candidate | Unknown counts as in season, so partial coverage cannot favour species that have data | Adopted; #20 then trained the factor to 1.0, because it mostly lowered correct species ([training](FUSION_EVALUATION.md#why-training-chose-these-values)) |
+| Lower documented mismatches only, per candidate | Unknown counts as in season, so partial coverage cannot favour species that have data | Adopted; #20 then trained the factor to 1.0, because it mostly lowered correct species ([training](FUSION_EVALUATION.md#flowering)) |
 
 ## Names (#18)
 

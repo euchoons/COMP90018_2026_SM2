@@ -6,7 +6,7 @@ import kotlin.math.exp
  * Turns accelerometer and gyroscope motion into a smoothed 0..1 stability score.
  *
  * Kept free of Android types so the calibrated constants can be unit-tested. The derivation of
- * each constant is in docs/MOTION_STABILITY_CALIBRATION.md.
+ * each constant is in docs/technical/MOTION_STABILITY_CALIBRATION.md.
  */
 class MotionStabilityEstimator {
     var score: Double = 0.0

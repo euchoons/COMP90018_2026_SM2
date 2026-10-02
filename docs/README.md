@@ -1,26 +1,51 @@
 # Documentation index
 
+Start with the quick start, then use the sections below for product scope, current implementation, testing and historical records. Run documented commands from the repository root unless a document says otherwise.
+
 ## Start here
 
-- [`FLORAGUIDE.md`](FLORAGUIDE.md) — project guide: prototype boundary, five-minute setup, reading route, user flow, architecture summary and repository policy.
+- [Quick start and user flow](FLORAGUIDE.md) — prerequisites, local configuration, build commands and guided/live routes.
+- [App overview](APP_OVERVIEW.md) — user problem, intended MVP and success measures.
+- [Project status and roadmap](PROJECT_STATUS_AND_ROADMAP.md) — implemented capabilities, remaining work and scope decisions, including the dropped on-device model (#50).
+- [Data handling and limitations](PRIVACY_POLICY.md) — current location, storage, diagnostic and deletion behaviour.
+- [Contribution workflow](../CONTRIBUTING.md) — issues, branches, review, evidence and AI acknowledgement.
 
-## Understand the product
+## Technical reference
 
-- [`APP_OVERVIEW.md`](APP_OVERVIEW.md) — user problem, product concept, MVP, non-goals and success measures.
+- [Architecture](technical/ARCHITECTURE.md) — dependencies, package responsibilities, runtime flow and fallbacks.
+- [Technical reference](technical/TECHNICAL_REFERENCE.md) — toolchain, API requests, demo formula and evaluation measures.
+- [Missing-context policy](technical/MISSING_CONTEXT_POLICY.md) — authoritative description of the live ranking rule, location eligibility, missing evidence and flowering data.
+- [Fusion data sources](technical/FUSION_DATA_SOURCES.md) — evidence behind the season, taxonomy, location and habitat decisions.
+- [Fusion training](technical/FUSION_EVALUATION.md) — how the live rule was trained on iNaturalist photos (#20), with the held-out comparison against image-only ranking, ablations and limitations.
+- [Motion stability calibration](technical/MOTION_STABILITY_CALIBRATION.md) — threshold derivations and the physical-device calibration still required.
 
-## Understand the implementation
+## Testing and verification
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — package map, runtime flow, algorithms, fallbacks and replacement seams.
-- [`PROJECT_STATUS_AND_ROADMAP.md`](PROJECT_STATUS_AND_ROADMAP.md) — current truth, decisions required, milestones and risk controls.
-- [`TECHNICAL_REFERENCE.md`](TECHNICAL_REFERENCE.md) — toolchain, ALA request shape, fusion formula and evaluation measures.
-- [`MISSING_CONTEXT_POLICY.md`](MISSING_CONTEXT_POLICY.md) — live ranking rules, missing-context handling and the VicFlora flowering data.
-- [`FUSION_DATA_SOURCES.md`](FUSION_DATA_SOURCES.md) — data sources compared for the season, location and habitat cues, with the measurements behind each decision.
-- [`FUSION_EVALUATION.md`](FUSION_EVALUATION.md) — how the fusion parameters were trained on iNaturalist photos, and the held-out comparison with image-only ranking.
-- [`CAMERA_VALIDATION.md`](CAMERA_VALIDATION.md) — CameraX lifecycle, capture, rotation, resize and permission review, Firebase upload check and device test checklist.
-- [`MOTION_STABILITY_CALIBRATION.md`](MOTION_STABILITY_CALIBRATION.md) — stability gate constants, what they allow in m/s² and °/s, why they were relaxed, and the calibration runs still required.
-- [`HARDWARE_ADAPTERS_VERIFICATION.md`](HARDWARE_ADAPTERS_VERIFICATION.md) — ambient-light guidance, compass heading and missing-sensor fallbacks, with the device checks still outstanding.
+These documents distinguish test specifications, earlier checks and pending physical-device work. A checklist or historical PASS does not establish a result for a later build.
 
-## Complete Assignment 1
+- [API test cases](testing/API_TEST_CASES.md) — scoped regression inventory, baseline and execution instructions.
+- [API test baseline](testing/api-test-baseline.json) — source fingerprints and test selection used by `tools/test-api.ps1`; keep this path stable.
+- [Device API test cases](testing/DEVICE_API_TEST_CASES.md) — DT-01 through DT-14 specifications and the execution register.
+- [Camera validation](testing/CAMERA_VALIDATION.md) — camera fixes, the reviewed capture/upload path and outstanding device checks.
+- [Hardware adapters verification](testing/HARDWARE_ADAPTERS_VERIFICATION.md) — light/heading behaviour and outstanding device checks.
 
-- [`assignment-1/FloraGuide Android Mobile App Project Plan Assessment 1.docx`](<assignment-1/FloraGuide Android Mobile App Project Plan Assessment 1.docx>) — submitted project plan.
-- [`assignment-1/AI_USE_LOG.md`](assignment-1/AI_USE_LOG.md) — AI-use record and acknowledgement draft.
+`evidence/` holds local screenshots, run summaries, recordings and import archives. Its contents are git-ignored by default; only `.gitkeep` is tracked. Review and deliberately include any evidence needed for submission. Keep maintained specifications and reports in the tracked directories above.
+
+## Assignment 1
+
+- [Project plan — Markdown](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) — original proposal wording, tables, formulas and nine figures.
+- [Project plan — original PDF](<assignment-1/COMP90018_2026_T01_03_03 Assignment 1.pdf>) — source document for the Markdown conversion.
+- [AI use log](assignment-1/AI_USE_LOG.md) — tool-use record and acknowledgement draft.
+
+The submitted plan is a historical scope reference. Later decisions belong in the current roadmap. Keep its Markdown file beside `COMP90018_2026_T01_03_03_Assignment_1_assets/` so the figures resolve.
+
+## Historical records
+
+- [Initial milestones](archive/INITIAL_MILESTONES.md) — the original pre-submission checklist and proposed delivery stages.
+- [Cache and account repair verification](archive/CACHE_AUTH_REPAIR_VERIFICATION.md) — the original repair and UI-integration results, with later limitations identified separately.
+- [API test authoring verification](archive/API_TEST_AUTHOR_VERIFICATION.md) — syntax/package checks against the 2026-09-24 source snapshot.
+- [API test PR drafting aid](archive/API_TEST_PR.md) — the original draft and unfilled evidence fields, retained for provenance.
+
+## Maintaining these docs
+
+Update feature status and decisions in the roadmap, runtime structure in the architecture, live-ranking semantics in the missing-context policy, and data handling in the privacy document. Other pages should link to those details. Keep completed experiment reports tied to their data and revision, and keep unexecuted checks marked as pending.
