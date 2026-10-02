@@ -210,24 +210,27 @@ class FirebaseAuthRepositoryTest {
         val tokenResult = mockk<GetTokenResult> { every { claims } returns mapOf("auth_time" to freshAuthTime) }
         every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
 
-        val rootRef = mockk<StorageReference>()
-        val userStorageRef = mockk<StorageReference>()
-        val photoRef = mockk<StorageReference>()
-        val listResult = mockk<ListResult>()
+        val rootRef = mockk<StorageReference>(relaxed = true)
+        val userStorageRef = mockk<StorageReference>(relaxed = true)
+        val photoRef = mockk<StorageReference>(relaxed = true)
+        val listResult = mockk<ListResult>(relaxed = true)
 
         every { storage.reference } returns rootRef
         every { rootRef.child("plant_photos/user-123") } returns userStorageRef
         every { userStorageRef.listAll() } returns Tasks.forResult(listResult)
         every { listResult.items } returns listOf(photoRef)
+        every { listResult.prefixes } returns emptyList()
+        every { photoRef.path } returns "plant_photos/user-123/photo.jpg"
         every { photoRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
 
         val userDoc = mockk<DocumentReference>()
         val obsCollection = mockk<CollectionReference>()
         val querySnapshot = mockk<QuerySnapshot>()
-        val docSnap = mockk<QueryDocumentSnapshot>()
+        val docSnap = mockk<QueryDocumentSnapshot>(relaxed = true)
         val docRef = mockk<DocumentReference>()
 
         every { querySnapshot.documents } returns listOf(docSnap)
+        every { docSnap.getString("userId") } returns "user-123"
         every { docSnap.reference } returns docRef
         every { docRef.delete() } returns Tasks.forResult(null)
 
@@ -244,9 +247,16 @@ class FirebaseAuthRepositoryTest {
             Result.failure(cancelled)
         }
 
-        if (photoError != null && (photoError as? StorageException)?.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND) {
+        if (photoError is CancellationException) {
             assertTrue(result.isFailure)
-            if (photoError is CancellationException) assertTrue(result.exceptionOrNull() is CancellationException)
+            assertTrue(result.exceptionOrNull() is CancellationException)
+            verify(exactly = 0) { docRef.delete(); userDoc.delete(); u.delete() }
+            return
+        }
+
+        val storageEx = photoError as? StorageException
+        if (photoError != null && storageEx?.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND && storageEx?.errorCode != 404) {
+            assertTrue(result.isFailure)
             verify(exactly = 0) { docRef.delete(); userDoc.delete(); u.delete() }
             return
         }
@@ -293,7 +303,7 @@ class FirebaseAuthRepositoryTest {
         every { u.delete() } returns Tasks.forException(Exception("Network unavailable"))
 
         val rootRef = mockk<StorageReference>(relaxed = true)
-        val listResult = mockk<ListResult>()
+        val listResult = mockk<ListResult>(relaxed = true)
         every { storage.reference } returns rootRef
         every { rootRef.child(any()).listAll() } returns Tasks.forResult(listResult)
         every { listResult.items } returns emptyList()
@@ -356,7 +366,7 @@ class FirebaseAuthRepositoryTest {
         every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
 
         val rootRef = mockk<StorageReference>(relaxed = true)
-        val listResult = mockk<ListResult>()
+        val listResult = mockk<ListResult>(relaxed = true)
         every { storage.reference } returns rootRef
         every { rootRef.child(any()).listAll() } returns Tasks.forResult(listResult)
         every { listResult.items } returns emptyList()

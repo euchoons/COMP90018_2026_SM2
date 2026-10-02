@@ -22,6 +22,7 @@ import androidx.work.WorkManager
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
 import au.edu.unimelb.floraguide.data.local.ObservationDao
 
@@ -140,7 +141,6 @@ class FirebaseAuthRepository(
             erasurePrefs.edit().putString("erasure_status", "IN_PROGRESS").putString("erasure_uid", uid).apply()
 
             // 2. Coordinate observation listeners, in-flight uploads, and pending WorkManager jobs
-            val workManager = androidx.work.WorkManager.getInstance(context)
             workManager.cancelUniqueWork("observation-sync-$uid")
             workManager.cancelUniqueWork("pending-scan-cleanup-$uid")
 
@@ -158,7 +158,13 @@ class FirebaseAuthRepository(
                 require(normalizedPath.startsWith(expectedPrefixPath)) {
                     "Ownership boundary violation: Attempted to purge unowned storage object at ${item.path}"
                 }
-                item.delete().await()
+                try {
+                    item.delete().await()
+                } catch (e: StorageException) {
+                    if (e.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND && e.errorCode != 404) {
+                        throw e
+                    }
+                }
             }
             // Also handle nested prefixes if any
             for (prefix in listResult.prefixes) {
@@ -168,7 +174,13 @@ class FirebaseAuthRepository(
                     require(normalizedPath.startsWith(expectedPrefixPath)) {
                         "Ownership boundary violation: Attempted to purge unowned nested storage object."
                     }
-                    item.delete().await()
+                    try {
+                        item.delete().await()
+                    } catch (e: StorageException) {
+                        if (e.errorCode != StorageException.ERROR_OBJECT_NOT_FOUND && e.errorCode != 404) {
+                            throw e
+                        }
+                    }
                 }
             }
 
@@ -187,12 +199,12 @@ class FirebaseAuthRepository(
             firestore.collection("users").document(uid).delete().await()
 
             // 5. Clean up account-owned local records, photos, and diagnostics
-            val db = FloraGuideDatabase.getInstance(context)
-            db.observationDao().deleteAllForUser(uid)
+            val effectiveDao = observationDao ?: FloraGuideDatabase.getInstance(context).observationDao()
+            effectiveDao.deleteAllForUser(uid)
             AuthSessionLogger(context).clearLogs()
 
             // 6. Verify that NO owned data remains before concluding erasure
-            val remainingObs = db.observationDao().getAllForUser(uid)
+            val remainingObs = effectiveDao.getAllForUser(uid)
             check(remainingObs.isEmpty()) { "Erasure incomplete: Local observations remain." }
 
             // 7. Delete Auth credentials
@@ -201,6 +213,13 @@ class FirebaseAuthRepository(
             // Mark persistent erasure state as fully complete
             erasurePrefs.edit().putString("erasure_status", "COMPLETE").remove("erasure_uid").apply()
             isAccountErasureActive.set(false)
+
+            logger.logEvent(
+                eventType = "DELETE_ACCOUNT",
+                status = "SUCCESS",
+                userUid = uid,
+                detail = "Account erasure completed successfully."
+            )
 
             state.value = AuthState.Unauthenticated
             Result.success(Unit)
@@ -214,6 +233,12 @@ class FirebaseAuthRepository(
             isAccountErasureActive.set(false)
             erasurePrefs.edit().putString("erasure_status", "INTERRUPTED").apply()
             val failMsg = error.localizedMessage ?: "Account deletion failed."
+            logger.logEvent(
+                eventType = "DELETE_ACCOUNT",
+                status = "FAILURE",
+                userUid = uid,
+                detail = failMsg
+            )
             state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) } ?: AuthState.Error(failMsg)
             Result.failure(error)
         }
