@@ -73,7 +73,8 @@ GET https://api.ala.org.au/occurrences/occurrences/search
 Only `totalRecords` is required from the occurrence response. `pageSize=0` avoids downloading
 occurrence rows. Both requests share cancellable transport, size limits, no redirects and
 connection/read timeouts. Candidate lookups run concurrently with a shared per-candidate
-timeout/retry budget. `UNRESOLVED_TAXON` is not retried and never becomes a zero count.
+timeout/retry budget. `UNRESOLVED_TAXON` is not retried. The repository reports it apart from the
+counts, and live ranking counts it as zero records.
 
 Matching accepts an exact or canonical match (authorship or formatting only) on the queried
 name or an objective synonym of it, counted under ALA's accepted species, and excludes
@@ -90,9 +91,9 @@ app's full name-resolution path. It checks three names and requires `curl` and `
 
 ## Fusion formula
 
-### Current live rule (provisional)
+### Current live rule (trained in #20)
 
-The [missing-context policy](MISSING_CONTEXT_POLICY.md#ranking-and-location) is the canonical reference for the live geographic rule, complete-context requirement, candidate limit and location eligibility. Its [flowering section](MISSING_CONTEXT_POLICY.md#flowering-season) defines the independently applied season factor. Habitat is metadata only. These provisional values are not the trained rule proposed in PR #49.
+The [missing-context policy](MISSING_CONTEXT_POLICY.md#ranking-and-location) is the canonical reference for the live geographic rule, complete-context requirement, candidate limit and location eligibility. Its [flowering section](MISSING_CONTEXT_POLICY.md#flowering-season) defines the independently applied season factor. Habitat is metadata only. [Fusion training](FUSION_EVALUATION.md) records how #20 trained the location cap of 20.5 and the season factor of 1.0, and how the rule was tested.
 
 ### Synthetic guided demo only
 
@@ -109,6 +110,9 @@ These constants are prototype values. The final report should explain how weight
 
 ## Evaluation measures
 
+The offline fusion evaluation reports candidate recall, Top-1 and Top-3, cue activation and the
+radius comparison; see [fusion training](FUSION_EVALUATION.md).
+
 ### Identification
 
 - candidate recall at K;
@@ -116,8 +120,8 @@ These constants are prototype values. The final report should explain how weight
 - fused Top-1 and Top-3 accuracy;
 - confusion by species;
 - unknown/genus fallback performance;
-- share of live captures with complete ALA context, where the geographic boost was
-  applied at all (one unresolved or failed candidate disables it for the capture);
+- share of live captures where every ALA lookup completed, so geographic support applied
+  (one failed lookup disables it for the capture);
 - share of flower photos where the flowering cue changed a multiplier, with the cases it
   helped or harmed.
 

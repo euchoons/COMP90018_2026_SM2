@@ -15,12 +15,12 @@ Updated 2026-10-01 against the current implementation. This page owns current fe
 | Location | Implemented in source | Capture-time freshness/accuracy eligibility; unusable location skips ALA. Campus coordinates belong to the guided demo only. |
 | Image recognition | Implemented in source (cloud) | Firebase upload → stored-photo download → Pl@ntNet identification. The API requests eight candidates; the UI/ranker retain five. Live use requires configuration, an authenticated Firebase session and network access. The on-device model was dropped (#50). |
 | ALA connectivity | Implemented in source | Species-level name resolution, concurrent count requests, bounded retry and explicit live/partial/unavailable states. |
-| Fusion algorithm | Implemented and unit-tested | Provisional bounded geographic support plus flower-gated season adjustment; see the [live policy](technical/MISSING_CONTEXT_POLICY.md). Log-linear season/habitat priors are confined to the guided demo. |
+| Fusion algorithm | Implemented and trained offline | Geographic support trained in #20, with names ALA cannot match counted as zero records; the flowering check is shown but does not reorder. See the [live policy](technical/MISSING_CONTEXT_POLICY.md). Log-linear season/habitat priors are confined to the guided demo. |
 | Accounts | Implemented in source | Firebase registration, sign-in, online guest, offline entry, sign-out and account actions. Backend/device verification and erasure limitations are separate from implementation presence. |
 | Observation storage | Implemented in source | Room local records, Firestore metadata, Firebase Storage photos and WorkManager synchronisation/retry. Preferences are a legacy import source, not the active store. |
 | Privacy | Implemented with limitations | Coarse coordinates, diagnostic handling and deletion paths are documented in [data handling and limitations](PRIVACY_POLICY.md). Complete erasure and encryption-upgrade guarantees are not established. |
 | Map | Implemented in source | Field Guide displays saved observation locations through Google Maps when a key is set at build time, and a placeholder without one; an invalid key or missing Play services is not detected at runtime. Field usability remains to be verified. |
-| Evaluation | Separate work in progress | Scoped/unit checks exist. Fusion training is proposed in [PR #49](https://github.com/euchoons/COMP90018_2026_SM2/pull/49); its rule and evaluation results are not adopted yet. Live latency (#53), usability and field studies remain outstanding. |
+| Evaluation | Partly done | Scoped/unit checks exist. [Fusion training](technical/FUSION_EVALUATION.md) (#20) tested the live rule on 156 held-out iNaturalist photos: Top-1 rose from 81% to 88%. Live latency (#53), usability and field studies remain outstanding. |
 
 ## Claims that are not currently supported
 
@@ -28,15 +28,14 @@ Updated 2026-10-01 against the current implementation. This page owns current fe
 - Offline/on-device live identification or direct observation uploads to ALA.
 - Complete account erasure, guaranteed encryption of every existing database or independently validated deployed Firebase rules.
 - A completed campus field study, sensor calibration across all phones or an executed device checklist without recorded evidence.
-- Results from an unmerged PR, such as #49, as evidence for the current ranking rule.
+- The #20 fusion result as general superiority: it is a 156-photo test from one area around Parkville.
 
 ## Next work
 
 1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), camera checklist and sensor calibration on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
 2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). The app currently uploads after capture without that consent step.
-3. Review the #20 evaluation in PR #49. Update the live policy, reference and status together when its rule is adopted; retain the experiment's dataset, revision and limitations.
-4. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
-5. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.
+3. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
+4. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.
 
 ## Risk register
 

@@ -483,7 +483,7 @@ class FloraGuideViewModelTest {
         every { container.rankCandidates } returns
             RankSpeciesCandidatesUseCase(floweringRecords = mapOf(
                 "Test plant0" to FloweringRecord("Test plant0", setOf(offSeason), "Flowers once a year.", "https://example.org"),
-            ))
+            ), outOfSeasonMultiplier = 0.85) // non-neutral, so the wiring shows; the app's trained default is 1.0
         val flower = PredictedOrgan("flower", 0.9)
         coEvery { container.identifyStoredPhoto.invoke(any(), any(), any(), any()) } returns
             ImageClassification(predictions, ImageSource.PLANTNET_LIVE, predictedOrgan = flower)

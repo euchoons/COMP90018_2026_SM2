@@ -16,6 +16,7 @@ Start with the quick start, then use the sections below for product scope, curre
 - [Technical reference](technical/TECHNICAL_REFERENCE.md) — toolchain, API requests, demo formula and evaluation measures.
 - [Missing-context policy](technical/MISSING_CONTEXT_POLICY.md) — authoritative description of the live ranking rule, location eligibility, missing evidence and flowering data.
 - [Fusion data sources](technical/FUSION_DATA_SOURCES.md) — evidence behind the season, taxonomy, location and habitat decisions.
+- [Fusion training](technical/FUSION_EVALUATION.md) — how the live rule was trained on iNaturalist photos (#20), with the held-out comparison against image-only ranking, ablations and limitations.
 - [Motion stability calibration](technical/MOTION_STABILITY_CALIBRATION.md) — threshold derivations and the physical-device calibration still required.
 
 ## Testing and verification

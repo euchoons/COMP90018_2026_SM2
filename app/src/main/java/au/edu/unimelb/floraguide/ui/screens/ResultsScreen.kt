@@ -136,9 +136,10 @@ fun ResultsScreen(
                     EvidenceBar(label = "Original image score", value = selected.evidence.imagePrior,
                         detail = String.format(Locale.US, "%.2f%% (unmodified)", selected.evidence.imagePrior * 100))
                     Text(recordLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
-                    state.nearbyContext?.failuresBySpeciesId?.get(selected.species.id)?.let { reason ->
-                        Text("ALA lookup: $reason. Unknown is not zero.", color = MaterialTheme.colorScheme.error)
-                    }
+                    state.nearbyContext?.takeUnless { it.isUnmatched(selected.species.id) }
+                        ?.failuresBySpeciesId?.get(selected.species.id)?.let { reason ->
+                            Text("ALA lookup: $reason. Unknown is not zero.", color = MaterialTheme.colorScheme.error)
+                        }
                     if (state.imageSource == ImageSource.DEMO_ADAPTER) {
                         EvidenceBar("Synthetic location prior", selected.evidence.locationPrior, "Guided demo only")
                         EvidenceBar("Synthetic seasonal prior", selected.evidence.seasonalPrior, state.analysisDate.month.name)
@@ -154,12 +155,13 @@ fun ResultsScreen(
                                 Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
                             }
                         }
-                        Text("For complete ALA results: image score x (1 + 0.15 x support), then normalise. " +
-                            "Support uses capped log-counts; the maximum multiplier is 1.15x.",
+                        Text("When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
+                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.",
                             style = MaterialTheme.typography.bodySmall)
-                        Text("Partial, unavailable or skipped ALA context adds no geographic adjustment. " +
-                            "A flower photographed more than a month outside a candidate's documented flowering months " +
-                            "multiplies that candidate by 0.85; other photos and species without flowering data are unaffected. " +
+                        Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
+                            "geographic adjustment. " +
+                            "The flowering check is shown for reference and does not change the order: in offline " +
+                            "testing it lowered the correct species more often than wrong ones. " +
                             "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
                     HorizontalDivider()
@@ -249,6 +251,8 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
     val synonym = state.nearbyContext?.acceptedNamesBySpeciesId?.get(candidate.species.id)?.let { " (as $it)" }.orEmpty()
     return when {
         state.isContextLoading -> "ALA count: pending"
+        count == null && state.nearbyContext?.isUnmatched(candidate.species.id) == true ->
+            "ALA: no species match for this name, so it counts as 0 records"
         count == null -> "ALA count: unknown / not available"
         count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
         else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
@@ -268,7 +272,7 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
         FloweringCheck.IN_SEASON -> statement +
             if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month is within this period."
             else "$month is within a month of this period."
-        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table, so it is not lowered."
+        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table."
         FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
             (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
             ". Flowering months apply only to a confidently recognised flower."
@@ -283,7 +287,7 @@ private fun rankingExplanation(state: FloraGuideUiState): String {
         state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
         state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
         state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
-            "All candidate queries succeeded. ALA may add a small, capped positive adjustment.$season"
+            "Every ALA lookup completed, so species recorded nearby move up; unmatched names count as zero.$season"
         season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
         else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
     }

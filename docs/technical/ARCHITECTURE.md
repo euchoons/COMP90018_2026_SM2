@@ -96,9 +96,9 @@ Ambient lux drives unavailable, low, usable or very-bright guidance. It describe
 
 ## Context fusion
 
-The [missing-context policy](MISSING_CONTEXT_POLICY.md) owns the live algorithm, provisional bounds, candidate limits, missing-evidence handling and flowering data. [Fusion data sources](FUSION_DATA_SOURCES.md) records the evidence behind the source choices. The [technical reference](TECHNICAL_REFERENCE.md#fusion-formula) retains the synthetic demo formula.
+The [missing-context policy](MISSING_CONTEXT_POLICY.md) owns the live algorithm, trained parameters, candidate limits, missing-evidence handling and flowering data. [Fusion data sources](FUSION_DATA_SOURCES.md) records the evidence behind the source choices, and [fusion training](FUSION_EVALUATION.md) how the parameters were trained and tested. The [technical reference](TECHNICAL_REFERENCE.md#fusion-formula) retains the synthetic demo formula.
 
-Incomplete ALA counts leave geographic support neutral for all candidates. A flower photo can independently apply the provisional flowering-season adjustment. Habitat is observation metadata; changing it only affects synthetic demo ranking. Scores are relative within the candidate set, not calibrated probabilities. PR #49 proposes a different rule with trained parameters; it is not adopted yet.
+A name ALA cannot match to a species counts as zero records; a failed lookup leaves geographic support neutral for all candidates. A flower photo is checked against VicFlora flowering months, which the results card shows without reordering, because the trained season factor is 1.0. Habitat is observation metadata; changing it only affects synthetic demo ranking. Scores are relative within the candidate set, not calibrated probabilities.
 
 ## Responsiveness
 
@@ -112,7 +112,7 @@ Classification and transfer run asynchronously. The image-only list appears afte
 | Accelerometer/gyroscope | Stability gate | Manual capture when required sensors are unavailable. |
 | Light/heading | Guidance and optional metadata | Visible missing/unreliable states. |
 | Location | Fresh, usable capture-time fix | Skip ALA; campus coordinates belong to the demo only. |
-| ALA | Species resolution and live counts | Preserve unknown/failure states, bounded retry and neutral geographic support for incomplete context. |
+| ALA | Species resolution and live counts | A name without a species match counts as zero records; failed lookups keep their failure state, get a bounded retry and leave geographic support neutral. |
 | Firebase photo transfer / Pl@ntNet | Upload, download and cloud identification | Stage-specific failure and explicit retry; no offline live identification. |
 | Observation sync | Room plus Firestore/Storage | Durable local pending state, background retry and account actions. |
 | Maps | Google Maps with a key set at build time | Without a key, a "Map unavailable" placeholder; with no saved observations, the current or demo location. An invalid key or missing Play services is not detected. |

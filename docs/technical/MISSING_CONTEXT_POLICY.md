@@ -14,28 +14,34 @@ live ranking rule. Do not restore the older location or storage implementation.
 - A resolved taxon with a successful count of zero is known zero, not absence of
   the species. Positive counts are occurrence records, not population estimates.
 - No match, a fuzzy or higher-rank match, and subjective, pro parte or misapplied
-  synonyms are `UNRESOLVED_TAXON`: no count and no automatic retry. Those can denote a
-  different plant, so matching stays conservative there.
+  synonyms are `UNRESOLVED_TAXON`: no automatic retry, and ranking counts the name as zero
+  records (see below). Those can denote a different plant, so matching stays conservative there.
 - Malformed responses and network/HTTP failures remain distinct from unresolved
   names. Both requests use the same cancellation, size limits, redirect policy,
   timeouts and repository retry budget. A retried attempt starts with name matching.
-- Never fill missing live counts with zero or demo counts. Existing failure details
-  and persistent warnings expose the reason; partial/all failures leave geographic
-  support neutral. The flowering-season check below applies independently.
+- Never fill a failed lookup with zero or demo counts. Existing failure details and
+  persistent warnings expose the reason; any failed lookup leaves geographic support
+  neutral. The flowering-season check below applies independently.
 
 ## Ranking and location
 
-The geographic part of the live rule remains `imageScore * (1 + 0.15 * support)`,
+The geographic part of the live rule is `imageScore * (1 + 20.5 * support)`,
 normalised over the candidate set, with `support = ln(1 + min(count, 50)) / ln(51)`.
-Apply it only when every candidate has a successful non-negative live count. Otherwise
-geographic support is neutral for every candidate; available counts remain visible as context.
-The trade-off is losing usable partial evidence rather than favouring candidates
-whose lookups happened to succeed. These constants are provisional, not optimised.
+#20 trained the cap of 20.5 and kept the 8 km radius ([training](FUSION_EVALUATION.md));
+the saturation of 50 was not trained.
 
-Unresolved names count as missing, so a single unresolved candidate disables geographic
-support for the whole capture. A subjective or pro parte synonym, an infraspecific name or a
-species outside the Australian name index among the five candidates is enough to disable it,
-which can make the boost rare in practice.
+Support applies when every candidate lookup has completed, with either a count or a name ALA
+cannot match, which counts as zero records. A failed lookup (network, HTTP or malformed
+response) is unknown, so support is neutral for every candidate; available counts remain
+visible as context. That gives up usable partial evidence rather than favour candidates whose
+lookups happened to succeed.
+
+An unmatched name is an answer, not a failure: ALA has no records under a matching Australian
+species. This policy first treated it as missing, which withheld support from 74% of the #20
+test photos, because Pl@ntNet's world-flora candidates often include foreign species that ALA
+matches only to a genus. The cost is that a correct species ALA cannot match, through a naming
+difference or as a cultivated plant absent from ALA, loses to recorded candidates; both answers
+the rule lost on the #20 test photos were of this kind.
 
 PR #31 deliberately limits both displayed and reranked candidates to the first five
 Pl@ntNet results (the API requests eight). This limit is unchanged here and must be
@@ -50,14 +56,17 @@ not validated scientific thresholds. A live capture never uses campus demo coord
 
 ## Flowering season
 
-`live()` also multiplies each candidate by a flowering-season factor, independently of ALA:
+`live()` also checks each candidate against its documented flowering months, independently of ALA:
 
 - It applies only when Pl@ntNet's `predictedOrgans` reports a flower with a score of at
   least 0.5. Flowering months say nothing about leaf, bark, fruit or whole-plant photos,
   so those, and a missing organ, leave every candidate at 1.0.
-- A candidate drops to 0.85 only when all of its documented flowering months are more
+- A candidate is out of season only when all of its documented flowering months are more
   than one month from the capture month (the device-local date of the shutter press).
-  In season, within a month of it, or absent from the flowering table all stay at 1.0.
+  Candidates in season, within a month of it, or absent from the flowering table are not.
+- An out-of-season candidate is multiplied by a factor that #20 trained to 1.0, so the check
+  is shown but no longer changes the order: on the training photos, 4 of the 6 candidates it
+  flagged were the correct species ([training](FUSION_EVALUATION.md#flowering)).
 - The table is keyed by scientific name, plus the WCVP name Pl@ntNet uses where WCVP treats
   VicFlora's name as a synonym (see below). Any other name is unknown, not out of season.
 
@@ -65,13 +74,13 @@ Unlike geographic support, this cue is per candidate. Unknown counts as in seaso
 partial coverage cannot favour species that happen to have data: a listed species can only
 lose, and only on affirmative evidence, a photographed flower outside a documented
 flowering period. A zero ALA count only means nobody recorded the species nearby, so it
-stays neutral. The 0.85 bound mirrors the 15% geographic bound and can only reorder
-candidates whose image scores are within about 18%. The factor, tolerance and organ
-threshold are provisional.
+stays neutral. Training exposed the flaw in this design: the table covers local species, so
+wrong candidates, which are mostly not local, seldom have data, and the check mostly lowers the
+likely answers. The tolerance and organ threshold were not fitted.
 
 Example with the bundled data: for a wattle flower photographed in February, *Acacia
-implexa* (flowers Dec.–Mar.) stays at 1.0, *Acacia mearnsii* (Sep.–Nov.) drops to 0.85, and
-*Acacia dealbata* (no VicFlora statement) stays at 1.0. A leaf photo leaves all three at 1.0.
+implexa* (flowers Dec.–Mar.) is in season, *Acacia mearnsii* (Sep.–Nov.) is out of season, and
+*Acacia dealbata* (no VicFlora statement) is unknown. A leaf photo leaves the check unused.
 
 The results card shows the check for the selected candidate: the VicFlora statement and how
 the capture month relates to it, or why the cue did not apply, with a link to VicFlora and
@@ -98,7 +107,7 @@ the explicit guided demo; demo evidence must never enter live ranking.
   campus plants may flower outside them.
 - Parsing: months and ranges as written; seasons follow the Bureau of Meteorology (spring is
   Sep.–Nov., and so on). Qualifiers such as "mainly" keep the stated period, which the
-  one-month tolerance and 0.85 bound soften. "All year" and "most of the year" become all
+  one-month tolerance softens. "All year" and "most of the year" become all
   twelve months, so those species are never out of season. Any other wording stays unknown.
 - Result: 75 of 103 species documented. 25 VicFlora descriptions have no flowering sentence
   (e.g. silver wattle, white clover) and 3 names are not VicFlora taxa; these rows stay in
@@ -115,15 +124,13 @@ own row; any other mismatch stays unknown. Evidence and the aliases are in
 
 The saved rule label ends with the retrieval date, and a unit test keeps it in step with the file.
 
-## Evaluation boundary
+## Evaluation
 
-#20 will compare the provisional bounded boost, image-only baseline and any agreed
-alternative on the same held-out cases. It must also report the share of live captures
-with complete context, i.e. how often geographic support was applied at all, and how many
-of the others were blocked by unresolved names rather than failed lookups. Report the
-flowering cue separately: how often a flower photo changed a multiplier, and each case it
-helped or harmed. This change
-does not select optimal weights, prove either formula superior, calibrate scores or close
-the taxonomy investigation #10.
+[#20](FUSION_EVALUATION.md) trained the rule on 339 iNaturalist photos and tested it on 156
+others. The first design changed no Top-1 answer. Counting unmatched names as zero records and
+retraining the cap raised Top-1 from 81% to 88% (13 answers gained, 2 lost), and the gain held
+without iNaturalist's records in ALA. The flowering check found an out-of-season candidate in 1 of
+the 156 photos. The scores are not calibrated probabilities, and the taxonomy investigation #10
+stays open.
 
 ALA API reference: https://docs.ala.org.au/ (Namematching and Occurrences).
