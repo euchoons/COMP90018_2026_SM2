@@ -111,17 +111,23 @@ class FirebaseAuthRepository(
     }
 
 
+    // Global lock to prevent background sync or in-flight uploads from writing data during/after erasure
+    private val isAccountErasureActive = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    fun isErasureActive(): Boolean = isAccountErasureActive.get()
+
     override suspend fun deleteAccount(): Result<Unit> = operations.withLock {
         val user = auth.currentUser ?: return Result.failure(IllegalStateException("No authenticated user to delete."))
         val uid = user.uid
 
+        // Persistent erasure state tracker in SharedPreferences
+        val erasurePrefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
+
         try {
-            // 1. Pre-flight check: Ensure recent authentication to prevent late-stage rejection
+            // 1. Pre-flight reauthentication validation
             val token = user.getIdToken(false).await()
             val authTime = (token.claims["auth_time"] as? Number)?.toLong() ?: 0L
             val now = System.currentTimeMillis() / 1000L
-
-            // Firebase classifies sessions older than 5 minutes as stale for sensitive operations
             if (now - authTime > 300L) {
                 throw com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException(
                     "ERROR_REQUIRES_RECENT_LOGIN",
@@ -130,68 +136,85 @@ class FirebaseAuthRepository(
             }
 
             state.value = AuthState.Authenticating
+            isAccountErasureActive.set(true)
+            erasurePrefs.edit().putString("erasure_status", "IN_PROGRESS").putString("erasure_uid", uid).apply()
 
-            // 2. Coordinate concurrent processes: Halt sync and pending uploads
+            // 2. Coordinate observation listeners, in-flight uploads, and pending WorkManager jobs
+            val workManager = androidx.work.WorkManager.getInstance(context)
             workManager.cancelUniqueWork("observation-sync-$uid")
             workManager.cancelUniqueWork("pending-scan-cleanup-$uid")
 
             val firestore = FirebaseFirestore.getInstance()
             val storage = FirebaseStorage.getInstance()
 
-            // 3. Purge all account-owned cloud objects (including orphan photos)
-            // This is a multi-step idempotent cascade, not an atomic transaction.
+            // 3. Define complete account-erasure inventory & ownership verification boundaries
+            val expectedPrefixPath = "plant_photos/$uid/"
             val storageRef = storage.reference.child("plant_photos/$uid")
-            try {
-                val items = storageRef.listAll().await().items
-                for (item in items) {
-                    try {
-                        item.delete().await()
-                    } catch (e: com.google.firebase.storage.StorageException) {
-                        if (!isMissingStorageObject(e.errorCode)) throw e
-                    }
+
+            // Sweep all storage objects (covering orphan photos and non-observation media)
+            val listResult = storageRef.listAll().await()
+            for (item in listResult.items) {
+                val normalizedPath = item.path.trimStart('/')
+                require(normalizedPath.startsWith(expectedPrefixPath)) {
+                    "Ownership boundary violation: Attempted to purge unowned storage object at ${item.path}"
                 }
-            } catch (e: com.google.firebase.storage.StorageException) {
-                if (!isMissingStorageObject(e.errorCode)) throw e
+                item.delete().await()
+            }
+            // Also handle nested prefixes if any
+            for (prefix in listResult.prefixes) {
+                val nestedList = prefix.listAll().await()
+                for (item in nestedList.items) {
+                    val normalizedPath = item.path.trimStart('/')
+                    require(normalizedPath.startsWith(expectedPrefixPath)) {
+                        "Ownership boundary violation: Attempted to purge unowned nested storage object."
+                    }
+                    item.delete().await()
+                }
             }
 
-            // 4. Purge server observation documents
+            // 4. Enumerate and verify observation documents ownership
             val observationsRef = firestore.collection("users").document(uid).collection("observations")
             val snapshot = observationsRef.get(Source.SERVER).await()
             for (doc in snapshot.documents) {
-                try {
-                    doc.reference.delete().await()
-                } catch (e: Exception) {
-                    // Ignore missing documents on retry
+                val docUserId = doc.getString("userId") ?: uid
+                require(docUserId == uid) {
+                    "Ownership boundary violation: Firestore observation document does not belong to target user."
                 }
+                doc.reference.delete().await()
             }
 
-            // 5. Purge the user's root Firestore document
-            try {
-                firestore.collection("users").document(uid).delete().await()
-            } catch (e: Exception) {
-                // Ignore missing root document on retry
-            }
+            // Purge root user document
+            firestore.collection("users").document(uid).delete().await()
 
-            // 6. Local cleanup: Purge account-owned local records and diagnostics
-            val dao = observationDao ?: FloraGuideDatabase.getInstance(context).observationDao()
-            dao.deleteAllForUser(uid)
-            logger.clearLogs()
+            // 5. Clean up account-owned local records, photos, and diagnostics
+            val db = FloraGuideDatabase.getInstance(context)
+            db.observationDao().deleteAllForUser(uid)
+            AuthSessionLogger(context).clearLogs()
 
-            // 7. Finally, remove the Auth account credentials
+            // 6. Verify that NO owned data remains before concluding erasure
+            val remainingObs = db.observationDao().getAllForUser(uid)
+            check(remainingObs.isEmpty()) { "Erasure incomplete: Local observations remain." }
+
+            // 7. Delete Auth credentials
             user.delete().await()
 
+            // Mark persistent erasure state as fully complete
+            erasurePrefs.edit().putString("erasure_status", "COMPLETE").remove("erasure_uid").apply()
+            isAccountErasureActive.set(false)
+
             state.value = AuthState.Unauthenticated
-            logger.logEvent("DELETE_ACCOUNT", "SUCCESS", uid, "Account and associated data completely removed.")
             Result.success(Unit)
 
         } catch (cancelled: CancellationException) {
+            isAccountErasureActive.set(false)
+            erasurePrefs.edit().putString("erasure_status", "INTERRUPTED").apply()
             state.value = currentState()
             throw cancelled
         } catch (error: Exception) {
-            val failMsg = sanitizeAuthError(error)
-            state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
-                ?: AuthState.Error(failMsg)
-            logger.logEvent("DELETE_ACCOUNT", "FAILURE", uid, failMsg)
+            isAccountErasureActive.set(false)
+            erasurePrefs.edit().putString("erasure_status", "INTERRUPTED").apply()
+            val failMsg = error.localizedMessage ?: "Account deletion failed."
+            state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) } ?: AuthState.Error(failMsg)
             Result.failure(error)
         }
     }
@@ -254,5 +277,15 @@ class FirebaseAuthRepository(
         val rawMessage = error.localizedMessage ?: "Unknown auth error"
         // Regex to strip out email addresses from Firebase exception messages
         return rawMessage.replace(Regex("[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"), "[REDACTED_EMAIL]")
+    }
+
+    companion object {
+        @Volatile private var globalErasureActive = false
+
+        fun isErasureActive(context: Context): Boolean {
+            if (globalErasureActive) return true
+            val prefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
+            return prefs.getString("erasure_status", null) == "IN_PROGRESS"
+        }
     }
 }

@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.observation
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
 import au.edu.unimelb.floraguide.data.local.ObservationDao
@@ -78,6 +79,9 @@ open class ObservationSyncWorker(
 
     override suspend fun doWork(): Result {
         val uid = inputData.getString(USER_ID) ?: return Result.failure()
+        if (FirebaseAuthRepository(applicationContext).isErasureActive()) {
+            return Result.success() // Halt worker so it cannot recreate data during erasure
+        }
         if (getUserId() != uid) return Result.success()
         var retry = false
         for (item in dao.getPendingSync(uid)) {

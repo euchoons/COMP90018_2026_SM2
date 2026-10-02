@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 
 class OfflineFirstObservationRepository(
     private val context: Context,
@@ -45,6 +46,11 @@ class OfflineFirstObservationRepository(
 
     // One account per subscription. The ViewModel cancels/rebinds this flow on session changes.
     override fun observeAll(): Flow<List<Observation>> = channelFlow {
+        if (FirebaseAuthRepository.isErasureActive(context)) {
+            send(emptyList())
+            awaitClose {}
+            return@channelFlow
+        }
         val uid = currentUserId
         withContext(Dispatchers.IO) { prepareUser() }
         launch {
@@ -80,6 +86,7 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun save(observation: Observation) {
+        if (FirebaseAuthRepository.isErasureActive(context)) return
         val uid = currentUserId
         withContext(Dispatchers.IO) {
             prepareUser()
