@@ -104,6 +104,7 @@ class Issue14CloudWorkflowViewModelTest {
             registry, { auth.getCurrentUser()?.uid }, { _, uri -> persisted.any { it.cloudPhotoUri == uri } }, { _, uri -> store.deletePhoto(uri) },
         )
         every { container.isPlantNetConfigured } returns true
+        every { container.capturedPhotoFiles.belongsToCapture(any(), any()) } returns true
         every { container.rankCandidates } returns RankSpeciesCandidatesUseCase()
         every { container.locationTracker.snapshotForObservation() } returns GeoPoint(-37.7963, 144.9614, 10f)
         coEvery { container.speciesContextRepository.nearbyOccurrenceCounts(any(), any(), any(), any()) } returns
@@ -118,9 +119,23 @@ class Issue14CloudWorkflowViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun camera(name: String = "camera.jpg") = temporary.newFile(name).apply { writeText("camera-original") }.absolutePath
-    private fun scan(name: String = "camera.jpg") { model.analyzeCapturedPhoto(camera(name), 42f) }
+    private fun camera(name: String = "camera.jpg") =
+        temporary.newFile(name).apply {
+            writeText("camera-original")
+        }.absolutePath
 
+    private fun scan(name: String = "camera.jpg") {
+        model.goToScan()
+
+        val captureId = requireNotNull(model.beginCapture())
+
+        model.analyzeCapturedPhoto(
+            photoPath = camera(name),
+            captureHeadingDegrees = 42f,
+        )
+
+        model.approvePhotoUpload(captureId)
+    }
     @Test fun liveScanUsesUploadThenDownloadThenDownloadedPathClassification() = runTest(dispatcher) {
         scan(); runCurrent()
         assertEquals(listOf("upload", "download", "classify"), events)
@@ -213,12 +228,29 @@ class Issue14CloudWorkflowViewModelTest {
         coVerify(exactly = 1) { auth.deleteAccount() }
     }
 
-    @Test fun retappingObserveKeepsTheShutterTimeLocation() = runTest(dispatcher) {
+    @Test
+    fun retappingObserveKeepsTheShutterTimeLocation() = runTest(dispatcher) {
         model.goToScan()
-        model.beginCapture()
-        every { container.locationTracker.snapshotForObservation() } returns null // the tracker was stopped
+
+        val captureId = requireNotNull(model.beginCapture())
+
+        // Simulate the location becoming unavailable after the shutter press.
+        every {
+            container.locationTracker.snapshotForObservation()
+        } returns null
+
+        // Re-tapping Observe must preserve the already frozen capture.
         model.goToScan()
-        scan(); runCurrent()
+
+        model.analyzeCapturedPhoto(
+            photoPath = camera(),
+            captureHeadingDegrees = 42f,
+        )
+
+        model.approvePhotoUpload(captureId)
+
+        runCurrent()
+
         assertNotNull(model.uiState.value.capture?.location)
     }
 

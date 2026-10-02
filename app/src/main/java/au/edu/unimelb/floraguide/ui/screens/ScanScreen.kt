@@ -45,7 +45,7 @@ fun ScanScreen(
     onHabitatSelected: (Habitat) -> Unit,
     onPermissionResult: (Boolean) -> Unit,
     onUseDemoLocation: () -> Unit,
-    onCaptureStarted: () -> Unit,
+    onCaptureStarted: () -> String?,
     onPhotoCaptured: (String, Float?) -> Unit,
     onGuidedDemo: () -> Unit,
     onError: (String) -> Unit,
@@ -65,10 +65,15 @@ fun ScanScreen(
         if (requestedLocation) onPermissionResult(locationGranted)
     }
     // Re-runs after rotation or theme changes, so it must not override an explicit skip.
-    LaunchedEffect(locationGranted) { if (locationGranted && !state.locationSkipped) onPermissionResult(true) }
+    LaunchedEffect(locationGranted, state.pendingPhotoConsent?.captureId) {
+        if (locationGranted && !state.locationSkipped && state.pendingPhotoConsent == null) {
+            onPermissionResult(true)
+        }
+    }
     val sensors = state.sensorSnapshot.availability
     val canGate = sensors.accelerometer && sensors.gyroscope
-    val captureEnabled = !stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable
+    val captureEnabled = state.pendingPhotoConsent == null &&
+        (!stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable)
     val captureHint = if (!captureEnabled) "Hold still before capturing" else "Ready to capture"
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { SectionHeading(title = "Observe a plant", subtitle = "Photo and location are separate inputs; either can have its own status.") }
@@ -116,9 +121,11 @@ fun ScanScreen(
         }
         item { FilledTonalButton(onClick = onGuidedDemo, modifier = Modifier.fillMaxWidth()) { Text("Run explicit offline guided demo") } }
         item {
-            InformationCard("What is shared", "Capturing uploads the photo to Firebase and sends the stored image to Pl@ntNet. " +
-                "When location is enabled, the capture coordinates and candidate names are sent to ALA for historical lookups. " +
-                "Saving an observation is a separate local action. Nothing is submitted as a new ALA record.")
+            InformationCard("What is shared", "After capture, you choose whether to use online identification. " +
+                "Only after you agree is the photo uploaded to Firebase and the stored image sent to Pl@ntNet. " +
+                "With a usable capture location, rounded coordinates and candidate names are sent to ALA. " +
+                "Saving is separate, and saved observations may sync through your Firebase account. " +
+                "Nothing is submitted as a new ALA record. Cancel before agreeing to avoid sending this capture.")
         }
     }
 }

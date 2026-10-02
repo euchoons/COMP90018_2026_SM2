@@ -52,14 +52,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import java.io.File
-import java.time.Instant
 
 @Composable
 fun CameraCaptureCard(
     snapshot: SensorSnapshot,
     captureEnabled: Boolean,
     captureHint: String,
-    onCaptureStarted: () -> Unit,
+    onCaptureStarted: () -> String?,
     onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -216,10 +215,11 @@ fun CameraCaptureCard(
                     val capture = imageCapture ?: return@Button
                     // Freeze the shutter-time value; JPEG saving can outlive this sensor reading.
                     val captureHeading = heading
-                    onCaptureStarted()
+                    val captureId = onCaptureStarted() ?: return@Button
                     isSaving = true
                     capturePhoto(
                         context = context,
+                        captureId = captureId,
                         imageCapture = capture,
                         onSaved = { path ->
                             isSaving = false
@@ -272,7 +272,7 @@ private fun CameraOverlayPill(text: String, positive: Boolean) {
 
 /**
  * Caps captures near 1920x1440 (4:3, ~2.8 MP) instead of the full sensor, which is 12–50 MP on
- * current phones. Every capture is uploaded to Pl@ntNet and Firebase, and the Pl@ntNet round
+ * current phones. Consented captures are uploaded to Firebase and Pl@ntNet; the Pl@ntNet round
  * trip was measured with a 1123x1600 photo, so this keeps upload size down without dropping
  * below a resolution known to work. Rationale: docs/testing/CAMERA_VALIDATION.md.
  */
@@ -296,12 +296,13 @@ private fun surfaceRotationFor(orientationDegrees: Int): Int = when (orientation
 
 private fun capturePhoto(
     context: Context,
+    captureId: String,
     imageCapture: ImageCapture,
     onSaved: (String) -> Unit,
     onError: (String) -> Unit,
 ) {
     val directory = File(context.filesDir, "photos").apply { mkdirs() }
-    val file = File(directory, "observation-${Instant.now().toEpochMilli()}.jpg")
+    val file = File(directory, "observation-$captureId.jpg")
     val output = ImageCapture.OutputFileOptions.Builder(file).build()
     imageCapture.takePicture(
         output,
@@ -312,6 +313,8 @@ private fun capturePhoto(
             }
 
             override fun onError(exception: ImageCaptureException) {
+                // This output has never reached consent or the observation repository.
+                runCatching { file.delete() }
                 onError(exception.message ?: "Photo capture failed.")
             }
         },
