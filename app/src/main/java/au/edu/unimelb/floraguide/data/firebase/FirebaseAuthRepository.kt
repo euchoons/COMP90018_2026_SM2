@@ -18,14 +18,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import androidx.work.WorkManager
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
+import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
+import au.edu.unimelb.floraguide.data.local.ObservationDao
 
 class FirebaseAuthRepository(
     private val context: Context,
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val logger: AuthSessionLogger = AuthSessionLogger(context)
+    private val logger: AuthSessionLogger = AuthSessionLogger(context),
+    private val workManager: WorkManager = WorkManager.getInstance(context),
+    private val observationDao: ObservationDao? = null
 ) : AuthRepository {
     private val state = MutableStateFlow<AuthState>(currentState())
     override val authState: StateFlow<AuthState> = state.asStateFlow()
@@ -111,46 +116,85 @@ class FirebaseAuthRepository(
         val uid = user.uid
 
         try {
+            // 1. Pre-flight check: Ensure recent authentication to prevent late-stage rejection
+            val token = user.getIdToken(false).await()
+            val authTime = (token.claims["auth_time"] as? Number)?.toLong() ?: 0L
+            val now = System.currentTimeMillis() / 1000L
+
+            // Firebase classifies sessions older than 5 minutes as stale for sensitive operations
+            if (now - authTime > 300L) {
+                throw com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException(
+                    "ERROR_REQUIRES_RECENT_LOGIN",
+                    "Account deletion requires a recent login. Please sign out and sign in again before retrying."
+                )
+            }
+
             state.value = AuthState.Authenticating
+
+            // 2. Coordinate concurrent processes: Halt sync and pending uploads
+            workManager.cancelUniqueWork("observation-sync-$uid")
+            workManager.cancelUniqueWork("pending-scan-cleanup-$uid")
+
             val firestore = FirebaseFirestore.getInstance()
             val storage = FirebaseStorage.getInstance()
 
-            // 1. Wipe all cloud observations and associated Cloud Storage photos
-            val observationsRef = firestore.collection("users").document(uid).collection("observations")
-            // Never use a partial offline cache as the authoritative deletion inventory.
-            val snapshot = observationsRef.get(Source.SERVER).await()
-            val photos = FirebasePhotoStorage(context, storage, auth, expectedUserId = uid)
-
-            for (doc in snapshot.documents) {
-                doc.getString("remotePhotoUrl")?.takeIf { it.isNotBlank() }?.let { gsUri ->
-                    // Reuse ownership validation and idempotent handling of already deleted objects.
-                    // All other failures must stop the cascade, leaving the account available to retry.
-                    photos.deletePhoto(gsUri)
+            // 3. Purge all account-owned cloud objects (including orphan photos)
+            // This is a multi-step idempotent cascade, not an atomic transaction.
+            val storageRef = storage.reference.child("plant_photos/$uid")
+            try {
+                val items = storageRef.listAll().await().items
+                for (item in items) {
+                    try {
+                        item.delete().await()
+                    } catch (e: com.google.firebase.storage.StorageException) {
+                        if (!isMissingStorageObject(e.errorCode)) throw e
+                    }
                 }
-                doc.reference.delete().await()
+            } catch (e: com.google.firebase.storage.StorageException) {
+                if (!isMissingStorageObject(e.errorCode)) throw e
             }
 
-            // 2. Remove the user's root Firestore document
-            firestore.collection("users").document(uid).delete().await()
+            // 4. Purge server observation documents
+            val observationsRef = firestore.collection("users").document(uid).collection("observations")
+            val snapshot = observationsRef.get(Source.SERVER).await()
+            for (doc in snapshot.documents) {
+                try {
+                    doc.reference.delete().await()
+                } catch (e: Exception) {
+                    // Ignore missing documents on retry
+                }
+            }
 
-            // 3. Remove the Auth account
+            // 5. Purge the user's root Firestore document
+            try {
+                firestore.collection("users").document(uid).delete().await()
+            } catch (e: Exception) {
+                // Ignore missing root document on retry
+            }
+
+            // 6. Local cleanup: Purge account-owned local records and diagnostics
+            val dao = observationDao ?: FloraGuideDatabase.getInstance(context).observationDao()
+            dao.deleteAllForUser(uid)
+            logger.clearLogs()
+
+            // 7. Finally, remove the Auth account credentials
             user.delete().await()
 
             state.value = AuthState.Unauthenticated
             logger.logEvent("DELETE_ACCOUNT", "SUCCESS", uid, "Account and associated data completely removed.")
             Result.success(Unit)
+
         } catch (cancelled: CancellationException) {
             state.value = currentState()
             throw cancelled
         } catch (error: Exception) {
-            val failMsg = error.localizedMessage ?: "Account deletion failed."
+            val failMsg = sanitizeAuthError(error)
             state.value = auth.currentUser?.let { AuthState.Authenticated(it.toDomain()) }
                 ?: AuthState.Error(failMsg)
             logger.logEvent("DELETE_ACCOUNT", "FAILURE", uid, failMsg)
             Result.failure(error)
         }
     }
-
 
     override fun getSessionLogs(): List<String> = kotlinx.coroutines.runBlocking {
         logger.getLogs()

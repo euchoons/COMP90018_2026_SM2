@@ -1,20 +1,14 @@
 package au.edu.unimelb.floraguide.data.firebase
 
 import android.app.Application
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import androidx.work.WorkManager
+import au.edu.unimelb.floraguide.data.local.ObservationDao
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.*
-import io.mockk.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.test.*
-import org.junit.Assert.*
-import org.junit.Before
-import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -24,19 +18,25 @@ import com.google.firebase.firestore.Source
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.StorageException
-import io.mockk.mockkStatic
-import io.mockk.unmockkAll
+import com.google.firebase.storage.ListResult
+import io.mockk.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.test.*
 import org.junit.After
-import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertTrue
-import io.mockk.every
-import android.content.Context
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], manifest = Config.NONE, application = Application::class)
 class FirebaseAuthRepositoryTest {
     private val auth = mockk<FirebaseAuth>(relaxed = true)
+    private val workManager = mockk<WorkManager>(relaxed = true)
+    private val dao = mockk<ObservationDao>(relaxed = true)
     private lateinit var app: Application
 
     @Before
@@ -44,12 +44,10 @@ class FirebaseAuthRepositoryTest {
         app = ApplicationProvider.getApplicationContext()
     }
 
-    // Test the repository with a deterministic storage backend; Android Keystore is device-only.
     private fun repository(context: Context = app) = FirebaseAuthRepository(
-        context, auth, AuthSessionLogger(context.getSharedPreferences("test_auth_logs", Context.MODE_PRIVATE)),
+        context, auth, AuthSessionLogger(context.getSharedPreferences("test_auth_logs", Context.MODE_PRIVATE)), workManager, dao
     )
 
-    // Helper configured to support all test requirements (handles nulls and custom profiles)
     private fun user(
         id: String,
         anonymous: Boolean,
@@ -61,8 +59,6 @@ class FirebaseAuthRepositoryTest {
         every { it.email } returns email
         every { it.displayName } returns displayName
     }
-
-    // --- TESTS FROM FILE 1 ---
 
     @Test
     fun `anonymous registration links credentials and retains UID`() = runTest {
@@ -141,8 +137,6 @@ class FirebaseAuthRepositoryTest {
         verify(exactly = 0) { auth.signInAnonymously() }
     }
 
-    // --- TESTS FROM FILE 2 ---
-
     @Test
     fun `successful sign in writes session log`() = runTest {
         val u = user("user-1", false, "user@example.test", "Test User")
@@ -177,7 +171,7 @@ class FirebaseAuthRepositoryTest {
 
     @After
     fun tearDown() {
-        unmockkAll() // Clears static mocks after each test to prevent test pollution
+        unmockkAll()
     }
 
     @Test
@@ -201,46 +195,46 @@ class FirebaseAuthRepositoryTest {
     }
 
     private suspend fun checkDeletion(photoError: Exception?) {
-        // 1. Mock static Firebase SDK instances
-        mockkStatic(FirebaseFirestore::class)
-        mockkStatic(FirebaseStorage::class)
+        mockkStatic(FirebaseFirestore::class, FirebaseStorage::class)
 
         val firestore = mockk<FirebaseFirestore>(relaxed = true)
         val storage = mockk<FirebaseStorage>(relaxed = true)
         every { FirebaseFirestore.getInstance() } returns firestore
         every { FirebaseStorage.getInstance() } returns storage
 
-        // 2. Mock authenticated user
         val u = user("user-123", false)
         every { auth.currentUser } returns u
         every { u.delete() } returns Tasks.forResult(null)
 
-        // 3. Mock Firestore observation documents and Cloud Storage photo references
+        val freshAuthTime = System.currentTimeMillis() / 1000L
+        val tokenResult = mockk<GetTokenResult> { every { claims } returns mapOf("auth_time" to freshAuthTime) }
+        every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
+
+        val rootRef = mockk<StorageReference>()
+        val userStorageRef = mockk<StorageReference>()
+        val photoRef = mockk<StorageReference>()
+        val listResult = mockk<ListResult>()
+
+        every { storage.reference } returns rootRef
+        every { rootRef.child("plant_photos/user-123") } returns userStorageRef
+        every { userStorageRef.listAll() } returns Tasks.forResult(listResult)
+        every { listResult.items } returns listOf(photoRef)
+        every { photoRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
+
+        val userDoc = mockk<DocumentReference>()
+        val obsCollection = mockk<CollectionReference>()
         val querySnapshot = mockk<QuerySnapshot>()
         val docSnap = mockk<QueryDocumentSnapshot>()
         val docRef = mockk<DocumentReference>()
-        val storageRef = mockk<StorageReference>()
-        val userDoc = mockk<DocumentReference>()
-        val obsCollection = mockk<CollectionReference>()
 
-        // Mock document data containing a remote photo URL
-        every { docSnap.getString("remotePhotoUrl") } returns "gs://test-bucket/plant_photos/user-123/photo.jpg"
+        every { querySnapshot.documents } returns listOf(docSnap)
         every { docSnap.reference } returns docRef
         every { docRef.delete() } returns Tasks.forResult(null)
-        every { querySnapshot.documents } returns listOf(docSnap)
 
-        // Wire up the Firestore collection chain
         every { firestore.collection("users").document("user-123") } returns userDoc
         every { userDoc.collection("observations") } returns obsCollection
         every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
         every { userDoc.delete() } returns Tasks.forResult(null)
-
-        // Wire up the Cloud Storage chain
-        every { storage.getReferenceFromUrl("gs://test-bucket/plant_photos/user-123/photo.jpg") } returns storageRef
-        every { storage.reference.bucket } returns "test-bucket"
-        every { storageRef.bucket } returns "test-bucket"
-        every { storageRef.path } returns "/plant_photos/user-123/photo.jpg"
-        every { storageRef.delete() } returns if (photoError == null) Tasks.forResult(null) else Tasks.forException(photoError)
 
         val repository = repository()
         val result = try {
@@ -257,11 +251,12 @@ class FirebaseAuthRepositoryTest {
             return
         }
 
-        // 4. Verify cascade execution order and success state
         assertTrue(result.isSuccess)
-        verify(exactly = 1) { storageRef.delete() }
+        verify(exactly = 1) { workManager.cancelUniqueWork("observation-sync-user-123") }
+        verify(exactly = 1) { photoRef.delete() }
         verify(exactly = 1) { docRef.delete() }
         verify(exactly = 1) { userDoc.delete() }
+        coVerify(exactly = 1) { dao.deleteAllForUser("user-123") }
         verify(exactly = 1) { u.delete() }
 
         val logs = repository.getSessionLogs()
@@ -281,8 +276,7 @@ class FirebaseAuthRepositoryTest {
 
     @Test
     fun `deleteAccount reverts state and logs failure if network or auth error occurs`() = runTest {
-        mockkStatic(FirebaseFirestore::class)
-        mockkStatic(FirebaseStorage::class)
+        mockkStatic(FirebaseFirestore::class, FirebaseStorage::class)
 
         val firestore = mockk<FirebaseFirestore>(relaxed = true)
         val storage = mockk<FirebaseStorage>(relaxed = true)
@@ -292,12 +286,18 @@ class FirebaseAuthRepositoryTest {
         val u = user("user-123", false)
         every { auth.currentUser } returns u
 
-        // Simulate an Auth rejection (e.g., requires recent login)
-        every { u.delete() } returns Tasks.forException(
-            FirebaseAuthRecentLoginRequiredException("ERROR_REQUIRES_RECENT_LOGIN", "Re-authenticate before deleting.")
-        )
+        val freshAuthTime = System.currentTimeMillis() / 1000L
+        val tokenResult = mockk<GetTokenResult> { every { claims } returns mapOf("auth_time" to freshAuthTime) }
+        every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
 
-        // Mock empty observations for simplicity
+        every { u.delete() } returns Tasks.forException(Exception("Network unavailable"))
+
+        val rootRef = mockk<StorageReference>(relaxed = true)
+        val listResult = mockk<ListResult>()
+        every { storage.reference } returns rootRef
+        every { rootRef.child(any()).listAll() } returns Tasks.forResult(listResult)
+        every { listResult.items } returns emptyList()
+
         val userDoc = mockk<DocumentReference>()
         val obsCollection = mockk<CollectionReference>()
         val querySnapshot = mockk<QuerySnapshot>()
@@ -311,25 +311,80 @@ class FirebaseAuthRepositoryTest {
         val result = repository.deleteAccount()
 
         assertTrue(result.isFailure)
-
-        // Verify state is restored to Authenticated rather than remaining Authenticating or Unauthenticated
+        assertEquals("Network unavailable", result.exceptionOrNull()?.message)
         assertTrue(repository.authState.value is AuthState.Authenticated)
 
         val logs = repository.getSessionLogs()
         assertTrue(logs.any { it.contains("DELETE_ACCOUNT") && it.contains("FAILURE") })
     }
 
+    @Test
+    fun `deletion fails immediately if reauthentication is expired`() = runTest {
+        val u = user("user-123", false)
+        every { auth.currentUser } returns u
 
+        val staleAuthTime = (System.currentTimeMillis() / 1000L) - 600L
+        val tokenResult = mockk<GetTokenResult> {
+            every { claims } returns mapOf("auth_time" to staleAuthTime)
+        }
+        every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
+
+        val repository = repository()
+        val result = repository.deleteAccount()
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is FirebaseAuthRecentLoginRequiredException)
+
+        verify(exactly = 0) { workManager.cancelUniqueWork(any()) }
+        coVerify(exactly = 0) { dao.deleteAllForUser(any()) }
+    }
+
+    @Test
+    fun `cancellation propagates correctly during cascade`() = runTest {
+        mockkStatic(FirebaseFirestore::class, FirebaseStorage::class)
+
+        val firestore = mockk<FirebaseFirestore>(relaxed = true)
+        val storage = mockk<FirebaseStorage>(relaxed = true)
+        every { FirebaseFirestore.getInstance() } returns firestore
+        every { FirebaseStorage.getInstance() } returns storage
+
+        val u = user("user-123", false)
+        every { auth.currentUser } returns u
+
+        val freshAuthTime = System.currentTimeMillis() / 1000L
+        val tokenResult = mockk<GetTokenResult> { every { claims } returns mapOf("auth_time" to freshAuthTime) }
+        every { u.getIdToken(false) } returns Tasks.forResult(tokenResult)
+
+        val rootRef = mockk<StorageReference>(relaxed = true)
+        val listResult = mockk<ListResult>()
+        every { storage.reference } returns rootRef
+        every { rootRef.child(any()).listAll() } returns Tasks.forResult(listResult)
+        every { listResult.items } returns emptyList()
+
+        val userDoc = mockk<DocumentReference>()
+        val obsCollection = mockk<CollectionReference>()
+        val querySnapshot = mockk<QuerySnapshot>()
+        every { querySnapshot.documents } returns emptyList()
+        every { firestore.collection("users").document("user-123") } returns userDoc
+        every { userDoc.collection("observations") } returns obsCollection
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
+        every { userDoc.delete() } returns Tasks.forResult(null)
+
+        coEvery { dao.deleteAllForUser("user-123") } throws CancellationException("User navigated away")
+
+        val repository = repository()
+        val result = runCatching { repository.deleteAccount() }
+
+        assertTrue(result.exceptionOrNull() is CancellationException)
+    }
 
     @Test
     fun `auth logs strictly redact emails and hash UIDs to prevent PII leakage`() = runTest {
         val rawEmail = "student.target@student.unimelb.edu.au"
         val rawUid = "plain-text-uid-12345"
 
-        // Create a relaxed mock for the Context
-        //val context = mockk<Context>(relaxed = true)
         val context = ApplicationProvider.getApplicationContext<Context>()
-        // 1. Force Firebase to throw an exception that leaks the email in the message
+
         every { auth.signInWithEmailAndPassword(any(), any()) } returns Tasks.forException(
             Exception("Firebase Auth failed for $rawEmail: User disabled")
         )
@@ -337,15 +392,10 @@ class FirebaseAuthRepositoryTest {
         val guestUser = user(rawUid, true)
         every { auth.currentUser } returns guestUser
 
-        // Pass the mocked context alongside the auth instance
         val repository = repository(context)
-
-        // 2. Trigger the failure to generate the internal log
         repository.signInWithEmail(rawEmail, "password")
-
         val logs = repository.getSessionLogs()
 
-        // 3. Assert absolute absence of raw identifiers in the resulting dataset
         assertTrue(
             "Logs must not contain the raw email string",
             logs.none { it.contains(rawEmail) }
