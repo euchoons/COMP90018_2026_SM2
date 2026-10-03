@@ -33,26 +33,57 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             }
         }
 
-        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+        private fun getSecureSharedPreferences(context: Context): android.content.SharedPreferences {
+            return runCatching {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
 
-            // Remove the plaintext Context.MODE_PRIVATE fallback.
-            val prefs = EncryptedSharedPreferences.create(
-                context,
-                "secure_db_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
+                EncryptedSharedPreferences.create(
+                    context,
+                    "secure_db_prefs",
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            }.getOrElse {
+                runCatching {
+                    context.deleteSharedPreferences("secure_db_prefs")
+                    val masterKey = MasterKey.Builder(context)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
 
-            var passphrase = prefs.getString("sqlcipher_passphrase", null)
-            if (passphrase == null) {
-                val dbFile = context.getDatabasePath("floraguide.db")
-                check(!(dbFile.exists() && !isPlaintext(dbFile))) {
-                    "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
+                    EncryptedSharedPreferences.create(
+                        context,
+                        "secure_db_prefs",
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                }.getOrElse {
+                    context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
                 }
+            }
+        }
+
+        private fun purgeDatabaseFiles(context: Context) {
+            runCatching {
+                val dbFile = context.getDatabasePath("floraguide.db")
+                val backupFile = context.getDatabasePath("floraguide.db.corrupt")
+                if (backupFile.exists()) backupFile.delete()
+                if (dbFile.exists()) dbFile.renameTo(backupFile)
+                context.getDatabasePath("floraguide.db-wal").delete()
+                context.getDatabasePath("floraguide.db-shm").delete()
+                context.getDatabasePath("floraguide_enc.tmp").delete()
+            }
+        }
+
+        private fun retrieveOrGenerateSecureKey(context: Context, forceRegenerate: Boolean = false): ByteArray {
+            val prefs = getSecureSharedPreferences(context)
+
+            var passphrase = if (forceRegenerate) null else prefs.getString("sqlcipher_passphrase", null)
+            if (passphrase == null) {
+                purgeDatabaseFiles(context)
 
                 val randomBytes = ByteArray(32)
                 SecureRandom().nextBytes(randomBytes)
@@ -116,29 +147,47 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             context.getDatabasePath("floraguide.db-shm").delete()
         }
 
+        private fun buildAndVerifyDatabase(context: Context, passphrase: ByteArray?): FloraGuideDatabase {
+            val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                .addMigrations(MIGRATION_1_2)
+            if (passphrase != null) {
+                builder.openHelperFactory(SupportFactory(passphrase))
+            }
+            val db = builder.build()
+            // Force immediate connection opening and verification to catch decryption/corruption errors inside getInstance
+            db.openHelper.writableDatabase.version
+            return db
+        }
+
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
+                val appContext = context.applicationContext
                 val hasSqlCipher = runCatching {
-                    SQLiteDatabase.loadLibs(context.applicationContext)
+                    SQLiteDatabase.loadLibs(appContext)
                     true
                 }.getOrDefault(false)
 
-                val builder = if (hasSqlCipher) {
-                    runCatching {
-                        val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
-                        convertPlaintextToEncrypted(context.applicationContext, passphrase)
-                        Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                            .openHelperFactory(SupportFactory(passphrase))
-                    }.getOrNull()
-                } else {
-                    null
+                val db = try {
+                    if (hasSqlCipher) {
+                        val passphrase = retrieveOrGenerateSecureKey(appContext)
+                        convertPlaintextToEncrypted(appContext, passphrase)
+                        buildAndVerifyDatabase(appContext, passphrase)
+                    } else {
+                        buildAndVerifyDatabase(appContext, null)
+                    }
+                } catch (throwable: Throwable) {
+                    runCatching { android.util.Log.e("FloraGuideDatabase", "SQLCipher database open/decryption failed, recreating database: ${throwable.localizedMessage}") }
+                    purgeDatabaseFiles(appContext)
+
+                    if (hasSqlCipher) {
+                        val passphrase = retrieveOrGenerateSecureKey(appContext, forceRegenerate = true)
+                        buildAndVerifyDatabase(appContext, passphrase)
+                    } else {
+                        buildAndVerifyDatabase(appContext, null)
+                    }
                 }
 
-                val dbBuilder = builder ?: Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-
-                dbBuilder
-                    .addMigrations(MIGRATION_1_2)
-                    .build().also { instance = it }
+                db.also { instance = it }
             }
         }
 

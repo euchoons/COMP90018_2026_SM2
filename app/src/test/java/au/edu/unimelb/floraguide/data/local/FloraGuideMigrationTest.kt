@@ -64,4 +64,11 @@ class FloraGuideMigrationTest {
             } finally { db.close() }
         } finally { context.deleteDatabase(name) }
     }
+
+    @Test fun `getInstance initializes a verified database instance`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val instance = FloraGuideDatabase.getInstance(context)
+        assertNotNull(instance)
+        assertNotNull(instance.observationDao())
+    }
 }
