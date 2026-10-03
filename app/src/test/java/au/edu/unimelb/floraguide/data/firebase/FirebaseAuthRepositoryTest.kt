@@ -45,7 +45,7 @@ class FirebaseAuthRepositoryTest {
     }
 
     private fun repository(context: Context = app) = FirebaseAuthRepository(
-        context, auth, AuthSessionLogger(context.getSharedPreferences("test_auth_logs", Context.MODE_PRIVATE)), workManager, dao
+        context, auth, AuthSessionLogger(context.getSharedPreferences("test_auth_logs", Context.MODE_PRIVATE)), workManager, dao, UnconfinedTestDispatcher()
     )
 
     private fun user(
@@ -418,5 +418,42 @@ class FirebaseAuthRepositoryTest {
             "Exceptions must be masked with the redaction placeholder",
             logs.any { it.contains("[REDACTED_EMAIL]") }
         )
+    }
+
+    @Test
+    fun `interrupted erasure resumes and completes on startup`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val erasurePrefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
+        erasurePrefs.edit().putString("erasure_status", "INTERRUPTED").putString("erasure_uid", "user-123").apply()
+
+        mockkStatic(FirebaseFirestore::class, FirebaseStorage::class)
+        val firestore = mockk<FirebaseFirestore>(relaxed = true)
+        val storage = mockk<FirebaseStorage>(relaxed = true)
+        every { FirebaseFirestore.getInstance() } returns firestore
+        every { FirebaseStorage.getInstance() } returns storage
+
+        val rootRef = mockk<StorageReference>(relaxed = true)
+        val userStorageRef = mockk<StorageReference>(relaxed = true)
+        val listResult = mockk<ListResult>(relaxed = true)
+        every { storage.reference } returns rootRef
+        every { rootRef.child("plant_photos/user-123") } returns userStorageRef
+        every { userStorageRef.listAll() } returns Tasks.forResult(listResult)
+        every { listResult.items } returns emptyList()
+        every { listResult.prefixes } returns emptyList()
+
+        val userDoc = mockk<DocumentReference>()
+        val obsCollection = mockk<CollectionReference>()
+        val querySnapshot = mockk<QuerySnapshot>()
+        every { querySnapshot.documents } returns emptyList()
+        every { firestore.collection("users").document("user-123") } returns userDoc
+        every { userDoc.collection("observations") } returns obsCollection
+        every { obsCollection.get(Source.SERVER) } returns Tasks.forResult(querySnapshot)
+        every { userDoc.delete() } returns Tasks.forResult(null)
+
+        repository(context)
+        advanceUntilIdle()
+
+        assertEquals("COMPLETE", erasurePrefs.getString("erasure_status", null))
+        coVerify(exactly = 1) { dao.deleteAllForUser("user-123") }
     }
 }

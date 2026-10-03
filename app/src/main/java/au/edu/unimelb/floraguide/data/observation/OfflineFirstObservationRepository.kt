@@ -37,6 +37,7 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun loadAll(): List<Observation> {
+        if (FirebaseAuthRepository.isErasureActive(context)) return emptyList()
         val uid = currentUserId
         return withContext(Dispatchers.IO) {
             prepareUser()
@@ -55,22 +56,28 @@ class OfflineFirstObservationRepository(
         withContext(Dispatchers.IO) { prepareUser() }
         launch {
             dao.observeForUser(uid).collect { rows ->
-                if (currentUserId == uid) send(rows.map { it.toObservation() })
+                if (currentUserId == uid && !FirebaseAuthRepository.isErasureActive(context)) send(rows.map { it.toObservation() })
             }
         }
         if (uid == LOCAL_GUEST) {
             awaitClose {}
         } else {
+            if (FirebaseAuthRepository.isErasureActive(context)) {
+                awaitClose {}
+                return@channelFlow
+            }
             dao.retryFailed(uid)
             schedule(uid)
             val registration = firestore.collection("users").document(uid).collection("observations")
                 .addSnapshotListener { snapshot, error ->
+                    if (FirebaseAuthRepository.isErasureActive(context)) return@addSnapshotListener
                     if (error != null) {
                         Log.w("FloraGuide-Sync", "Cloud read failed; retaining local records.")
                     } else if (snapshot != null) {
                         launch(Dispatchers.IO) {
+                            if (FirebaseAuthRepository.isErasureActive(context)) return@launch
                             for (change in snapshot.documentChanges) {
-                                if (currentUserId != uid) return@launch
+                                if (currentUserId != uid || FirebaseAuthRepository.isErasureActive(context)) return@launch
                                 // Local pending writes/deletes always win over cloud callbacks.
                                 if (change.type == DocumentChange.Type.REMOVED) {
                                     dao.removeRemote(uid, change.document.id, change.document.getLong("revision") ?: 0)
@@ -96,6 +103,7 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun delete(id: String) {
+        if (FirebaseAuthRepository.isErasureActive(context)) return
         val uid = currentUserId
         withContext(Dispatchers.IO) {
             dao.markDeleted(uid, id)
@@ -104,6 +112,7 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun importLocalObservations() {
+        check(!FirebaseAuthRepository.isErasureActive(context)) { "Account erasure in progress." }
         val uid = requireNotNull(auth.currentUser?.uid) { "Sign in before importing local observations." }
         withContext(Dispatchers.IO) {
             prepareUser()
@@ -113,6 +122,7 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun retrySync() {
+        if (FirebaseAuthRepository.isErasureActive(context)) return
         val uid = requireNotNull(auth.currentUser?.uid) { "Sign in before retrying cloud sync." }
         dao.retryFailed(uid)
         schedule(uid)

@@ -67,7 +67,8 @@ class FirebasePhotoStorage(
     private val expectedUserId: String? = null,
     private val pendingUploads: PendingPhotoRegistry? = null,
 ) : PhotoStore {
-    private val cacheDirectory = File(context.applicationContext.cacheDir, "plantnet-cloud")
+    private val appContext = context.applicationContext
+    private val cacheDirectory = File(appContext.cacheDir, "plantnet-cloud")
 
     override suspend fun uploadPhoto(localPath: String): StoredPhoto {
         val uid = ensureUser()
@@ -235,6 +236,7 @@ class FirebasePhotoStorage(
     }
 
     private fun ensureUser(): String {
+        check(!FirebaseAuthRepository.isErasureActive(appContext)) { "Account erasure in progress." }
         val uid = auth.currentUser?.uid ?: throw IOException("Sign in from Account before uploading a photo. The guided demo works offline.")
         check(expectedUserId == null || expectedUserId == uid) { "Account changed before photo transfer." }
         return uid
