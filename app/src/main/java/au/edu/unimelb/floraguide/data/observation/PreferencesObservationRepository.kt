@@ -1,7 +1,6 @@
 package au.edu.unimelb.floraguide.data.observation
 
 import android.content.Context
-import androidx.core.content.edit
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.domain.repository.ObservationRepository
 import kotlinx.coroutines.Dispatchers
@@ -25,13 +24,12 @@ class PreferencesObservationRepository(private val context: Context) : Observati
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
     }.getOrElse {
+        // Fall back to standard SharedPreferences in test environment where AndroidKeyStore is unavailable.
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     }
 
     override suspend fun loadAll(): List<Observation> = withContext(Dispatchers.IO) {
-        val encoded = runCatching { preferences.getString(KEY_OBSERVATIONS, null) }.getOrNull()
-            ?: runCatching { context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).getString(KEY_OBSERVATIONS, null) }.getOrNull()
-            ?: return@withContext emptyList()
+        val encoded = preferences.getString(KEY_OBSERVATIONS, null) ?: return@withContext emptyList()
         val array = runCatching { JSONArray(encoded) }.getOrNull() ?: return@withContext emptyList()
         (0 until array.length()).mapNotNull { index ->
             array.optJSONObject(index)?.let(ObservationJsonCodec::decode)
@@ -44,11 +42,8 @@ class PreferencesObservationRepository(private val context: Context) : Observati
         (listOf(observation) + current).take(MAX_OBSERVATIONS).forEach {
             array.put(ObservationJsonCodec.encode(it))
         }
-        val content = array.toString()
-        try {
-            preferences.edit { putString(KEY_OBSERVATIONS, content) }
-        } catch (_: Throwable) {
-            context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE).edit { putString(KEY_OBSERVATIONS, content) }
+        check(preferences.edit().putString(KEY_OBSERVATIONS, array.toString()).commit()) {
+            "Failed to commit legacy preferences securely."
         }
     }
 

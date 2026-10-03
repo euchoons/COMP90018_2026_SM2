@@ -20,6 +20,8 @@ internal fun Observation.toEntity(userId: String) = ObservationEntity(
 internal fun ObservationEntity.toObservation(): Observation {
     val decoded = observationJson?.let { runCatching { ObservationJsonCodec.decode(JSONObject(it)) }.getOrNull() }
     val affinity = runCatching { JSONObject(habitatAffinityJson) }.getOrDefault(JSONObject())
+    val parsedHabitat = Habitat.entries.firstOrNull { it.name == habitatName } ?: Habitat.TREE_CANOPY
+    val parsedContextSource = runCatching { ContextDataSource.valueOf(contextSource) }.getOrDefault(ContextDataSource.DEMO_FALLBACK)
     val legacy = decoded ?: Observation(
         id = id,
         species = Species(speciesId, commonName, scientificName,
@@ -29,10 +31,10 @@ internal fun ObservationEntity.toObservation(): Observation {
             }.toMap(), 0),
         observedAt = Instant.ofEpochMilli(observedAtEpochMs),
         coarseLocation = GeoPoint(coarseLatitude, coarseLongitude),
-        habitat = Habitat.valueOf(habitatName), photoPath = localPhotoPath,
+        habitat = parsedHabitat, photoPath = localPhotoPath,
         headingDegrees = headingDegrees, relativeScore = relativeScore,
         // Rows without decodable JSON predate schema 3, so old context labels are not trusted.
-        contextSource = ObservationJsonCodec.legacyContextSource(ContextDataSource.valueOf(contextSource)),
+        contextSource = ObservationJsonCodec.legacyContextSource(parsedContextSource),
     )
     return legacy.copy(photoPath = localPhotoPath ?: remotePhotoUrl, cloudPhotoUri = remotePhotoUrl)
 }
