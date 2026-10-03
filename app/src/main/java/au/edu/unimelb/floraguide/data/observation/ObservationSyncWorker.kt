@@ -1,8 +1,10 @@
+// Path: app/src/main/java/au/edu/unimelb/floraguide/data/observation/ObservationSyncWorker.kt
 package au.edu.unimelb.floraguide.data.observation
 
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 import au.edu.unimelb.floraguide.data.firebase.FirebasePhotoStorage
 import au.edu.unimelb.floraguide.data.local.FloraGuideDatabase
 import au.edu.unimelb.floraguide.data.local.ObservationDao
@@ -58,16 +60,21 @@ open class ObservationSyncWorker(
         val uid = item.userId
         check(getUserId() == uid) { "Account changed before deletion." }
 
-        // Clean up Cloud Storage image if present
+        // Clean up Cloud Storage image only if no other active observation references it.
         item.remotePhotoUrl?.let { cloudUri ->
             if (cloudUri.startsWith("gs://")) {
-                // FIX: Remove runCatching wrapper. Propagating exceptions lets the worker
-                // safely reschedule a retry task on a transient storage network drop.
-                FirebasePhotoStorage(applicationContext, expectedUserId = uid).deletePhoto(cloudUri)
+                val stillReferenced = dao.isPhotoReferenced(uid, cloudUri)
+                currentCoroutineContext().ensureActive()
+
+                if (!stillReferenced) {
+                    FirebasePhotoStorage(applicationContext, expectedUserId = uid).deletePhoto(cloudUri)
+                    Log.i("FloraGuide-Sync", "Shared storage object unreferenced; deleted: $cloudUri")
+                } else {
+                    Log.i("FloraGuide-Sync", "Preserving shared storage object; still referenced by other observations: $cloudUri")
+                }
             }
         }
 
-        // MANDATORY: Ensure the job wasn't cancelled and the account didn't change while waiting for Storage
         kotlinx.coroutines.currentCoroutineContext().ensureActive()
         check(getUserId() == uid) { "Account changed during deletion." }
 
@@ -75,9 +82,11 @@ open class ObservationSyncWorker(
             .collection("observations").document(item.id).delete().await()
     }
 
-
     override suspend fun doWork(): Result {
         val uid = inputData.getString(USER_ID) ?: return Result.failure()
+        if (FirebaseAuthRepository.isErasureActive(applicationContext)) {
+            return Result.success() // Halt worker so it cannot recreate data during erasure
+        }
         if (getUserId() != uid) return Result.success()
         var retry = false
         for (item in dao.getPendingSync(uid)) {
@@ -108,7 +117,7 @@ open class ObservationSyncWorker(
     companion object {
         const val USER_ID = "userId"
         fun schedule(context: Context, uid: String, workManager: WorkManager = WorkManager.getInstance(context)) {
-            require(uid != "anonymous_user")
+            require(uid != "anonymous_user") { }
             val work = OneTimeWorkRequestBuilder<ObservationSyncWorker>()
                 .setInputData(workDataOf(USER_ID to uid))
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())

@@ -116,4 +116,7 @@ interface ObservationDao {
 
     @Query("DELETE FROM cached_observations WHERE userId = 'anonymous_user' AND id = :id")
     suspend fun deleteGuestRow(id: String)
+
+    @Query("DELETE FROM cached_observations WHERE userId = :userId")
+    suspend fun deleteAllForUser(userId: String)
 }
