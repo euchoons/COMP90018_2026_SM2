@@ -32,7 +32,7 @@ Updated 2026-10-01 against the current implementation. This page owns current fe
 
 ## Next work
 
-1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), camera checklist and sensor calibration on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
+1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), the [device testing register](testing/DEVICE_TESTING_EVIDENCE.md), camera checklist, sensor calibration and [location measurements](testing/LOCATION_VALIDATION.md#device-measurement-procedure) on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
 2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). The app currently uploads after capture without that consent step.
 3. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
 4. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.
