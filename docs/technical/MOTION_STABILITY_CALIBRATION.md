@@ -171,7 +171,7 @@ Reading of this:
 
 The current values have been confirmed informally in hand-held use, but no numbers are recorded yet. This procedure is the evidence that converts "works for me" into "calibrated"; [contribution policy](../../CONTRIBUTING.md) requires physical devices for sensor claims, and the plan requires at least two phones.
 
-Debug builds log every gate update under `FloraGuide-Motion`: the acceleration deviation, angular speed, instantaneous and smoothed scores, and whether the gate is open. For each condition, with the phone connected, run `tools/device-evidence.sh log-start`, hold the condition for about 30 s, then run `tools/device-evidence.sh motion-save <phone>-<condition>`. Afterwards `python tools/motion-calibration.py docs/evidence/device/<model>/<phone>-*.log` prints one row per condition, skipping the first 3 s as setup time. Record each condition:
+Debug builds log every gate update under `FloraGuide-Motion`: the acceleration deviation, angular speed, instantaneous and smoothed scores, and whether the gate is open. For each condition, with the phone connected, run `tools/device-evidence.sh log-start`, hold the condition for about 35 s, then run `tools/device-evidence.sh motion-save <phone>-motion-<condition>`, where `<condition>` is `flat`, `braced`, `extended`, `afterwalk`, `walking` or `panning`. The `motion-` prefix keeps these logs apart from the location logs saved in the same folder. Afterwards `python tools/motion-calibration.py docs/evidence/device/<model>/<phone>-motion-*.log` prints one row per condition, skipping the first 3 s as setup time. Record each condition:
 
 | # | Condition | Phone A: median / 95th percentile | Phone B |
 |---|---|---|---|

@@ -81,9 +81,9 @@ With no saved observations, the Field Guide map shows the last location from Obs
 Use a debug build; [device testing evidence](DEVICE_TESTING_EVIDENCE.md#evidence-helper) explains installation and the helper script. Run from the repository root.
 
 1. Choose reference points and read each one's coordinates from a satellite map at maximum zoom: open sky (e.g. South Lawn), under tree canopy (System Garden), beside a tall building, and indoors near a window.
-2. At each point, holding the phone still: `tools/device-evidence.sh log-start`, open Observe, wait two minutes, capture once, then `tools/device-evidence.sh log-save <phone>-<point>`.
-3. Run `python tools/location-accuracy.py docs/evidence/device/<model>/<phone>-<point>.log --ref LAT,LON --label "<phone>, <point>"` and paste the output under Results.
-4. At the open-sky point, repeat once with Wi-Fi and mobile data off (GPS only) and once with approximate location granted.
+2. At each point, holding the phone still: `tools/device-evidence.sh log-start`, open Observe, wait two minutes, capture once, then `tools/device-evidence.sh log-save <phone>-loc-<point>`, where `<point>` is `opensky`, `canopy`, `building` or `indoors`. The `loc-` prefix keeps these logs apart from the motion calibration logs saved in the same folder.
+3. Run `python tools/location-accuracy.py docs/evidence/device/<model>/<phone>-loc-<point>.log --ref LAT,LON --label "<phone>, <point>"` and paste the output under Results.
+4. At the open-sky point, repeat with the open-sky reference once with Wi-Fi and mobile data off (GPS only, `<phone>-loc-gpsonly`) and once with approximate location granted (`<phone>-loc-approx`).
 
 Acceptance criteria:
 
