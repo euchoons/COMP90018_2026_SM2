@@ -41,8 +41,8 @@ class FirebaseAuthRepository(
     private val scope = CoroutineScope(ioDispatcher)
     private var isInitialVerification = true // Track the cold-start check
 
-    // Global lock to prevent background sync or in-flight uploads from writing data during/after erasure
-    private val isAccountErasureActive = java.util.concurrent.atomic.AtomicBoolean(false)
+    // Global lock to prevent background sync or in-flight uploads from writing data during erasure
+    private val isAccountErasureActive = erasureActive
 
     fun isErasureActive(): Boolean = isAccountErasureActive.get()
 
@@ -393,14 +393,11 @@ class FirebaseAuthRepository(
     }
 
     companion object {
-        @Volatile private var globalErasureActive = false
+        // In memory, so only an erasure running in this process blocks writes. The persisted status
+        // outlived failed and interrupted erasures and blocked every later save; it now only tells
+        // resumeInterruptedErasureIfNeeded() what to finish.
+        private val erasureActive = java.util.concurrent.atomic.AtomicBoolean(false)
 
-        fun isErasureActive(context: Context): Boolean {
-            if (globalErasureActive) return true
-            return runCatching {
-                val prefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
-                prefs.getString("erasure_status", null) in listOf("IN_PROGRESS", "PURGING_STORAGE", "PURGING_FIRESTORE", "PURGING_LOCAL", "INTERRUPTED")
-            }.getOrDefault(false)
-        }
+        fun isErasureActive(context: Context): Boolean = erasureActive.get()
     }
 }
