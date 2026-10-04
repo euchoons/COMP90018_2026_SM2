@@ -111,8 +111,8 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                 verifyDb?.close()
             }
 
-            // Safely swap the original with the encrypted replacement
-            check(oldDb.delete() && tmpDb.renameTo(oldDb)) {
+            // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+            check(tmpDb.renameTo(oldDb)) {
                 "Failed to replace old plaintext database with encrypted version."
             }
 
@@ -122,27 +122,23 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
+                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                    .addMigrations(MIGRATION_1_2)
+
                 val hasSqlCipher = runCatching {
                     SQLiteDatabase.loadLibs(context.applicationContext)
                     true
                 }.getOrDefault(false)
 
-                val builder = if (hasSqlCipher) {
-                    runCatching {
-                        val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
-                        convertPlaintextToEncrypted(context.applicationContext, passphrase)
-                        Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                            .openHelperFactory(SupportFactory(passphrase))
-                    }.getOrNull()
-                } else {
-                    null
+                // Plaintext only where SQLCipher cannot load, as in JVM tests. Key or conversion errors must
+                // propagate: Room treats an encrypted file opened without its key as corrupt and deletes it.
+                if (hasSqlCipher) {
+                    val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
+                    convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                    builder.openHelperFactory(SupportFactory(passphrase))
                 }
 
-                val dbBuilder = builder ?: Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-
-                dbBuilder
-                    .addMigrations(MIGRATION_1_2)
-                    .build().also { instance = it }
+                builder.build().also { instance = it }
             }
         }
 
