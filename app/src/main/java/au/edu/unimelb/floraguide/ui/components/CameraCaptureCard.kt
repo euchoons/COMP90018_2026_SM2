@@ -56,8 +56,7 @@ import java.io.File
 @Composable
 fun CameraCaptureCard(
     snapshot: SensorSnapshot,
-    captureEnabled: Boolean,
-    captureHint: String,
+    guidance: CaptureGuidance,
     onCaptureStarted: () -> String?,
     onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
@@ -171,12 +170,8 @@ fun CameraCaptureCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CameraOverlayPill(
-                text = when {
-                    !snapshot.canMeasureStability -> "Stability n/a"
-                    snapshot.isStable -> "Steady"
-                    else -> "Hold still"
-                },
-                positive = snapshot.canMeasureStability && snapshot.isStable,
+                text = guidance.stabilityLabel,
+                positive = guidance.stabilityPositive,
             )
             CameraOverlayPill(
                 text = lightLabel(snapshot),
@@ -203,7 +198,7 @@ fun CameraCaptureCard(
         ) {
             Text(
                 text = when {
-                    cameraReady -> captureHint
+                    cameraReady -> guidance.hint
                     cameraFailed -> "Camera unavailable — the guided demo on Home still works"
                     else -> "Starting CameraX…"
                 },
@@ -231,7 +226,7 @@ fun CameraCaptureCard(
                         },
                     )
                 },
-                enabled = cameraReady && captureEnabled && !isSaving,
+                enabled = cameraReady && guidance.shutterEnabled && !isSaving,
                 modifier = Modifier.size(72.dp),
                 shape = CircleShape,
                 contentPadding = ButtonDefaults.ContentPadding,

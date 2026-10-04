@@ -38,6 +38,7 @@ import au.edu.unimelb.floraguide.ui.components.CameraCaptureCard
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
+import au.edu.unimelb.floraguide.ui.components.captureGuidance
 
 @Composable
 fun ScanScreen(
@@ -70,11 +71,8 @@ fun ScanScreen(
             onPermissionResult(true)
         }
     }
-    val sensors = state.sensorSnapshot.availability
-    val canGate = sensors.accelerometer && sensors.gyroscope
-    val captureEnabled = state.pendingPhotoConsent == null &&
-        (!state.stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable)
-    val captureHint = if (!captureEnabled) "Hold still before capturing" else "Ready to capture"
+    val canGate = state.sensorSnapshot.canMeasureStability
+    val guidance = captureGuidance(state.sensorSnapshot, state.stabilityGateEnabled, state.pendingPhotoConsent != null)
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { SectionHeading(title = "Observe a plant", subtitle = "Photo and location are separate inputs; either can have its own status.") }
         item {
@@ -106,13 +104,13 @@ fun ScanScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Stability-gated capture", fontWeight = FontWeight.Bold)
-                    Text(if (canGate) "Accelerometer + gyroscope" else "Sensor unavailable: manual capture", style = MaterialTheme.typography.bodySmall)
+                    Text(guidance.switchSummary, style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(state.stabilityGateEnabled && canGate, onStabilityGateChanged, enabled = canGate)
             }
         }
         if (cameraGranted) item {
-            CameraCaptureCard(snapshot = state.sensorSnapshot, captureEnabled = captureEnabled, captureHint = captureHint,
+            CameraCaptureCard(snapshot = state.sensorSnapshot, guidance = guidance,
                 onCaptureStarted = onCaptureStarted, onPhotoCaptured = onPhotoCaptured, onError = onError)
         } else item {
             Button(onClick = { permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA)) }, modifier = Modifier.fillMaxWidth()) {
