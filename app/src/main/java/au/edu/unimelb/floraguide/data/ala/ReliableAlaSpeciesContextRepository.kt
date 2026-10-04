@@ -17,7 +17,6 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.round
 /** Production adapter selected by AppContainer. Failed live lookups never manufacture demo counts. */
 class ReliableAlaSpeciesContextRepository(
     private val client: AlaOccurrenceSource,
@@ -55,11 +54,7 @@ class ReliableAlaSpeciesContextRepository(
         require(radiusKm in 1..100)
         val started = nanoTime()
         val queriedAt = now()
-        val coarsenedLocation = GeoPoint(
-            latitude = round(location.latitude * 1000.0) / 1000.0,
-            longitude = round(location.longitude * 1000.0) / 1000.0,
-            accuracyMetres = location.accuracyMetres
-        )
+        val coarsenedLocation = location.coarsened()
 
         val outcomes = supervisorScope {
             // Pass the coarsened location to the lookup function

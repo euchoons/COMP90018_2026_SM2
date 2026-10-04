@@ -4,6 +4,7 @@ import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.round
 
 /** Framework-independent domain types shared by camera, Pl@ntNet, ALA and persistence. */
 data class Species(
@@ -74,6 +75,15 @@ data class GeoPoint(
     fun hasValidCoordinates(): Boolean =
         latitude.isFinite() && longitude.isFinite() &&
             latitude in -90.0..90.0 && longitude in -180.0..180.0
+
+    /**
+     * The 0.001° grid used for saved observations and ALA queries: about 111 m north–south and
+     * 88 m east–west at Parkville. Idempotent, so an already-coarse point never moves.
+     */
+    fun coarsened(): GeoPoint = copy(
+        latitude = round(latitude * 1000.0) / 1000.0,
+        longitude = round(longitude * 1000.0) / 1000.0,
+    )
 }
 
 enum class CaptureLocationSource(val label: String) {
