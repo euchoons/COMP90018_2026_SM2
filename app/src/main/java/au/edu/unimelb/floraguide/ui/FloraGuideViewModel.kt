@@ -60,6 +60,8 @@ data class FloraGuideUiState(
     /** Explicit "Skip location" for this scan; survives Activity recreation, unlike Compose effects. */
     val locationSkipped: Boolean = false,
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
+    /** A device preference, so it outlives scans and account changes; it resets only on app restart. */
+    val stabilityGateEnabled: Boolean = true,
     val photoPath: String? = null,
     val pendingPhotoConsent: PendingPhotoConsent? = null,
     val storedPhoto: StoredPhoto? = null,
@@ -159,7 +161,10 @@ class FloraGuideViewModel(
                 discardPendingConsent()
 
                 _uiState.update { current ->
-                    FloraGuideUiState(sensorSnapshot = current.sensorSnapshot)
+                    FloraGuideUiState(
+                        sensorSnapshot = current.sensorSnapshot,
+                        stabilityGateEnabled = current.stabilityGateEnabled,
+                    )
                 }
 
                 if (uid != null) {
@@ -361,6 +366,7 @@ class FloraGuideViewModel(
                 screen = AppScreen.SCAN,
                 sensorSnapshot = current.sensorSnapshot,
                 selectedHabitat = current.selectedHabitat,
+                stabilityGateEnabled = current.stabilityGateEnabled,
                 observations = current.observations,
             )
         }
@@ -369,6 +375,10 @@ class FloraGuideViewModel(
     fun setHabitat(habitat: Habitat) {
         _uiState.update { it.copy(selectedHabitat = habitat) }
         rerankWithCurrentContext()
+    }
+
+    fun setStabilityGateEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(stabilityGateEnabled = enabled) }
     }
 
     fun selectSpecies(speciesId: String) {

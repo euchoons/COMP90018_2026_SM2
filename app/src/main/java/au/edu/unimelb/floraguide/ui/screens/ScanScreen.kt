@@ -43,6 +43,7 @@ import au.edu.unimelb.floraguide.ui.components.SectionHeading
 fun ScanScreen(
     state: FloraGuideUiState,
     onHabitatSelected: (Habitat) -> Unit,
+    onStabilityGateChanged: (Boolean) -> Unit,
     onPermissionResult: (Boolean) -> Unit,
     onUseDemoLocation: () -> Unit,
     onCaptureStarted: () -> String?,
@@ -55,7 +56,6 @@ fun ScanScreen(
     fun granted(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     var cameraGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.CAMERA)) }
     var locationGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) }
-    var stabilityGateEnabled by rememberSaveable { mutableStateOf(true) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
         cameraGranted = granted(Manifest.permission.CAMERA)
         locationGranted = granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -73,7 +73,7 @@ fun ScanScreen(
     val sensors = state.sensorSnapshot.availability
     val canGate = sensors.accelerometer && sensors.gyroscope
     val captureEnabled = state.pendingPhotoConsent == null &&
-        (!stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable)
+        (!state.stabilityGateEnabled || !canGate || state.sensorSnapshot.isStable)
     val captureHint = if (!captureEnabled) "Hold still before capturing" else "Ready to capture"
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { SectionHeading(title = "Observe a plant", subtitle = "Photo and location are separate inputs; either can have its own status.") }
@@ -108,7 +108,7 @@ fun ScanScreen(
                     Text("Stability-gated capture", fontWeight = FontWeight.Bold)
                     Text(if (canGate) "Accelerometer + gyroscope" else "Sensor unavailable: manual capture", style = MaterialTheme.typography.bodySmall)
                 }
-                Switch(stabilityGateEnabled && canGate, { stabilityGateEnabled = it }, enabled = canGate)
+                Switch(state.stabilityGateEnabled && canGate, onStabilityGateChanged, enabled = canGate)
             }
         }
         if (cameraGranted) item {

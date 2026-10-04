@@ -190,6 +190,27 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
+    @Test fun `stability gate setting survives navigation and account changes`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.goToScan()
+        assertTrue(model.uiState.value.stabilityGateEnabled)
+
+        model.setStabilityGateEnabled(false)
+        model.goHome()
+        model.goToScan()
+        assertFalse(model.uiState.value.stabilityGateEnabled)
+
+        // An account change clears the scan, but the gate is a device preference.
+        state.value = AuthState.Authenticated(UserProfile("A", null, null, false))
+        runCurrent()
+        assertFalse(model.uiState.value.stabilityGateEnabled)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `image-only and final rankings contain the same candidates`() = runTest(dispatcher) {
         state.value = AuthState.OfflineGuest
         val species = (1..8).map {
