@@ -1,7 +1,11 @@
 package au.edu.unimelb.floraguide.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.components.CameraCaptureCard
@@ -57,13 +63,33 @@ fun ScanScreen(
     fun granted(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     var cameraGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.CAMERA)) }
     var locationGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) }
+    // Once Android stops showing the dialog, relaunching the request returns "denied" instantly,
+    // so the only way forward is the system app-settings page.
+    var cameraPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+    val activity = LocalActivity.current
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
         cameraGranted = granted(Manifest.permission.CAMERA)
+        // A location-only request must not reset the camera state.
+        if (Manifest.permission.CAMERA in results) {
+            cameraPermanentlyDenied = !cameraGranted && activity != null &&
+                !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+        }
         locationGranted = granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
         // Camera-only permission requests must not override an explicit location skip.
         val requestedLocation = results.containsKey(Manifest.permission.ACCESS_FINE_LOCATION) ||
             results.containsKey(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (requestedLocation) onPermissionResult(locationGranted)
+    }
+    // Permissions can be granted from system settings while this screen stays composed.
+    LifecycleResumeEffect(Unit) {
+        if (!cameraGranted && granted(Manifest.permission.CAMERA)) {
+            cameraGranted = true
+            cameraPermanentlyDenied = false
+        }
+        if (!locationGranted && (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION))) {
+            locationGranted = true
+        }
+        onPauseOrDispose { }
     }
     // Re-runs after rotation or theme changes, so it must not override an explicit skip.
     LaunchedEffect(locationGranted, state.pendingPhotoConsent?.captureId) {
@@ -112,6 +138,16 @@ fun ScanScreen(
         if (cameraGranted) item {
             CameraCaptureCard(snapshot = state.sensorSnapshot, guidance = guidance,
                 onCaptureStarted = onCaptureStarted, onPhotoCaptured = onPhotoCaptured, onError = onError)
+        } else if (cameraPermanentlyDenied) item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Camera access is turned off for FloraGuide. Allow it under Permissions in app settings, or use the offline guided demo below.",
+                    style = MaterialTheme.typography.bodySmall)
+                Button(onClick = {
+                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)))
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Open app settings")
+                }
+            }
         } else item {
             Button(onClick = { permissionLauncher.launch(arrayOf(Manifest.permission.CAMERA)) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Enable camera")
