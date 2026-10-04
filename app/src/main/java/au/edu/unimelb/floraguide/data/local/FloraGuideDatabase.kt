@@ -7,12 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.sqlcipher.database.SupportFactory
+import net.sqlcipher.database.SQLiteDatabase
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.io.File
 import java.security.SecureRandom
-
-
 
 @Database(entities = [ObservationEntity::class, ObservationImport::class], version = 2, exportSchema = false)
 abstract class FloraGuideDatabase : RoomDatabase() {
@@ -20,48 +20,122 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
     companion object {
         @Volatile private var instance: FloraGuideDatabase? = null
-        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
-            val keyString = runCatching {
-                val masterKey = MasterKey.Builder(context)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
 
-                EncryptedSharedPreferences.create(
-                    context,
-                    "secure_db_prefs",
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
-            }.getOrElse {
-                context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
-            }.let { prefs ->
-                var passphrase = prefs.getString("sqlcipher_passphrase", null)
-                if (passphrase == null) {
-                    val randomBytes = ByteArray(32)
-                    SecureRandom().nextBytes(randomBytes)
-                    passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
-                    prefs.edit().putString("sqlcipher_passphrase", passphrase).apply()
+        /**
+         * Inspects the file header. Standard SQLite databases always begin with "SQLite format 3\0".
+         * SQLCipher databases do not, providing a deterministic way to check encryption state.
+         */
+        private fun isPlaintext(dbFile: File): Boolean {
+            if (!dbFile.exists() || dbFile.length() < 16) return false
+            return dbFile.inputStream().use {
+                val header = ByteArray(16)
+                if (it.read(header) != 16) false else String(header) == "SQLite format 3\u0000"
+            }
+        }
+
+        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            // Remove the plaintext Context.MODE_PRIVATE fallback.
+            val prefs = EncryptedSharedPreferences.create(
+                context,
+                "secure_db_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+
+            var passphrase = prefs.getString("sqlcipher_passphrase", null)
+            if (passphrase == null) {
+                val dbFile = context.getDatabasePath("floraguide.db")
+                check(!(dbFile.exists() && !isPlaintext(dbFile))) {
+                    "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
                 }
-                passphrase
+
+                val randomBytes = ByteArray(32)
+                SecureRandom().nextBytes(randomBytes)
+                passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+
+                check(prefs.edit().putString("sqlcipher_passphrase", passphrase).commit()) {
+                    "Failed to persist the encryption key securely."
+                }
             }
 
-            return Base64.decode(keyString, Base64.NO_WRAP)
+            // Databases encrypted since SQLCipher was added are keyed with these decoded bytes.
+            return Base64.decode(passphrase, Base64.NO_WRAP)
         }
+
+        private fun convertPlaintextToEncrypted(context: Context, passphrase: ByteArray) {
+            val oldDb = context.getDatabasePath("floraguide.db")
+            if (!oldDb.exists() || !isPlaintext(oldDb)) return
+
+            val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
+            if (tmpDb.exists()) tmpDb.delete()
+
+            // A blob key reaches SQLCipher as raw bytes, the same key SupportFactory(passphrase) uses.
+            val keyBlob = passphrase.joinToString("") { "%02x".format(it) }
+            var oldDbConn: SQLiteDatabase? = null
+
+            try {
+                // Open the existing plaintext DB with an empty password. ATTACH inherits these flags,
+                // so without CREATE_IF_NECESSARY it cannot create the encrypted file.
+                oldDbConn = SQLiteDatabase.openDatabase(
+                    oldDb.absolutePath,
+                    "",
+                    null,
+                    SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY
+                )
+                // Attach a new encrypted temporary database and export the contents
+                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY X'$keyBlob';")
+                oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
+                oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
+            } finally {
+                oldDbConn?.close()
+            }
+
+            // Validate the newly exported encrypted database
+            var verifyDb: SQLiteDatabase? = null
+            try {
+                verifyDb = SQLiteDatabase.openDatabase(
+                    tmpDb.absolutePath,
+                    passphrase,
+                    null,
+                    SQLiteDatabase.OPEN_READONLY,
+                    null,
+                    null
+                )
+                verifyDb.version // Trigger a read to guarantee structural integrity and successful encryption
+            } finally {
+                verifyDb?.close()
+            }
+
+            // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+            check(tmpDb.renameTo(oldDb)) {
+                "Failed to replace old plaintext database with encrypted version."
+            }
+
+            context.getDatabasePath("floraguide.db-wal").delete()
+            context.getDatabasePath("floraguide.db-shm").delete()
+        }
+
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
                 val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
                     .addMigrations(MIGRATION_1_2)
 
                 val hasSqlCipher = runCatching {
-                    net.sqlcipher.database.SQLiteDatabase.loadLibs(context.applicationContext)
+                    SQLiteDatabase.loadLibs(context.applicationContext)
                     true
                 }.getOrDefault(false)
 
+                // Plaintext only where SQLCipher cannot load, as in JVM tests. Key or conversion errors must
+                // propagate: Room treats an encrypted file opened without its key as corrupt and deletes it.
                 if (hasSqlCipher) {
-                    val passphrase: ByteArray = retrieveOrGenerateSecureKey(context.applicationContext)
-                    val factory = SupportFactory(passphrase)
-                    builder.openHelperFactory(factory)
+                    val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
+                    convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                    builder.openHelperFactory(SupportFactory(passphrase))
                 }
 
                 builder.build().also { instance = it }
@@ -84,7 +158,6 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                         retryCount INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 0, observationJson TEXT,
                         PRIMARY KEY(userId, id))
                 """.trimIndent())
-                // PR23 added two columns without incrementing version 1; accept either old shape.
                 val months = if ("preferredMonthsCsv" in oldColumns) "preferredMonthsCsv" else "''"
                 val habitat = if ("habitatAffinityJson" in oldColumns) "habitatAffinityJson" else "'{}'"
                 db.execSQL("""

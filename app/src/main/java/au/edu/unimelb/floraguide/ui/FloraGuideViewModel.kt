@@ -182,8 +182,9 @@ class FloraGuideViewModel(
                         }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
                         if (sessionKey() == uid) {
+                            runCatching { android.util.Log.e("FloraGuideVM", "Failed to load local observations: ${e.localizedMessage}", e) }
                             showMessage("Could not load local observations. Please reopen the app.")
                         }
                     }
@@ -434,7 +435,7 @@ class FloraGuideViewModel(
      * Called at the shutter press. Saving the JPEG can take seconds, long enough for a fix near
      * the 60 s freshness limit to expire, so time and location are frozen here like the heading.
      */
-    
+
     fun beginCapture(): String? {
         if (!canChangeAnalysis()) return null
 
@@ -808,7 +809,8 @@ class FloraGuideViewModel(
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                runCatching { android.util.Log.e("FloraGuideVM", "Failed to save observation: ${e.localizedMessage}", e) }
                 if (isCurrentRequest(generation, uid)) showMessage("Could not save this observation. Please retry.")
             } finally {
                 if (!saved) container.pendingPhotos.saveFailed(photoUri)

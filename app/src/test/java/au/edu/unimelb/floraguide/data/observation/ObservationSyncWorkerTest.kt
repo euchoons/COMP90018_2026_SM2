@@ -127,5 +127,82 @@ class ObservationSyncWorkerTest {
         assertNotNull(persistentRow)
         assertEquals(SyncState.PENDING_DELETE, persistentRow!!.syncState)
     }
+    @Test
+    fun testPhotoNotDeletedIfNewObservationCreatedConcurrently() = runBlocking {
+        // Simulate: obs-1 deletes, but obs-3 is saved with same photo before sync completes
+        val uid = "test-user-uid"
+        val sharedUri = "gs://floraguide-fe2a0.appspot.com/plant_photos/$uid/digest123.jpg"
 
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-1", userId = uid, remotePhotoUrl = sharedUri))
+        dao.markDeleted(uid, "obs-1")
+
+        // Concurrent save before sync worker runs
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-3", userId = uid, remotePhotoUrl = sharedUri))
+
+        // Photo must still be referenced
+        assertTrue(dao.isPhotoReferenced(uid, sharedUri))
+    }
+
+    @Test
+    fun testPhotoOwnershipBoundary() = runBlocking {
+        val uid1 = "user-1"
+        val uid2 = "user-2"
+        val uri1 = "gs://bucket/plant_photos/$uid1/photo.jpg"
+        val uri2 = "gs://bucket/plant_photos/$uid2/photo.jpg"
+
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-1", userId = uid1, remotePhotoUrl = uri1))
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-2", userId = uid2, remotePhotoUrl = uri2))
+
+        // uid1's deletion should NOT affect uid2's photo
+        dao.markDeleted(uid1, "obs-1")
+        assertFalse(dao.isPhotoReferenced(uid1, uri1))
+        assertTrue(dao.isPhotoReferenced(uid2, uri2))
+    }
+
+    @Test
+    fun testDeletionRetryOnTransientFailure() = runBlocking {
+        val uid = "test-user-uid"
+        val sharedUri = "gs://floraguide-fe2a0.appspot.com/plant_photos/$uid/digest123.jpg"
+
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-1", userId = uid, remotePhotoUrl = sharedUri))
+        dao.insertOrUpdate(createMockObservationEntity(id = "obs-2", userId = uid, remotePhotoUrl = sharedUri))
+
+        dao.markDeleted(uid, "obs-1")
+
+        // Simulate first retry fails
+        val pending = dao.getPendingSync(uid)
+        assertEquals(1, pending.size)
+
+        // Photo still protected even if first delete attempt fails
+        assertTrue(dao.isPhotoReferenced(uid, sharedUri))
+
+        // Second retry should still see the reference check
+        assertTrue(dao.isPhotoReferenced(uid, sharedUri))
+    }
+
+    private fun createMockObservationEntity(
+        id: String = "obs-1",
+        userId: String = "test-user-uid",
+        remotePhotoUrl: String? = "gs://floraguide-fe2a0.appspot.com/plant_photos/$userId/digest123.jpg",
+        syncState: SyncState = SyncState.SYNCED
+    ): ObservationEntity = ObservationEntity(
+        id = id,
+        userId = userId,
+        speciesId = "eucalyptus_camaldulensis",
+        scientificName = "Eucalyptus camaldulensis",
+        commonName = "River red gum",
+        observedAtEpochMs = System.currentTimeMillis(),
+        coarseLatitude = -37.7963,
+        coarseLongitude = 144.9614,
+        habitatName = "TREE_CANOPY",
+        localPhotoPath = null,
+        remotePhotoUrl = remotePhotoUrl,
+        headingDegrees = null,
+        relativeScore = 0.95,
+        contextSource = "ALA_LIVE",
+        syncState = syncState,
+        retryCount = 0,
+        revision = 0,
+        observationJson = null
+    )
 }

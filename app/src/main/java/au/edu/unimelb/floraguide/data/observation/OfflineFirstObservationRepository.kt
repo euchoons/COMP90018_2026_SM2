@@ -16,10 +16,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import au.edu.unimelb.floraguide.data.firebase.FirebaseAuthRepository
 
 class OfflineFirstObservationRepository(
     private val context: Context,
@@ -31,88 +31,126 @@ class OfflineFirstObservationRepository(
     private val currentUserId: String get() = auth.currentUser?.uid ?: LOCAL_GUEST
 
     private suspend fun prepareUser() {
-        val legacy = PreferencesObservationRepository(context).loadAll()
-        dao.importLegacy(legacy.map { it.toEntity(legacyOwner(it)) })
+        runCatching {
+            val legacy = PreferencesObservationRepository(context).loadAll()
+            dao.importLegacy(legacy.map { it.toEntity(legacyOwner(it)) })
+        }.onFailure { e ->
+            Log.w("FloraGuide-Repo", "Legacy preference import skipped (non-fatal): ${e.localizedMessage}")
+        }
     }
 
     override suspend fun loadAll(): List<Observation> {
+        if (FirebaseAuthRepository.isErasureActive(context)) return emptyList()
         val uid = currentUserId
         return withContext(Dispatchers.IO) {
             prepareUser()
-            dao.getAllForUser(uid).map { it.toObservation() }
+            dao.getAllForUser(uid).mapNotNull { row ->
+                runCatching { row.toObservation() }.getOrNull()
+            }
         }
     }
 
     // One account per subscription. The ViewModel cancels/rebinds this flow on session changes.
     override fun observeAll(): Flow<List<Observation>> = channelFlow {
+        if (FirebaseAuthRepository.isErasureActive(context)) {
+            send(emptyList())
+            awaitClose {}
+            return@channelFlow
+        }
         val uid = currentUserId
         withContext(Dispatchers.IO) { prepareUser() }
         launch {
             dao.observeForUser(uid).collect { rows ->
-                if (currentUserId == uid) send(rows.map { it.toObservation() })
+                if (currentUserId == uid && !FirebaseAuthRepository.isErasureActive(context)) {
+                    val observations = rows.mapNotNull { row ->
+                        runCatching { row.toObservation() }.getOrNull()
+                    }
+                    send(observations)
+                }
             }
         }
         if (uid == LOCAL_GUEST) {
             awaitClose {}
         } else {
-            dao.retryFailed(uid)
-            schedule(uid)
-            val registration = firestore.collection("users").document(uid).collection("observations")
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Log.w("FloraGuide-Sync", "Cloud read failed; retaining local records.")
-                    } else if (snapshot != null) {
-                        launch(Dispatchers.IO) {
-                            for (change in snapshot.documentChanges) {
-                                if (currentUserId != uid) return@launch
-                                // Local pending writes/deletes always win over cloud callbacks.
-                                if (change.type == DocumentChange.Type.REMOVED) {
-                                    dao.removeRemote(uid, change.document.id, change.document.getLong("revision") ?: 0)
-                                } else {
-                                    decodeRemote(change.document, uid)?.let { dao.mergeRemote(it) }
+            if (FirebaseAuthRepository.isErasureActive(context)) {
+                awaitClose {}
+                return@channelFlow
+            }
+            runCatching { dao.retryFailed(uid) }
+            runCatching { schedule(uid) }
+            val registration = runCatching {
+                firestore.collection("users").document(uid).collection("observations")
+                    .addSnapshotListener { snapshot, error ->
+                        if (FirebaseAuthRepository.isErasureActive(context)) return@addSnapshotListener
+                        if (error != null) {
+                            Log.w("FloraGuide-Sync", "Cloud read failed; retaining local records.")
+                        } else if (snapshot != null) {
+                            launch(Dispatchers.IO) {
+                                if (FirebaseAuthRepository.isErasureActive(context)) return@launch
+                                for (change in snapshot.documentChanges) {
+                                    if (currentUserId != uid || FirebaseAuthRepository.isErasureActive(context)) return@launch
+                                    // Local pending writes/deletes always win over cloud callbacks.
+                                    if (change.type == DocumentChange.Type.REMOVED) {
+                                        dao.removeRemote(uid, change.document.id, change.document.getLong("revision") ?: 0)
+                                    } else {
+                                        decodeRemote(change.document, uid)?.let { dao.mergeRemote(it) }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            awaitClose { registration.remove() }
+            }.getOrNull()
+            awaitClose { registration?.remove() }
         }
     }
 
     override suspend fun save(observation: Observation) {
+        // Fail rather than return: the caller would treat the observation as saved.
+        check(!FirebaseAuthRepository.isErasureActive(context)) { "Account erasure in progress." }
         val uid = currentUserId
         withContext(Dispatchers.IO) {
             prepareUser()
             dao.saveLocal(observation.toEntity(uid))
-            if (uid != LOCAL_GUEST) schedule(uid)
+            if (uid != LOCAL_GUEST) {
+                runCatching { schedule(uid) }
+            }
         }
     }
 
     override suspend fun delete(id: String) {
+        if (FirebaseAuthRepository.isErasureActive(context)) return
         val uid = currentUserId
         withContext(Dispatchers.IO) {
             dao.markDeleted(uid, id)
-            if (uid != LOCAL_GUEST) schedule(uid)
+            if (uid != LOCAL_GUEST) {
+                runCatching { schedule(uid) }
+            }
         }
     }
 
     override suspend fun importLocalObservations() {
+        check(!FirebaseAuthRepository.isErasureActive(context)) { "Account erasure in progress." }
         val uid = requireNotNull(auth.currentUser?.uid) { "Sign in before importing local observations." }
         withContext(Dispatchers.IO) {
             prepareUser()
             dao.claimLocalGuest(uid)
-            schedule(uid)
+            runCatching { schedule(uid) }
         }
     }
 
     override suspend fun retrySync() {
+        if (FirebaseAuthRepository.isErasureActive(context)) return
         val uid = requireNotNull(auth.currentUser?.uid) { "Sign in before retrying cloud sync." }
-        dao.retryFailed(uid)
-        schedule(uid)
+        runCatching { dao.retryFailed(uid) }
+        runCatching { schedule(uid) }
     }
 
     private fun schedule(uid: String) {
-        ObservationSyncWorker.schedule(context, uid, workManager ?: WorkManager.getInstance(context))
+        runCatching {
+            ObservationSyncWorker.schedule(context, uid, workManager ?: WorkManager.getInstance(context))
+        }.onFailure { e ->
+            Log.w("FloraGuide-Sync", "Failed to schedule background sync (non-fatal): ${e.localizedMessage}")
+        }
     }
 
     private fun decodeRemote(doc: DocumentSnapshot, uid: String): ObservationEntity? = runCatching {

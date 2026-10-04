@@ -19,4 +19,11 @@ class ObservationEntityCodecTest {
         assertEquals(ContextDataSource.LEGACY_UNVERIFIED, rowWithoutJson("DEMO_FALLBACK").toObservation().contextSource)
         assertEquals(ContextDataSource.ALA_LIVE, rowWithoutJson("ALA_LIVE").toObservation().contextSource)
     }
+
+    @Test fun `invalid or unknown enum values fall back safely without throwing`() {
+        val corruptedRow = rowWithoutJson("UNKNOWN_CONTEXT").copy(habitatName = "CORRUPTED_HABITAT")
+        val obs = corruptedRow.toObservation()
+        assertEquals(ContextDataSource.LEGACY_UNVERIFIED, obs.contextSource)
+        assertEquals(au.edu.unimelb.floraguide.domain.model.Habitat.TREE_CANOPY, obs.habitat)
+    }
 }
