@@ -129,6 +129,19 @@ class PendingPhotoRegistry(
     @Synchronized
     fun snapshot(): List<PendingPhotoRecord> = records.values.toList()
 
+    @Synchronized
+    fun clearForUser(userId: String) {
+        val toRemove = records.values.filter { it.userId == userId }.toList()
+        for (record in toRemove) {
+            try {
+                store.remove(record.gsUri)
+                records.remove(record.gsUri)
+                cleanupClaims.remove(record.gsUri)
+                inFlightUploads.remove(record.gsUri)
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun eligible(record: PendingPhotoRecord): Boolean =
         isManagedScanPhoto(record.userId, record.gsUri) &&
             (record.processId != processId || record.state == PendingPhotoState.ABANDONED)

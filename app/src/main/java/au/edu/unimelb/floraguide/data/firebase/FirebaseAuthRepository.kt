@@ -9,6 +9,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,15 +32,24 @@ class FirebaseAuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val logger: AuthSessionLogger = AuthSessionLogger(context),
     private val workManager: WorkManager = WorkManager.getInstance(context),
-    private val observationDao: ObservationDao? = null
+    private val observationDao: ObservationDao? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : AuthRepository {
     private val state = MutableStateFlow<AuthState>(currentState())
     override val authState: StateFlow<AuthState> = state.asStateFlow()
     private val operations = Mutex()
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(ioDispatcher)
     private var isInitialVerification = true // Track the cold-start check
 
+    // Global lock to prevent background sync or in-flight uploads from writing data during erasure
+    private val isAccountErasureActive = erasureActive
+
+    fun isErasureActive(): Boolean = isAccountErasureActive.get()
+
     init {
+        scope.launch(ioDispatcher) {
+            resumeInterruptedErasureIfNeeded()
+        }
         auth.addAuthStateListener { firebaseAuth ->
             val currentUser = firebaseAuth.currentUser
             if (currentUser != null || state.value != AuthState.OfflineGuest) {
@@ -56,6 +66,80 @@ class FirebaseAuthRepository(
                     userUid = currentUser.uid,
                     detail = "Cold-start session reconciliation synced user."
                 )
+            }
+        }
+    }
+
+    private suspend fun resumeInterruptedErasureIfNeeded() {
+        runCatching {
+            val erasurePrefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
+            val status = erasurePrefs.getString("erasure_status", null)
+            val uid = erasurePrefs.getString("erasure_uid", null)
+            if (status in listOf("IN_PROGRESS", "PURGING_STORAGE", "PURGING_FIRESTORE", "PURGING_LOCAL", "INTERRUPTED") && !uid.isNullOrBlank()) {
+                isAccountErasureActive.set(true)
+                logger.logEvent("ERASURE_RESUME", "STARTED", uid, "Resuming interrupted account erasure for UID: $uid")
+                val firestore = FirebaseFirestore.getInstance()
+                val storage = FirebaseStorage.getInstance()
+                val expectedPrefixPath = "plant_photos/$uid/"
+                val storageRef = storage.reference.child("plant_photos/$uid")
+
+                erasurePrefs.edit().putString("erasure_status", "PURGING_STORAGE").apply()
+                val listResult = storageRef.listAll().await()
+                for (item in listResult.items) {
+                    val normalizedPath = item.path.trimStart('/')
+                    if (normalizedPath.startsWith(expectedPrefixPath)) {
+                        runCatching { item.delete().await() }
+                    }
+                }
+                for (prefix in listResult.prefixes) {
+                    val nestedList = prefix.listAll().await()
+                    for (item in nestedList.items) {
+                        val normalizedPath = item.path.trimStart('/')
+                        if (normalizedPath.startsWith(expectedPrefixPath)) {
+                            runCatching { item.delete().await() }
+                        }
+                    }
+                }
+
+                erasurePrefs.edit().putString("erasure_status", "PURGING_FIRESTORE").apply()
+                val observationsRef = firestore.collection("users").document(uid).collection("observations")
+                val snapshot = observationsRef.get(Source.SERVER).await()
+                for (doc in snapshot.documents) {
+                    val docUserId = doc.getString("userId") ?: uid
+                    if (docUserId == uid) {
+                        runCatching { doc.reference.delete().await() }
+                    }
+                }
+                runCatching { firestore.collection("users").document(uid).delete().await() }
+
+                erasurePrefs.edit().putString("erasure_status", "PURGING_LOCAL").apply()
+                val effectiveDao = observationDao ?: FloraGuideDatabase.getInstance(context).observationDao()
+                effectiveDao.deleteAllForUser(uid)
+                PendingPhotoUploads.clearForUser(context, uid)
+                AuthSessionLogger(context).clearLogs()
+                cleanLocalUserFiles(uid)
+
+                erasurePrefs.edit().putString("erasure_status", "COMPLETE").remove("erasure_uid").apply()
+                isAccountErasureActive.set(false)
+                logger.logEvent("ERASURE_RESUME", "SUCCESS", uid, "Interrupted account erasure completed successfully.")
+            }
+        }.onFailure { e ->
+            isAccountErasureActive.set(false)
+            logger.logEvent("ERASURE_RESUME", "FAILURE", null, e.localizedMessage ?: "Resume failed")
+        }
+    }
+
+    private fun cleanLocalUserFiles(uid: String) {
+        runCatching {
+            context.cacheDir.walkTopDown().forEach { file ->
+                if (file.isFile && (file.name.contains(uid) || file.absolutePath.contains(uid))) {
+                    file.delete()
+                }
+            }
+            context.filesDir.walkTopDown().forEach { file ->
+                if (file.isFile && (file.name.contains(uid) || file.absolutePath.contains(uid))) {
+                    file.delete()
+                }
             }
         }
     }
@@ -112,11 +196,6 @@ class FirebaseAuthRepository(
     }
 
 
-    // Global lock to prevent background sync or in-flight uploads from writing data during/after erasure
-    private val isAccountErasureActive = java.util.concurrent.atomic.AtomicBoolean(false)
-
-    fun isErasureActive(): Boolean = isAccountErasureActive.get()
-
     override suspend fun deleteAccount(): Result<Unit> = operations.withLock {
         val user = auth.currentUser ?: return Result.failure(IllegalStateException("No authenticated user to delete."))
         val uid = user.uid
@@ -138,16 +217,22 @@ class FirebaseAuthRepository(
 
             state.value = AuthState.Authenticating
             isAccountErasureActive.set(true)
-            erasurePrefs.edit().putString("erasure_status", "IN_PROGRESS").putString("erasure_uid", uid).apply()
+            erasurePrefs.edit()
+                .putString("erasure_status", "IN_PROGRESS")
+                .putString("erasure_uid", uid)
+                .putLong("erasure_timestamp", System.currentTimeMillis())
+                .apply()
 
             // 2. Coordinate observation listeners, in-flight uploads, and pending WorkManager jobs
             workManager.cancelUniqueWork("observation-sync-$uid")
             workManager.cancelUniqueWork("pending-scan-cleanup-$uid")
+            PendingPhotoUploads.clearForUser(context, uid)
 
             val firestore = FirebaseFirestore.getInstance()
             val storage = FirebaseStorage.getInstance()
 
             // 3. Define complete account-erasure inventory & ownership verification boundaries
+            erasurePrefs.edit().putString("erasure_status", "PURGING_STORAGE").apply()
             val expectedPrefixPath = "plant_photos/$uid/"
             val storageRef = storage.reference.child("plant_photos/$uid")
 
@@ -185,6 +270,7 @@ class FirebaseAuthRepository(
             }
 
             // 4. Enumerate and verify observation documents ownership
+            erasurePrefs.edit().putString("erasure_status", "PURGING_FIRESTORE").apply()
             val observationsRef = firestore.collection("users").document(uid).collection("observations")
             val snapshot = observationsRef.get(Source.SERVER).await()
             for (doc in snapshot.documents) {
@@ -198,10 +284,12 @@ class FirebaseAuthRepository(
             // Purge root user document
             firestore.collection("users").document(uid).delete().await()
 
-            // 5. Clean up account-owned local records, photos, and diagnostics
+            // 5. Clean up account-owned local records, photos, diagnostics, and caches
+            erasurePrefs.edit().putString("erasure_status", "PURGING_LOCAL").apply()
             val effectiveDao = observationDao ?: FloraGuideDatabase.getInstance(context).observationDao()
             effectiveDao.deleteAllForUser(uid)
             AuthSessionLogger(context).clearLogs()
+            cleanLocalUserFiles(uid)
 
             // 6. Verify that NO owned data remains before concluding erasure
             val remainingObs = effectiveDao.getAllForUser(uid)
@@ -305,12 +393,11 @@ class FirebaseAuthRepository(
     }
 
     companion object {
-        @Volatile private var globalErasureActive = false
+        // In memory, so only an erasure running in this process blocks writes. The persisted status
+        // outlived failed and interrupted erasures and blocked every later save; it now only tells
+        // resumeInterruptedErasureIfNeeded() what to finish.
+        private val erasureActive = java.util.concurrent.atomic.AtomicBoolean(false)
 
-        fun isErasureActive(context: Context): Boolean {
-            if (globalErasureActive) return true
-            val prefs = context.getSharedPreferences("floraguide_erasure_state", Context.MODE_PRIVATE)
-            return prefs.getString("erasure_status", null) == "IN_PROGRESS"
-        }
+        fun isErasureActive(context: Context): Boolean = erasureActive.get()
     }
 }

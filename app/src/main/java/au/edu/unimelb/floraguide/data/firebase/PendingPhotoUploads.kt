@@ -70,4 +70,8 @@ object PendingPhotoUploads {
             reportFailure = { Log.w(TAG, "Cleanup will retry: ${it.javaClass.simpleName}") },
         )
     }
+
+    fun clearForUser(context: Context, uid: String) {
+        get(context).clearForUser(uid)
+    }
 }
