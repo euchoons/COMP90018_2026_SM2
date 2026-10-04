@@ -28,6 +28,7 @@ These documents distinguish test specifications, earlier checks and pending phys
 - [Device API test cases](testing/DEVICE_API_TEST_CASES.md) — DT-01 through DT-14 specifications and the execution register.
 - [Camera validation](testing/CAMERA_VALIDATION.md) — camera fixes, the reviewed capture/upload path and outstanding device checks.
 - [Hardware adapters verification](testing/HARDWARE_ADAPTERS_VERIFICATION.md) — light/heading behaviour and outstanding device checks.
+- [Location validation](testing/LOCATION_VALIDATION.md) — accuracy and freshness limits, the storage grid, map data and the location measurement procedure.
 
 `evidence/` holds local screenshots, run summaries, recordings and import archives. Its contents are git-ignored by default; only `.gitkeep` is tracked. Review and deliberately include any evidence needed for submission. Keep maintained specifications and reports in the tracked directories above.
 

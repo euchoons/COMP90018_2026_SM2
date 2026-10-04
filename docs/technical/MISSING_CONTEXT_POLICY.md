@@ -51,8 +51,9 @@ from that five-candidate set.
 Keep `LocationFreshnessPolicy`: valid coordinates, known accuracy at most 2 km,
 fix at most 60 seconds old using monotonic time. Freeze the location/source at the
 shutter in `CaptureSnapshot`; retries never replace it with a later fix. Denied,
-missing or unreliable location skips ALA. These are prototype eligibility settings,
-not validated scientific thresholds. A live capture never uses campus demo coordinates.
+missing or unreliable location skips ALA. These are prototype eligibility settings;
+[location validation](../testing/LOCATION_VALIDATION.md) derives them and records the device
+measurements. A live capture never uses campus demo coordinates.
 
 ## Flowering season
 
