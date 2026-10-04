@@ -17,6 +17,9 @@ Related: [`MOTION_STABILITY_CALIBRATION.md`](../technical/MOTION_STABILITY_CALIB
 | Light | Defect fixed: pills duplicated the thresholds, disagreeing at exactly 20,000 lux. | same |
 | Fallbacks | Defect fixed: phones without a gyroscope showed "Hold still" permanently. | same |
 | Fallbacks | Verified: missing light sensor, missing magnetometer, missing motion sensors. | — |
+| Stability switch | Defect fixed: the switch reset to on whenever Observe was reopened. | `fix(sensor): keep the stability gate setting between Observe visits` |
+| Stability switch | Defect fixed: with the gate off, the pill still said "Hold still" while the hint said "Ready to capture", and on and off looked identical while the phone was still. | `fix(sensor): show the stability gate state in the capture hint and pill` |
+| Fallbacks | Regression fixed: phones without motion sensors had lost their manual-capture hint and showed "Ready to capture". | same |
 
 ## Ambient light
 
@@ -76,13 +79,33 @@ The value is a **magnetic** bearing. True north in Melbourne differs by roughly 
 |---|---|---|
 | Ambient light | Pills show "Light n/a"; no warning in the capture hint; capture unaffected | `SensorSnapshotTest`, code review |
 | Magnetometer | Pills show "Heading n/a"; observations store a null heading | code review |
-| Gyroscope | Stability gate disabled, switch greyed out, hint reads "Manual capture fallback active", pills show "Stability n/a" | `MotionStabilityEstimatorTest`, `SensorSnapshotTest` |
+| Gyroscope | Stability gate disabled, switch greyed out, hint reads "Manual capture: motion sensors unavailable", pills show "Stability n/a" | `MotionStabilityEstimatorTest`, `SensorSnapshotTest`, `CaptureGuidanceTest` |
 | Accelerometer | As above; heading also unavailable, since the rotation matrix needs gravity | code review |
 | All four | Snapshot publishes once at start-up with everything unavailable; capture works manually | code review |
 
 **Defect fixed:** with a missing gyroscope the stability score can never cross the threshold, because `SensorMonitor` holds angular velocity at its initial 1 rad/s. `ScanScreen` correctly switched to manual capture, but the camera overlay still showed a permanent red "Hold still", telling the user to fix something they could not fix. It now shows "Stability n/a". A test pins the underlying behaviour so the two stay consistent.
 
 Device declarations are already correct: every sensor is declared `required="false"` in the manifest, so the app installs on phones that lack them.
+
+## Stability gate switch
+
+A teammate reported that the "Stability-gated capture" switch on Observe did not change anything. The gate itself worked, but three things hid it:
+
+- With the phone still, the gate is already open, so on and off looked identical. The emulator's motion sensors never move, so there the switch always looked inert.
+- The "Hold still" pill ignored the switch. With the gate off it contradicted the "Ready to capture" hint.
+- The switch was `rememberSaveable` state inside `ScanScreen`, which is discarded whenever Observe leaves the composition, so it reset to on after every capture or navigation.
+
+`captureGuidance()` now derives the shutter state, hint, pill and switch summary together, so they cannot disagree:
+
+| Motion sensors | Switch | Phone | Shutter | Pill | Hint |
+|---|---|---|---|---|---|
+| Present | On | Steady | Enabled | Steady | Ready to capture |
+| Present | On | Moving | Disabled | Hold still | Hold still before capturing |
+| Present | Off | Steady | Enabled | Steady | Ready to capture (stability gate off) |
+| Present | Off | Moving | Enabled | Moving | Moving: photo may blur (stability gate off) |
+| Missing | Greyed out | — | Enabled | Stability n/a | Manual capture: motion sensors unavailable |
+
+While the upload-consent dialog is open, the shutter stays disabled and the hint reads "Choose whether to use online identification" instead of "Hold still before capturing". The switch summary now describes the current behaviour rather than only naming the sensors. The setting lives in `FloraGuideUiState`, so it survives navigation and account changes; an app restart returns it to on. `CaptureGuidanceTest` pins every row and `FloraGuideViewModelTest` pins the persistence.
 
 ## Device checklist
 
@@ -100,6 +123,7 @@ Not yet run. Record phone model and Android version with each result.
 | 8 | Cover the light sensor with a finger | Warning appears and the hint changes | | |
 | 9 | A phone without a gyroscope, if the team can borrow one | "Stability n/a", manual capture works | | |
 | 10 | Airplane mode plus no location | Light and heading pills unaffected | | |
+| 11 | Wave the phone with "Stability-gated capture" on, then off; leave and reopen Observe | On: shutter greys out and the hint says "Hold still". Off: shutter stays enabled and the pill reads "Moving". The choice survives reopening Observe | | |
 
 ## Follow-ups
 
