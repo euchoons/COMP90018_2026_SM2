@@ -405,6 +405,11 @@ class FloraGuideViewModel(
                 }
             },
             onError = { reason -> skipLocation(reason) },
+            onStale = {
+                _uiState.update {
+                    it.copy(locationStatus = "Waiting for a new device location. A capture now would skip ALA.")
+                }
+            },
         )
     }
 

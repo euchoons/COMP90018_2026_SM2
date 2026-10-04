@@ -2,6 +2,7 @@ package au.edu.unimelb.floraguide.domain
 
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
 import au.edu.unimelb.floraguide.domain.usecase.LocationFreshnessPolicy
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,5 +33,16 @@ class LocationFreshnessPolicyTest {
         // GPS accuracy fluctuates; a newer GPS fix still replaces the previous one.
         assertTrue(policy.shouldReplace(gps, 10 * s, gps.copy(accuracyMetres = 8f), 12 * s, sameProvider = true, nowElapsedNanos = 12 * s))
         assertFalse(policy.shouldReplace(gps, 10 * s, gps, 9 * s, sameProvider = true, nowElapsedNanos = 12 * s))
+    }
+
+    @Test fun `stale countdown ends exactly when a fix stops being usable`() {
+        assertEquals(60_000L, policy.millisUntilStale(s, s))
+        assertEquals(15_000L, policy.millisUntilStale(s, 46 * s))
+        val limit = s + 60_000L * 1_000_000L
+        assertEquals(0L, policy.millisUntilStale(s, limit))
+        // Still usable at exactly the limit, which is why LocationTracker re-checks just after it.
+        assertTrue(policy.isUsable(gps, s, limit))
+        assertFalse(policy.isUsable(gps, s, limit + 1_000_000L))
+        assertEquals(0L, policy.millisUntilStale(s, 200 * s))
     }
 }

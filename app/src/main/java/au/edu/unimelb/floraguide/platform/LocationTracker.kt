@@ -8,6 +8,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
@@ -18,8 +19,10 @@ class LocationTracker(context: Context) {
     private val appContext = context.applicationContext
     private val manager = appContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val policy = LocationFreshnessPolicy()
+    private val handler = Handler(Looper.getMainLooper())
     private var activeListener: LocationListener? = null
     private var lastFix: Location? = null
+    private var staleCheck: Runnable? = null
 
     private fun hasPermission(): Boolean =
         appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -40,7 +43,7 @@ class LocationTracker(context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun start(onLocation: (GeoPoint) -> Unit, onError: (String) -> Unit) {
+    fun start(onLocation: (GeoPoint) -> Unit, onError: (String) -> Unit, onStale: () -> Unit = {}) {
         stop()
         if (!hasPermission()) {
             onError("Location permission is unavailable. Live scans will not use a demo coordinate.")
@@ -63,6 +66,7 @@ class LocationTracker(context: Context) {
             ) return
             lastFix = Location(location)
             onLocation(point)
+            scheduleStaleCheck(location.elapsedRealtimeNanos, onStale)
         }
         val listener = object : LocationListener {
             override fun onLocationChanged(location: Location) = accept(location)
@@ -71,7 +75,10 @@ class LocationTracker(context: Context) {
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
             override fun onProviderEnabled(provider: String) = Unit
             override fun onProviderDisabled(provider: String) {
-                if (lastFix?.provider == provider) lastFix = null
+                if (lastFix?.provider == provider) {
+                    lastFix = null
+                    onStale()
+                }
                 if (enabledProviders().isEmpty()) onError("Device location is off; no capture location is available.")
             }
         }
@@ -90,7 +97,18 @@ class LocationTracker(context: Context) {
         }
     }
 
+    /** Re-checks when the accepted fix would expire, so an aged-out fix is never presented as ready. */
+    private fun scheduleStaleCheck(fixElapsedNanos: Long, onStale: () -> Unit) {
+        staleCheck?.let { handler.removeCallbacks(it) }
+        val check = Runnable { if (snapshotForObservation() == null) onStale() }
+        staleCheck = check
+        // isUsable still passes at exactly the limit, so check just after it.
+        handler.postDelayed(check, policy.millisUntilStale(fixElapsedNanos, SystemClock.elapsedRealtimeNanos()) + 50L)
+    }
+
     fun stop() {
+        staleCheck?.let { handler.removeCallbacks(it) }
+        staleCheck = null
         activeListener?.let { listener -> runCatching { manager.removeUpdates(listener) } }
         activeListener = null
         lastFix = null

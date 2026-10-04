@@ -17,6 +17,10 @@ class LocationFreshnessPolicy(
         return (nowElapsedNanos - fixElapsedNanos) / 1_000_000L <= maxAgeMillis
     }
 
+    /** Milliseconds until [isUsable] fails on age alone; zero once the fix is at or past the limit. */
+    fun millisUntilStale(fixElapsedNanos: Long, nowElapsedNanos: Long): Long =
+        (maxAgeMillis - (nowElapsedNanos - fixElapsedNanos) / 1_000_000L).coerceAtLeast(0L)
+
     /**
      * A newer fix from the same provider always wins. Across providers (GPS vs network) a coarser
      * fix only replaces a more accurate one once that one is no longer usable.

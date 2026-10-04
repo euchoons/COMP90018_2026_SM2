@@ -211,6 +211,27 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
+    @Test fun `a stale fix stops the location status claiming it is ready`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val onLocation = slot<(GeoPoint) -> Unit>()
+        val onStale = slot<() -> Unit>()
+        every { container.locationTracker.start(capture(onLocation), any(), capture(onStale)) } just Runs
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.goToScan()
+        model.onLocationPermissionResult(true)
+
+        onLocation.captured(GeoPoint(-37.7963, 144.9614, 5f))
+        assertEquals("Device location ready · ±5 m", model.uiState.value.locationStatus)
+        onStale.captured()
+        assertEquals("Waiting for a new device location. A capture now would skip ALA.", model.uiState.value.locationStatus)
+        // Still a device fix: a live scan never falls back to the demo coordinate.
+        assertFalse(model.uiState.value.usingDemoLocation)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `image-only and final rankings contain the same candidates`() = runTest(dispatcher) {
         state.value = AuthState.OfflineGuest
         val species = (1..8).map {
