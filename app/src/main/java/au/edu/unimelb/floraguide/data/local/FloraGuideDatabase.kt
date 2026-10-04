@@ -63,30 +63,32 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                 }
             }
 
-            // Return UTF-8 bytes of the Base64 string to ensure exact matching between SupportFactory and ATTACH string literals.
-            return passphrase.toByteArray(Charsets.UTF_8)
+            // Databases encrypted since SQLCipher was added are keyed with these decoded bytes.
+            return Base64.decode(passphrase, Base64.NO_WRAP)
         }
 
-        private fun convertPlaintextToEncrypted(context: Context, passphraseBytes: ByteArray) {
+        private fun convertPlaintextToEncrypted(context: Context, passphrase: ByteArray) {
             val oldDb = context.getDatabasePath("floraguide.db")
             if (!oldDb.exists() || !isPlaintext(oldDb)) return
 
             val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
             if (tmpDb.exists()) tmpDb.delete()
 
-            val passphraseStr = String(passphraseBytes, Charsets.UTF_8)
+            // A blob key reaches SQLCipher as raw bytes, the same key SupportFactory(passphrase) uses.
+            val keyBlob = passphrase.joinToString("") { "%02x".format(it) }
             var oldDbConn: SQLiteDatabase? = null
 
             try {
-                // Open the existing plaintext DB with an empty password
+                // Open the existing plaintext DB with an empty password. ATTACH inherits these flags,
+                // so without CREATE_IF_NECESSARY it cannot create the encrypted file.
                 oldDbConn = SQLiteDatabase.openDatabase(
                     oldDb.absolutePath,
                     "",
                     null,
-                    SQLiteDatabase.OPEN_READWRITE
+                    SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY
                 )
                 // Attach a new encrypted temporary database and export the contents
-                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY '$passphraseStr';")
+                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY X'$keyBlob';")
                 oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
                 oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
             } finally {
@@ -98,17 +100,19 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             try {
                 verifyDb = SQLiteDatabase.openDatabase(
                     tmpDb.absolutePath,
-                    passphraseStr,
+                    passphrase,
                     null,
-                    SQLiteDatabase.OPEN_READONLY
+                    SQLiteDatabase.OPEN_READONLY,
+                    null,
+                    null
                 )
                 verifyDb.version // Trigger a read to guarantee structural integrity and successful encryption
             } finally {
                 verifyDb?.close()
             }
 
-            // Safely swap the original with the encrypted replacement
-            check(oldDb.delete() && tmpDb.renameTo(oldDb)) {
+            // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+            check(tmpDb.renameTo(oldDb)) {
                 "Failed to replace old plaintext database with encrypted version."
             }
 
@@ -118,27 +122,23 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
+                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                    .addMigrations(MIGRATION_1_2)
+
                 val hasSqlCipher = runCatching {
                     SQLiteDatabase.loadLibs(context.applicationContext)
                     true
                 }.getOrDefault(false)
 
-                val builder = if (hasSqlCipher) {
-                    runCatching {
-                        val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
-                        convertPlaintextToEncrypted(context.applicationContext, passphrase)
-                        Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                            .openHelperFactory(SupportFactory(passphrase))
-                    }.getOrNull()
-                } else {
-                    null
+                // Plaintext only where SQLCipher cannot load, as in JVM tests. Key or conversion errors must
+                // propagate: Room treats an encrypted file opened without its key as corrupt and deletes it.
+                if (hasSqlCipher) {
+                    val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
+                    convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                    builder.openHelperFactory(SupportFactory(passphrase))
                 }
 
-                val dbBuilder = builder ?: Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-
-                dbBuilder
-                    .addMigrations(MIGRATION_1_2)
-                    .build().also { instance = it }
+                builder.build().also { instance = it }
             }
         }
 
