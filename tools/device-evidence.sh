@@ -48,10 +48,14 @@ case "${1:-help}" in
     mode=$([ "${2:?usage: airplane on|off}" = on ] && echo enable || echo disable)
     "$ADB" shell cmd connectivity airplane-mode "$mode" ||
       echo "This Android version rejected the command; toggle airplane mode in Quick Settings." ;;
-  log-start) "$ADB" logcat -c && echo "Location log cleared." ;;
+  log-start)
+    # A larger buffer keeps 30 s of stability-gate samples from being overwritten.
+    "$ADB" logcat -G 4M >/dev/null 2>&1 || true
+    "$ADB" logcat -c && echo "Logs cleared." ;;
   log-save) "$ADB" logcat -d -s FloraGuide-Location:I > "$(outdir)/${2:?usage: log-save NAME}.log" && echo "saved" ;;
+  motion-save) "$ADB" logcat -d -s FloraGuide-Motion:I > "$(outdir)/${2:?usage: motion-save NAME}.log" && echo "saved" ;;
   *)
     echo "usage: tools/device-evidence.sh COMMAND"
-    echo "commands: info, install, fresh, shot NAME, revoke|grant PERMISSION, location on|off, airplane on|off, log-start, log-save NAME"
+    echo "commands: info, install, fresh, shot NAME, revoke|grant PERMISSION, location on|off, airplane on|off, log-start, log-save NAME, motion-save NAME"
     ;;
 esac
