@@ -36,6 +36,8 @@ These documents distinguish test specifications, earlier checks and pending phys
 - [Project plan — Markdown](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) — original proposal wording, tables, formulas and nine figures.
 - [Project plan — original PDF](<assignment-1/COMP90018_2026_T01_03_03 Assignment 1.pdf>) — source document for the Markdown conversion.
 - [AI use log](assignment-1/AI_USE_LOG.md) — tool-use record and acknowledgement draft.
+- [Assignment rubrics — Markdown](assignment-1/COMP90018_Assignment_Rubrics.md) — Assignment 1 and Assignment 2 marking criteria, with original wording.
+- [Assignment rubrics — original PDF](<assignment-1/COMP90018 - Assignment Rubrics.pdf>) — source document for the rubric conversion.
 
 The submitted plan is a historical scope reference. Later decisions belong in the current roadmap. Keep its Markdown file beside `COMP90018_2026_T01_03_03_Assignment_1_assets/` so the figures resolve.
 
