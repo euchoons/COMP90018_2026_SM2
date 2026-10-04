@@ -20,6 +20,7 @@ Related: [`MOTION_STABILITY_CALIBRATION.md`](../technical/MOTION_STABILITY_CALIB
 | Stability switch | Defect fixed: the switch reset to on whenever Observe was reopened. | `fix(sensor): keep the stability gate setting between Observe visits` |
 | Stability switch | Defect fixed: with the gate off, the pill still said "Hold still" while the hint said "Ready to capture", and on and off looked identical while the phone was still. | `fix(sensor): show the stability gate state in the capture hint and pill` |
 | Fallbacks | Regression fixed: phones without motion sensors had lost their manual-capture hint and showed "Ready to capture". | same |
+| Light | Regression fixed: the low-light and glare warning had dropped out of the capture hint in a later `ScanScreen` rewrite (`5b7bf9e`). | `fix(sensor): restore the light warning in the capture hint` |
 
 ## Ambient light
 
@@ -105,7 +106,7 @@ A teammate reported that the "Stability-gated capture" switch on Observe did not
 | Present | Off | Moving | Enabled | Moving | Moving: photo may blur (stability gate off) |
 | Missing | Greyed out | — | Enabled | Stability n/a | Manual capture: motion sensors unavailable |
 
-While the upload-consent dialog is open, the shutter stays disabled and the hint reads "Choose whether to use online identification" instead of "Hold still before capturing". The switch summary now describes the current behaviour rather than only naming the sensors. The setting lives in `FloraGuideUiState`, so it survives navigation and account changes; an app restart returns it to on. `CaptureGuidanceTest` pins every row and `FloraGuideViewModelTest` pins the persistence.
+Once the shutter is enabled, low or very bright light adds a warning, as in "Ready to capture · low light may blur the photo"; light never blocks capture. While the upload-consent dialog is open, the shutter stays disabled and the hint reads "Choose whether to use online identification" instead of "Hold still before capturing". The switch summary now describes the current behaviour rather than only naming the sensors. The setting lives in `FloraGuideUiState`, so it survives navigation and account changes; an app restart returns it to on. `CaptureGuidanceTest` pins every row and `FloraGuideViewModelTest` pins the persistence.
 
 ## Device checklist
 
