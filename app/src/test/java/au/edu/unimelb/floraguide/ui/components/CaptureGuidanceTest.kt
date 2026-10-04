@@ -58,6 +58,23 @@ class CaptureGuidanceTest {
     }
 
     @Test
+    fun lightWarningQualifiesTheHintOnlyOnceCaptureIsPossible() {
+        val dim = steady.copy(lightLux = 5f)
+        assertEquals("Ready to capture · low light may blur the photo",
+            captureGuidance(dim, gateEnabled = true, consentPending = false).hint)
+        assertEquals("Hold still before capturing",
+            captureGuidance(moving.copy(lightLux = 5f), gateEnabled = true, consentPending = false).hint)
+        assertEquals("Choose whether to use online identification",
+            captureGuidance(dim, gateEnabled = true, consentPending = true).hint)
+        assertEquals("Manual capture: motion sensors unavailable · harsh light may wash out detail",
+            captureGuidance(SensorSnapshot(lightLux = 30_000f), gateEnabled = true, consentPending = false).hint)
+        for (lux in listOf(300f, null)) {
+            assertEquals("Ready to capture",
+                captureGuidance(steady.copy(lightLux = lux), gateEnabled = true, consentPending = false).hint)
+        }
+    }
+
+    @Test
     fun pendingUploadChoiceBlocksTheShutterWithoutBlamingMotion() {
         for (snapshot in listOf(steady, moving, SensorSnapshot())) {
             for (gateEnabled in listOf(true, false)) {

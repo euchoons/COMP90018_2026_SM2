@@ -1,5 +1,6 @@
 package au.edu.unimelb.floraguide.ui.components
 
+import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 
 /**
@@ -22,16 +23,24 @@ fun captureGuidance(
     val canGate = snapshot.canMeasureStability
     val steady = snapshot.isStable
     val gating = gateEnabled && canGate
+    val shutterEnabled = !consentPending && (!gating || steady)
+    val hint = when {
+        consentPending -> "Choose whether to use online identification"
+        !canGate -> "Manual capture: motion sensors unavailable"
+        gating && !steady -> "Hold still before capturing"
+        gating -> "Ready to capture"
+        steady -> "Ready to capture (stability gate off)"
+        else -> "Moving: photo may blur (stability gate off)"
+    }
+    // Light never blocks capture; it only qualifies the hint once capture is possible.
+    val lightWarning = when (snapshot.lightCondition) {
+        LightCondition.LOW -> "low light may blur the photo"
+        LightCondition.VERY_BRIGHT -> "harsh light may wash out detail"
+        LightCondition.USABLE, LightCondition.UNAVAILABLE -> null
+    }
     return CaptureGuidance(
-        shutterEnabled = !consentPending && (!gating || steady),
-        hint = when {
-            consentPending -> "Choose whether to use online identification"
-            !canGate -> "Manual capture: motion sensors unavailable"
-            gating && !steady -> "Hold still before capturing"
-            gating -> "Ready to capture"
-            steady -> "Ready to capture (stability gate off)"
-            else -> "Moving: photo may blur (stability gate off)"
-        },
+        shutterEnabled = shutterEnabled,
+        hint = if (shutterEnabled && lightWarning != null) "$hint · $lightWarning" else hint,
         stabilityLabel = when {
             !canGate -> "Stability n/a"
             steady -> "Steady"
