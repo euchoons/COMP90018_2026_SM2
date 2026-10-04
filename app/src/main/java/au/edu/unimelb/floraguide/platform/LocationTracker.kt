@@ -11,6 +11,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
+import au.edu.unimelb.floraguide.BuildConfig
 import au.edu.unimelb.floraguide.domain.model.GeoPoint
 import au.edu.unimelb.floraguide.domain.usecase.LocationFreshnessPolicy
 
@@ -34,7 +36,11 @@ class LocationTracker(context: Context) {
         }
 
     /** Recheck permission, provider state, age and accuracy at the capture callback itself. */
-    fun snapshotForObservation(): GeoPoint? {
+    fun snapshotForObservation(): GeoPoint? = usableFix().also { point ->
+        log { "event=capture usable=${point != null} accuracyM=${point?.accuracyMetres}" }
+    }
+
+    private fun usableFix(): GeoPoint? {
         if (!hasPermission() || enabledProviders().isEmpty()) return null
         val fix = lastFix ?: return null
         if (fix.provider !in enabledProviders()) return null
@@ -54,16 +60,23 @@ class LocationTracker(context: Context) {
             onError("Device location is off. Enable it before capture to add ALA context.")
             return
         }
+        log { "event=start providers=${providers.joinToString(",")}" }
         fun accept(location: Location) {
             val point = location.toGeoPoint()
             val now = SystemClock.elapsedRealtimeNanos()
-            if (!policy.isUsable(point, location.elapsedRealtimeNanos, now)) return
             val current = lastFix
-            if (current != null && !policy.shouldReplace(
+            val accepted = policy.isUsable(point, location.elapsedRealtimeNanos, now) && (
+                current == null || policy.shouldReplace(
                     current.toGeoPoint(), current.elapsedRealtimeNanos, point, location.elapsedRealtimeNanos,
                     sameProvider = current.provider == location.provider, nowElapsedNanos = now,
                 )
-            ) return
+            )
+            log {
+                "event=fix provider=${location.provider} accuracyM=${point.accuracyMetres} " +
+                    "ageMs=${(now - location.elapsedRealtimeNanos) / 1_000_000L} accepted=$accepted " +
+                    "lat=${location.latitude} lon=${location.longitude}"
+            }
+            if (!accepted) return
             lastFix = Location(location)
             onLocation(point)
             scheduleStaleCheck(location.elapsedRealtimeNanos, onStale)
@@ -75,6 +88,7 @@ class LocationTracker(context: Context) {
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
             override fun onProviderEnabled(provider: String) = Unit
             override fun onProviderDisabled(provider: String) {
+                log { "event=provider_disabled provider=$provider" }
                 if (lastFix?.provider == provider) {
                     lastFix = null
                     onStale()
@@ -100,7 +114,12 @@ class LocationTracker(context: Context) {
     /** Re-checks when the accepted fix would expire, so an aged-out fix is never presented as ready. */
     private fun scheduleStaleCheck(fixElapsedNanos: Long, onStale: () -> Unit) {
         staleCheck?.let { handler.removeCallbacks(it) }
-        val check = Runnable { if (snapshotForObservation() == null) onStale() }
+        val check = Runnable {
+            if (usableFix() == null) {
+                log { "event=stale" }
+                onStale()
+            }
+        }
         staleCheck = check
         // isUsable still passes at exactly the limit, so check just after it.
         handler.postDelayed(check, policy.millisUntilStale(fixElapsedNanos, SystemClock.elapsedRealtimeNanos()) + 50L)
@@ -117,4 +136,13 @@ class LocationTracker(context: Context) {
     private fun Location.toGeoPoint() = GeoPoint(
         latitude, longitude, if (hasAccuracy()) accuracy else null,
     )
+
+    /** Debug builds only: raw fixes for tools/location-accuracy.py. Release builds never log coordinates. */
+    private inline fun log(message: () -> String) {
+        if (BuildConfig.DEBUG) Log.i(TAG, "t=${SystemClock.elapsedRealtime()} ${message()}")
+    }
+
+    private companion object {
+        const val TAG = "FloraGuide-Location"
+    }
 }
