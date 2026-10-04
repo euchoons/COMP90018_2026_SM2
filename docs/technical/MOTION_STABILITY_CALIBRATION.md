@@ -171,7 +171,7 @@ Reading of this:
 
 The current values have been confirmed informally in hand-held use, but no numbers are recorded yet. This procedure is the evidence that converts "works for me" into "calibrated"; [contribution policy](../../CONTRIBUTING.md) requires physical devices for sensor claims, and the plan requires at least two phones.
 
-Temporarily log `accelerationDeviation`, `angularVelocity` and `score` from `SensorMonitor`, then record each condition for about 30 s:
+Debug builds log every gate update under `FloraGuide-Motion`: the acceleration deviation, angular speed, instantaneous and smoothed scores, and whether the gate is open. For each condition, with the phone connected, run `tools/device-evidence.sh log-start`, hold the condition for about 30 s, then run `tools/device-evidence.sh motion-save <phone>-<condition>`. Afterwards `python tools/motion-calibration.py docs/evidence/device/<model>/<phone>-*.log` prints one row per condition, skipping the first 3 s as setup time. Record each condition:
 
 | # | Condition | Phone A: median / 95th percentile | Phone B |
 |---|---|---|---|
@@ -190,6 +190,8 @@ Acceptance criteria to aim for:
 - Conditions 5–6: the gate stays shut for at least 95% of samples, and closes within about 200 ms of motion starting.
 - Watch for flicker specifically: the shaky-hand score is predicted to sit only about 0.05 below the gate, so note any case where the shutter enables and disables repeatedly. That is the trigger for adding hysteresis.
 - Record the resulting photos too: a gate that opens but yields visibly blurred photos in shade means the threshold is still too loose.
+
+In the script's output, **Gate open** and **Unlock / lock lag** measure the first three criteria, and **Open/closed switches** counts flicker.
 
 If the criteria conflict on the two phones, prefer the stricter value that still passes conditions 2–4 on both, and record the trade-off here.
 

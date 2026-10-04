@@ -75,6 +75,6 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | `revoke PERMISSION`, `grant PERMISSION` | For `CAMERA`, `ACCESS_FINE_LOCATION` or `ACCESS_COARSE_LOCATION`; revoking restarts the app, as Android does |
 | `location on`, `location off` | Toggles location services |
 | `airplane on`, `airplane off` | Toggles airplane mode |
-| `log-start`, `log-save NAME` | Clears, then saves, the `FloraGuide-Location` log for `tools/location-accuracy.py` |
+| `log-start`, `log-save NAME`, `motion-save NAME` | Clears the logs, then saves the location log (for `tools/location-accuracy.py`) or the stability-gate log (for `tools/motion-calibration.py`) |
 
 Older Android versions may reject the location and airplane commands; the script then asks you to use Quick Settings.
