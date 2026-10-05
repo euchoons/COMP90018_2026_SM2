@@ -96,4 +96,17 @@ class FirebaseAuthRepositoryDeleteTest {
         coVerify(exactly = 1) { dao.deleteAllForUser("test-uid") }
         verify(exactly = 1) { u.delete() }
     }
+
+    @Test
+    fun `failed deletion does not leave saves blocked`() = runTest {
+        val u = user("test-uid", false, "user@example.test", "Test User")
+        val tokenResult = mockk<GetTokenResult> {
+            every { claims } returns mapOf("auth_time" to (System.currentTimeMillis() / 1000L - 3_600L))
+        }
+        every { u.getIdToken(any()) } returns Tasks.forResult(tokenResult)
+        every { auth.currentUser } returns u
+
+        assertTrue(repository().deleteAccount().isFailure)
+        assertFalse(FirebaseAuthRepository.isErasureActive(app))
+    }
 }
