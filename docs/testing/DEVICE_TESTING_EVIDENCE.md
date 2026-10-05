@@ -10,11 +10,11 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 
 | | Phone A | Phone B |
 |---|---|---|
-| Manufacturer and model | | |
-| Android version (API) | | |
-| Accelerometer / gyroscope / light / magnetometer | | |
+| Manufacturer and model | Oneplus PGP110 | |
+| Android version (API) | 12 | |
+| Accelerometer / gyroscope / light / magnetometer | On | |
 | Tested commit | | |
-| Date | | |
+| Date | 05/10/2026 | |
 
 `tools/device-evidence.sh info` collects these from the connected phone.
 
@@ -31,35 +31,37 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | ID | Scenario | Expected | Phone A | Phone B | Evidence |
 |---|---|---|---|---|---|
 | **Permissions** | | | | | |
-| DE-01 | Fresh install (`fresh`), open Observe, deny camera once | **Enable camera** stays and asks again when tapped | NOT RUN | NOT RUN | |
-| DE-02 | Deny camera a second time, tap **Open app settings**, allow camera, return | The camera slot says access is off and offers **Open app settings**; after allowing, the preview appears without leaving Observe | NOT RUN | NOT RUN | |
-| DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | NOT RUN | NOT RUN | |
-| DE-04 | Grant approximate location only (Android 12+) | Status shows about "±2000 m" and ALA counts appear on results | NOT RUN | NOT RUN | |
-| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | NOT RUN | NOT RUN | |
+| DE-01 | Fresh install (`fresh`), open Observe, deny camera once | **Enable camera** stays and asks again when tapped | PASS | NOT RUN | |
+| DE-02 | Deny camera a second time, tap **Open app settings**, allow camera, return | The camera slot says access is off and offers **Open app settings**; after allowing, the preview appears without leaving Observe | PASS | NOT RUN | |
+| DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | PASS | NOT RUN | |
+| DE-04 | Grant approximate location only (Android 12+) | Status shows about "±2000 m" and ALA counts appear on results | BLOCK | NOT RUN | Grant approximate location does not enable location |
+| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | BLOCK | NOT RUN | Camera is closed but option to take photo is still there, only changing applicaiton pages such as field guide/home/account page does it pop up with camera is closed message and camera closes properly |
 | DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | NOT RUN | NOT RUN | |
 | **Missing or unreliable sensors** | | | | | |
 | DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | NOT RUN | NOT RUN | |
 | DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; the saved observation has no heading | NOT RUN | NOT RUN | |
-| DE-09 | Cover the light sensor while holding still | Pill "Low light"; hint adds "· low light may blur the photo"; capture still allowed | NOT RUN | NOT RUN | |
-| DE-10 | Hold a magnet near the phone, then do the figure-8 gesture | Pill "Calibrate compass", then the bearing returns | NOT RUN | NOT RUN | |
+| DE-09 | Cover the light sensor while holding still | Pill "Low light"; hint adds "· low light may blur the photo"; capture still allowed | PASS | NOT RUN | |
+| DE-10 | Hold a magnet near the phone, then do the figure-8 gesture | Pill "Calibrate compass", then the bearing returns | PASS | NOT RUN | |
 | **Camera failures** | | | | | |
-| DE-11 | Open Observe while another app holds the camera, such as a video call | "Camera unavailable — the guided demo on Home still works" and no crash; BLOCKED if the phone hands the camera over | NOT RUN | NOT RUN | |
-| DE-12 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed message | NOT RUN | NOT RUN | |
-| DE-13 | In airplane mode, capture and agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | NOT RUN | NOT RUN | |
+| DE-11 | Open Observe while another app holds the camera, such as a video call | "Camera unavailable — the guided demo on Home still works" and no crash; BLOCKED if the phone hands the camera over | BLOCK | NOT RUN | Camera is handed over to Floraguide and video call camera freezes|
+| DE-12 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed message | PASS | NOT RUN | Popup message of camera is closed appears |
+| DE-13 | In airplane mode, capture and agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | BLOCK | NOT RUN | The program will continue to try to upload with no signs of failure message |
 | **Location failures** | | | | | |
-| DE-14 | Location services off, open Observe | Status "Device location is off. Enable it before capture to add ALA context."; a capture is identified without ALA | NOT RUN | NOT RUN | |
-| DE-15 | Get a fix, then turn location services off | Status "Device location is off; no capture location is available." | NOT RUN | NOT RUN | |
-| DE-16 | Get a fix outdoors, then go indoors or cover the phone for over a minute | Within about 61 s the status reads "Waiting for a new device location. A capture now would skip ALA."; a capture then has no ALA counts | NOT RUN | NOT RUN | |
-| DE-17 | Indoors in airplane mode with location on (GPS only, no fix) | Status stays "Waiting for a recent device location..." and never claims a fix | NOT RUN | NOT RUN | |
-| DE-18 | Capture with a usable fix, save, open Field Guide | Results show ALA counts; the card shows three-decimal coordinates and the map pin sits there | NOT RUN | NOT RUN | |
+| DE-14 | Location services off, open Observe | Status "Device location is off. Enable it before capture to add ALA context."; a capture is identified without ALA | PASS | NOT RUN | |
+| DE-15 | Get a fix, then turn location services off | Status "Device location is off; no capture location is available." | PASS | NOT RUN | |
+| DE-16 | Get a fix outdoors, then go indoors or cover the phone for over a minute | Within about 61 s the status reads "Waiting for a new device location. A capture now would skip ALA."; a capture then has no ALA counts | PASS | NOT RUN | |
+| DE-17 | Indoors in airplane mode with location on (GPS only, no fix) | Status stays "Waiting for a recent device location..." and never claims a fix | PASS | NOT RUN | |
+| DE-18 | Capture with a usable fix, save, open Field Guide | Results show ALA counts; the card shows three-decimal coordinates and the map pin sits there | PASS | NOT RUN | |
 
 ## Feature checklists on the same phones
 
+A lot of these are similar to what is tested in the testing above.
+
 | Checklist | Scope | Phone A | Phone B |
 |---|---|---|---|
-| [Camera](CAMERA_VALIDATION.md#physical-device-checklist) | Rows 1–16 | not run | not run |
-| [Light and heading](HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) | Rows 1–11 | not run | not run |
-| [Motion calibration](../technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) | Conditions 1–7 | not run | not run |
+| [Camera](CAMERA_VALIDATION.md#physical-device-checklist) | Rows 1–16 | BLOCK, same Issue as DE-05 and DE-11, rest are ok | not run |
+| [Light and heading](HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) | Rows 1–11 | PASS, may need to raise lux gate | not run |
+| [Motion calibration](../technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) | Conditions 1–7 | PASS | not run |
 | [Location measurements](LOCATION_VALIDATION.md#device-measurement-procedure) | Four points, GPS only, approximate | not run | not run |
 
 ## Evidence helper
