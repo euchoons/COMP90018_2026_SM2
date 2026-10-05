@@ -83,7 +83,9 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
             var passphrase = if (forceRegenerate) null else prefs.getString("sqlcipher_passphrase", null)
             if (passphrase == null) {
-                purgeDatabaseFiles(context)
+                if (forceRegenerate) {
+                    purgeDatabaseFiles(context)
+                }
 
                 val randomBytes = ByteArray(32)
                 SecureRandom().nextBytes(randomBytes)
@@ -104,18 +106,26 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
             val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
             if (tmpDb.exists()) tmpDb.delete()
+            tmpDb.parentFile?.mkdirs()
+
+            // Pre-create the encrypted temporary database file so ATTACH DATABASE can open it successfully
+            SQLiteDatabase.openOrCreateDatabase(tmpDb.absolutePath, passphraseBytes, null, null).close()
 
             val passphraseStr = String(passphraseBytes, Charsets.UTF_8)
             var oldDbConn: SQLiteDatabase? = null
 
             try {
-                // Open the existing plaintext DB with an empty password
+                // Open the existing plaintext DB
                 oldDbConn = SQLiteDatabase.openDatabase(
                     oldDb.absolutePath,
                     null,
                     SQLiteDatabase.OPEN_READWRITE
                 )
-                // Attach a new encrypted temporary database and export the contents
+                // Disable plaintext header check so SQLCipher 4 can open unencrypted databases
+                oldDbConn.rawExecSQL("PRAGMA cipher_plaintext_header_check = OFF;")
+                // Checkpoint WAL to ensure all written rows are flushed to the main database file
+                oldDbConn.rawExecSQL("PRAGMA wal_checkpoint(FULL);")
+                // Attach the pre-created encrypted temporary database and export the contents
                 oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY '$passphraseStr';")
                 oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
                 oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")

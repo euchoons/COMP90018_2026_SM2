@@ -8,8 +8,6 @@ import androidx.security.crypto.MasterKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
-import net.sqlcipher.database.SQLiteDatabase
-import net.sqlcipher.database.SupportFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -28,7 +26,7 @@ class SqlCipherUpgradeTest {
         context.deleteDatabase("floraguide.db")
         context.getDatabasePath("floraguide_enc.tmp").delete()
         context.deleteSharedPreferences("secure_db_prefs")
-        SQLiteDatabase.loadLibs(context)
+        System.loadLibrary("sqlcipher")
     }
 
     @Test fun plaintextDatabaseIsEncryptedWithItsRows() = runBlocking {
@@ -45,11 +43,12 @@ class SqlCipherUpgradeTest {
     }
 
     @Test fun databaseEncryptedByMainStillOpens() = runBlocking {
-        // main stores Base64 of 32 random bytes and keys SupportFactory with the decoded bytes.
+        // main stores Base64 of 32 random bytes and keys SupportOpenHelperFactory with its UTF-8 bytes.
         val raw = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", Base64.encodeToString(raw, Base64.NO_WRAP)).commit())
+        val passphrase = Base64.encodeToString(raw, Base64.NO_WRAP)
+        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", passphrase).commit())
         Room.databaseBuilder(context, FloraGuideDatabase::class.java, "floraguide.db")
-            .openHelperFactory(SupportFactory(raw.copyOf())).build().apply {
+            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8))).build().apply {
                 observationDao().insertOrUpdate(row("encrypted"))
                 close()
             }
