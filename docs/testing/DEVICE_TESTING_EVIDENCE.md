@@ -36,7 +36,7 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | PASS | NOT RUN | |
 | DE-04 | Grant approximate location only (Android 12+) | Status shows about "±2000 m" and ALA counts appear on results | BLOCK | NOT RUN | Grant approximate location does not enable location |
 | DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | BLOCK | NOT RUN | Camera is closed but option to take photo is still there, only changing applicaiton pages such as field guide/home/account page does it pop up with camera is closed message and camera closes properly |
-| DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | NOT RUN | NOT RUN | |
+| DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | PASS | NOT RUN | |
 | **Missing or unreliable sensors** | | | | | |
 | DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | NOT RUN | NOT RUN | |
 | DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; the saved observation has no heading | NOT RUN | NOT RUN | |
