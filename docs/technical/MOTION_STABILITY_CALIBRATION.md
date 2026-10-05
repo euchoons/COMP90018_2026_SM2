@@ -171,7 +171,7 @@ Reading of this:
 
 The current values have been confirmed informally in hand-held use, but no numbers are recorded yet. This procedure is the evidence that converts "works for me" into "calibrated"; [contribution policy](../../CONTRIBUTING.md) requires physical devices for sensor claims, and the plan requires at least two phones.
 
-Debug builds log every gate update under `FloraGuide-Motion`: the acceleration deviation, angular speed, instantaneous and smoothed scores, and whether the gate is open. For each condition, with the phone connected, run `tools/device-evidence.sh log-start`, hold the condition for about 35 s, then run `tools/device-evidence.sh motion-save <phone>-motion-<condition>`, where `<condition>` is `flat`, `braced`, `extended`, `afterwalk`, `walking` or `panning`. The `motion-` prefix keeps these logs apart from the location logs saved in the same folder. Afterwards `python tools/motion-calibration.py docs/evidence/device/<model>/<phone>-motion-*.log` prints one row per condition, skipping the first 3 s as setup time. Record each condition:
+Debug builds log every gate update under `FloraGuide-Motion`: the acceleration deviation, angular speed, instantaneous and smoothed scores, and whether the gate is open. For each condition, with the phone connected, run `tools/device-evidence.sh log-start`, hold the condition for about 35 s, then run `tools/device-evidence.sh motion-save <phone>-motion-<condition>`, where `<condition>` is `flat`, `braced`, `extended`, `afterwalk` or `walking`. The `motion-` prefix keeps these logs apart from the location logs saved in the same folder. Afterwards `python tools/motion-calibration.py docs/evidence/device/<model>/<phone>-motion-*.log` prints one row per condition, skipping the first 3 s as setup time. Record each condition:
 
 | # | Condition | Phone A: median / 95th percentile | Phone B |
 |---|---|---|---|
@@ -180,14 +180,13 @@ Debug builds log every gate update under `FloraGuide-Motion`: the acceleration d
 | 3 | Held still, standing, arms extended | Shake 0.08 / 0.35 m/s², rotation 1.6 / 8.1 °/s; open 98%, 10 switches. **Pass** | |
 | 4 | Held still immediately after walking up | Shake 0.13 / 1.17 m/s², rotation 2.0 / 77.4 °/s; open 73%, 45 switches. Secondary; the log also covers walking back to the laptop | |
 | 5 | Walking slowly while framing | Shake 0.36 / 1.56 m/s², rotation 24.4 / 99.9 °/s; open 32%, 81 switches. Secondary; phone held as steady as possible | |
-| 6 | Panning deliberately across a garden bed | Not recorded yet | |
-| 7 | Phone without a gyroscope, if the team has one | Emulator (DE-07), not run yet | |
+| 6 | Phone without a gyroscope, if the team has one | Covered by DE-07: **Pass (Simulated)** on an emulator without a gyroscope; the gate is disabled and capture is manual | |
 
-Acceptance criteria, revised on 2026-10-05 after Phone A's run. Conditions 4–6 were pass/fail before and are now secondary, for the reason given below.
+Acceptance criteria, revised on 2026-10-05 after Phone A's run. Conditions 4–5 were pass/fail before and are now secondary, for the reason given below. Panning across a garden bed, formerly condition 6, was dropped on 2026-10-06: walking (condition 5) already covers moving the phone while framing, and the 49 °/s rotation tolerance is derived above.
 
 - Condition 1 confirms the bias band; the acceleration budget must sit clearly above it.
 - **Primary**, conditions 2–3: the gate opens within about a second, and stays open for at least 95% of samples. A gate that blocks a still, hand-held hold defeats capture, so these conditions decide the thresholds.
-- **Secondary**, conditions 4–6: recorded to show how the gate behaves around movement, not as pass/fail. The gate measures how much the phone moves, not whether the user is walking, so a phone held steady while walking slowly can legitimately open it between steps. Users stop to photograph a plant, and in daylight the short exposure keeps blur in such moments to a few pixels (see the table above). The gate should still close within about 200 ms of motion starting.
+- **Secondary**, conditions 4–5: recorded to show how the gate behaves around movement, not as pass/fail. The gate measures how much the phone moves, not whether the user is walking, so a phone held steady while walking slowly can legitimately open it between steps. Users stop to photograph a plant, and in daylight the short exposure keeps blur in such moments to a few pixels (see the table above). The gate should still close within about 200 ms of motion starting.
 - Watch for flicker specifically: the shaky-hand score is predicted to sit only about 0.05 below the gate, so note any case where the shutter enables and disables repeatedly. That is the trigger for adding hysteresis.
 - Record the resulting photos too: a gate that opens but yields visibly blurred photos in shade means the threshold is still too loose.
 
