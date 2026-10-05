@@ -11,9 +11,9 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | | Phone A | Phone B |
 |---|---|---|
 | Manufacturer and model | Oneplus PGP110 | |
-| Android version (API) | 12 | |
-| Accelerometer / gyroscope / light / magnetometer | On | |
-| Tested commit | | |
+| Android version (API) | 15 (API 35) | |
+| Accelerometer / gyroscope / light / magnetometer | yes / yes / yes / yes | |
+| Tested commit | e0bb84a | |
 | Date | 05/10/2026 | |
 
 `tools/device-evidence.sh info` collects these from the connected phone.
