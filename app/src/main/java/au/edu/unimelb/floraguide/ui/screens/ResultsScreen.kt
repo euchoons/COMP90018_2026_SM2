@@ -42,7 +42,7 @@ import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.LOCAL_TIME_FORMAT
-import au.edu.unimelb.floraguide.ui.components.CloudIdentificationCard
+
 import au.edu.unimelb.floraguide.ui.components.EvidenceBar
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
@@ -86,7 +86,31 @@ fun ResultsScreen(
                 }
             }
         }
-        item { CloudIdentificationCard(state = state, onRetry = onRetryIdentification) }
+        // Keep retry available without the duplicate identification card.
+        state.analysisError?.let { error ->
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "Identification failed",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+
+                    Text(
+                        error,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+
+                    if (state.photoPath != null && !state.isClassifying) {
+                        FilledTonalButton(onClick = onRetryIdentification) {
+                            Text("Retry identification")
+                        }
+                    }
+                }
+            }
+        }
         item { ContextProgress(state, onRetryContext) }
         if (state.isClassifying) {
             item {
