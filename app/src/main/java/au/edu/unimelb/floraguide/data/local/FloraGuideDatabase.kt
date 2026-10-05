@@ -33,57 +33,26 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             }
         }
 
-        private fun getSecureSharedPreferences(context: Context): android.content.SharedPreferences {
-            return runCatching {
-                val masterKey = MasterKey.Builder(context)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build()
+        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
 
-                EncryptedSharedPreferences.create(
-                    context,
-                    "secure_db_prefs",
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
-            }.getOrElse {
-                runCatching {
-                    context.deleteSharedPreferences("secure_db_prefs")
-                    val masterKey = MasterKey.Builder(context)
-                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                        .build()
+            // Remove the plaintext Context.MODE_PRIVATE fallback.
+            val prefs = EncryptedSharedPreferences.create(
+                context,
+                "secure_db_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
 
-                    EncryptedSharedPreferences.create(
-                        context,
-                        "secure_db_prefs",
-                        masterKey,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    )
-                }.getOrElse {
-                    context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
-                }
-            }
-        }
-
-        private fun purgeDatabaseFiles(context: Context) {
-            runCatching {
-                val dbFile = context.getDatabasePath("floraguide.db")
-                val backupFile = context.getDatabasePath("floraguide.db.corrupt")
-                if (backupFile.exists()) backupFile.delete()
-                if (dbFile.exists()) dbFile.renameTo(backupFile)
-                context.getDatabasePath("floraguide.db-wal").delete()
-                context.getDatabasePath("floraguide.db-shm").delete()
-                context.getDatabasePath("floraguide_enc.tmp").delete()
-            }
-        }
-
-        private fun retrieveOrGenerateSecureKey(context: Context, forceRegenerate: Boolean = false): ByteArray {
-            val prefs = getSecureSharedPreferences(context)
-
-            var passphrase = if (forceRegenerate) null else prefs.getString("sqlcipher_passphrase", null)
+            var passphrase = prefs.getString("sqlcipher_passphrase", null)
             if (passphrase == null) {
-                purgeDatabaseFiles(context)
+                val dbFile = context.getDatabasePath("floraguide.db")
+                check(!(dbFile.exists() && !isPlaintext(dbFile))) {
+                    "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
+                }
 
                 val randomBytes = ByteArray(32)
                 SecureRandom().nextBytes(randomBytes)
@@ -98,25 +67,27 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             return passphrase.toByteArray(Charsets.UTF_8)
         }
 
-        private fun convertPlaintextToEncrypted(context: Context, passphraseBytes: ByteArray) {
+        private fun convertPlaintextToEncrypted(context: Context, passphrase: ByteArray) {
             val oldDb = context.getDatabasePath("floraguide.db")
             if (!oldDb.exists() || !isPlaintext(oldDb)) return
 
             val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
             if (tmpDb.exists()) tmpDb.delete()
 
-            val passphraseStr = String(passphraseBytes, Charsets.UTF_8)
+            // A blob key reaches SQLCipher as raw bytes, the same key SupportFactory(passphrase) uses.
+            val keyBlob = passphrase.joinToString("") { "%02x".format(it) }
             var oldDbConn: SQLiteDatabase? = null
 
             try {
-                // Open the existing plaintext DB with an empty password
+                // Open the existing plaintext DB with an empty password. ATTACH inherits these flags,
+                // so without CREATE_IF_NECESSARY it cannot create the encrypted file.
                 oldDbConn = SQLiteDatabase.openDatabase(
                     oldDb.absolutePath,
                     null,
-                    SQLiteDatabase.OPEN_READWRITE
+                    SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY
                 )
                 // Attach a new encrypted temporary database and export the contents
-                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY '$passphraseStr';")
+                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY X'$keyBlob';")
                 oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
                 oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
             } finally {
@@ -138,8 +109,8 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                 verifyDb?.close()
             }
 
-            // Safely swap the original with the encrypted replacement
-            check(oldDb.delete() && tmpDb.renameTo(oldDb)) {
+            // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+            check(tmpDb.renameTo(oldDb)) {
                 "Failed to replace old plaintext database with encrypted version."
             }
 
@@ -161,33 +132,23 @@ abstract class FloraGuideDatabase : RoomDatabase() {
 
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
-                val appContext = context.applicationContext
+                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
+                    .addMigrations(MIGRATION_1_2)
+
                 val hasSqlCipher = runCatching {
                     System.loadLibrary("sqlcipher")
                     true
                 }.getOrDefault(false)
 
-                val db = try {
-                    if (hasSqlCipher) {
-                        val passphrase = retrieveOrGenerateSecureKey(appContext)
-                        convertPlaintextToEncrypted(appContext, passphrase)
-                        buildAndVerifyDatabase(appContext, passphrase)
-                    } else {
-                        buildAndVerifyDatabase(appContext, null)
-                    }
-                } catch (throwable: Throwable) {
-                    runCatching { android.util.Log.e("FloraGuideDatabase", "SQLCipher database open/decryption failed, recreating database: ${throwable.localizedMessage}") }
-                    purgeDatabaseFiles(appContext)
-
-                    if (hasSqlCipher) {
-                        val passphrase = retrieveOrGenerateSecureKey(appContext, forceRegenerate = true)
-                        buildAndVerifyDatabase(appContext, passphrase)
-                    } else {
-                        buildAndVerifyDatabase(appContext, null)
-                    }
+                // Plaintext only where SQLCipher cannot load, as in JVM tests. Key or conversion errors must
+                // propagate: Room treats an encrypted file opened without its key as corrupt and deletes it.
+                if (hasSqlCipher) {
+                    val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
+                    convertPlaintextToEncrypted(context.applicationContext, passphrase)
+                    builder.openHelperFactory(SupportFactory(passphrase))
                 }
 
-                db.also { instance = it }
+                builder.build().also { instance = it }
             }
         }
 

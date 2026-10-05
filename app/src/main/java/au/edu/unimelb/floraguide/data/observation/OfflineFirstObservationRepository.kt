@@ -105,7 +105,8 @@ class OfflineFirstObservationRepository(
     }
 
     override suspend fun save(observation: Observation) {
-        if (FirebaseAuthRepository.isErasureActive(context)) return
+        // Fail rather than return: the caller would treat the observation as saved.
+        check(!FirebaseAuthRepository.isErasureActive(context)) { "Account erasure in progress." }
         val uid = currentUserId
         withContext(Dispatchers.IO) {
             prepareUser()
