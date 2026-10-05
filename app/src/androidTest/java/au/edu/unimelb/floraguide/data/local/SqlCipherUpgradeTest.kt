@@ -42,18 +42,37 @@ class SqlCipherUpgradeTest {
         assertFalse(header().startsWith("SQLite format 3"))
     }
 
-    @Test fun databaseEncryptedByMainStillOpens() = runBlocking {
-        // main stores Base64 of 32 random bytes and keys SupportOpenHelperFactory with its UTF-8 bytes.
+    @Test fun databaseEncryptedWithLegacyBase64BytesStillOpens() = runBlocking {
         val raw = ByteArray(32).also { SecureRandom().nextBytes(it) }
         val passphrase = Base64.encodeToString(raw, Base64.NO_WRAP)
         assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", passphrase).commit())
+
+        // Simulates the original standard where OpenHelper Factory relied directly on Base64 decoded bytes
         Room.databaseBuilder(context, FloraGuideDatabase::class.java, "floraguide.db")
-            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8))).build().apply {
-                observationDao().insertOrUpdate(row("encrypted"))
+            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(raw)).build().apply {
+                observationDao().insertOrUpdate(row("encrypted_legacy"))
                 close()
             }
+
         val db = FloraGuideDatabase.getInstance(context)
-        assertNotNull(db.observationDao().find("u1", "encrypted"))
+        assertNotNull(db.observationDao().find("u1", "encrypted_legacy"))
+        db.close()
+    }
+
+    @Test fun databaseEncryptedWithUtf8StringBytesStillOpens() = runBlocking {
+        val raw = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        val passphrase = Base64.encodeToString(raw, Base64.NO_WRAP)
+        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", passphrase).commit())
+
+        // Simulates the interim structural bug where OpenHelper Factory used UTF-8 bytes from the base64 string
+        Room.databaseBuilder(context, FloraGuideDatabase::class.java, "floraguide.db")
+            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8))).build().apply {
+                observationDao().insertOrUpdate(row("encrypted_utf8"))
+                close()
+            }
+
+        val db = FloraGuideDatabase.getInstance(context)
+        assertNotNull(db.observationDao().find("u1", "encrypted_utf8"))
         db.close()
     }
 
