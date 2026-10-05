@@ -45,4 +45,17 @@ class LocationFreshnessPolicyTest {
         assertFalse(policy.isUsable(gps, s, limit + 1_000_000L))
         assertEquals(0L, policy.millisUntilStale(s, 200 * s))
     }
+
+    @Test fun `approximate fixes keep for 15 minutes because Android sends one every 10`() {
+        val approximate = gps.copy(accuracyMetres = 2_000f)
+        val elevenMinutes = s + 11 * 60 * s
+        assertFalse(policy.isUsable(approximate, s, elevenMinutes))
+        assertTrue(policy.isUsable(approximate, s, elevenMinutes, approximate = true))
+        val limit = s + 15 * 60 * s
+        assertTrue(policy.isUsable(approximate, s, limit, approximate = true))
+        assertFalse(policy.isUsable(approximate, s, limit + 1_000_000L, approximate = true))
+        assertEquals(15 * 60_000L, policy.millisUntilStale(s, s, approximate = true))
+        // The 2 km accuracy cap still applies to approximate fixes.
+        assertFalse(policy.isUsable(approximate.copy(accuracyMetres = 2_500f), s, 2 * s, approximate = true))
+    }
 }

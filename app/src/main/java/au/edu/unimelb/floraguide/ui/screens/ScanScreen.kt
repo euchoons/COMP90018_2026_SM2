@@ -63,6 +63,7 @@ fun ScanScreen(
     fun granted(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     var cameraGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.CAMERA)) }
     var locationGranted by rememberSaveable { mutableStateOf(granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) }
+    var preciseLocation by rememberSaveable { mutableStateOf(granted(Manifest.permission.ACCESS_FINE_LOCATION)) }
     // Once Android stops showing the dialog, relaunching the request returns "denied" instantly,
     // so the only way forward is the system app-settings page.
     var cameraPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
@@ -75,6 +76,7 @@ fun ScanScreen(
                 !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
         }
         locationGranted = granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+        preciseLocation = granted(Manifest.permission.ACCESS_FINE_LOCATION)
         // Camera-only permission requests must not override an explicit location skip.
         val requestedLocation = results.containsKey(Manifest.permission.ACCESS_FINE_LOCATION) ||
             results.containsKey(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -86,10 +88,11 @@ fun ScanScreen(
         cameraGranted = granted(Manifest.permission.CAMERA)
         if (cameraGranted) cameraPermanentlyDenied = false
         locationGranted = granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+        preciseLocation = granted(Manifest.permission.ACCESS_FINE_LOCATION)
         onPauseOrDispose { }
     }
     // Re-runs after rotation or theme changes, so it must not override an explicit skip.
-    LaunchedEffect(locationGranted, state.pendingPhotoConsent?.captureId) {
+    LaunchedEffect(locationGranted, preciseLocation, state.pendingPhotoConsent?.captureId) {
         if (locationGranted && !state.locationSkipped && state.pendingPhotoConsent == null) {
             onPermissionResult(true)
         }
@@ -112,6 +115,13 @@ fun ScanScreen(
                             } else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                         }) { Text("Enable / refresh") }
                         FilledTonalButton(onClick = onUseDemoLocation) { Text("Skip location") }
+                    }
+                    if (locationGranted && !preciseLocation) {
+                        Text("Approximate location can find nearby records, but saving a plant needs precise location.",
+                            style = MaterialTheme.typography.bodySmall)
+                        FilledTonalButton(onClick = {
+                            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        }) { Text("Use precise location") }
                     }
                 }
             }

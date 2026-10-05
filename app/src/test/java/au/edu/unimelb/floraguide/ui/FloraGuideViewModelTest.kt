@@ -296,6 +296,32 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
+    @Test fun `approximate location feeds ALA but cannot pin a saved observation`() = runTest(dispatcher) {
+        prepareLiveIdentification()
+        val approximateFix = GeoPoint(-37.80, 144.96, 2_000f)
+        every { container.locationTracker.snapshotForObservation() } returns approximateFix
+        every { container.locationTracker.isApproximate() } returns true
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+
+        model.goToScan()
+        val captureId = requireNotNull(model.beginCapture())
+        model.analyzeCapturedPhoto("/capture.jpg", null)
+        model.approvePhotoUpload(captureId)
+        runCurrent()
+
+        val ui = model.uiState.value
+        assertEquals(CaptureLocationSource.APPROXIMATE, ui.capture?.locationSource)
+        coVerify { container.speciesContextRepository.nearbyOccurrenceCounts(any(), approximateFix, any(), any()) }
+        // Everything else needed to save is in place; only the approximate fix blocks it.
+        assertNotNull(ui.selectedCandidate)
+        assertFalse(ui.isClassifying || ui.isContextLoading)
+        assertFalse(ui.canSave)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `denied or unavailable location skips ALA and never substitutes demo evidence`() = runTest(dispatcher) {
         val predictions = prepareLiveIdentification()
         every { container.locationTracker.snapshotForObservation() } returns null

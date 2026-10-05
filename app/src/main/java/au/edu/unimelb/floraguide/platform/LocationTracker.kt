@@ -26,9 +26,15 @@ class LocationTracker(context: Context) {
     private var lastFix: Location? = null
     private var staleCheck: Runnable? = null
 
+    private fun granted(permission: String): Boolean =
+        appContext.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
     private fun hasPermission(): Boolean =
-        appContext.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-            appContext.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+    /** Approximate-only permission: Android blurs fixes to about 2 km and sends one about every 10 minutes. */
+    fun isApproximate(): Boolean =
+        !granted(Manifest.permission.ACCESS_FINE_LOCATION) && granted(Manifest.permission.ACCESS_COARSE_LOCATION)
 
     private fun enabledProviders(): List<String> =
         listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).filter {
@@ -45,7 +51,9 @@ class LocationTracker(context: Context) {
         val fix = lastFix ?: return null
         if (fix.provider !in enabledProviders()) return null
         val point = fix.toGeoPoint()
-        return point.takeIf { policy.isUsable(it, fix.elapsedRealtimeNanos, SystemClock.elapsedRealtimeNanos()) }
+        return point.takeIf {
+            policy.isUsable(it, fix.elapsedRealtimeNanos, SystemClock.elapsedRealtimeNanos(), isApproximate())
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -60,15 +68,17 @@ class LocationTracker(context: Context) {
             onError("Device location is off. Enable it before capture to add ALA context.")
             return
         }
-        log { "event=start providers=${providers.joinToString(",")}" }
+        log { "event=start providers=${providers.joinToString(",")} approximate=${isApproximate()}" }
         fun accept(location: Location) {
             val point = location.toGeoPoint()
             val now = SystemClock.elapsedRealtimeNanos()
             val current = lastFix
-            val accepted = policy.isUsable(point, location.elapsedRealtimeNanos, now) && (
+            val approximate = isApproximate()
+            val accepted = policy.isUsable(point, location.elapsedRealtimeNanos, now, approximate) && (
                 current == null || policy.shouldReplace(
                     current.toGeoPoint(), current.elapsedRealtimeNanos, point, location.elapsedRealtimeNanos,
                     sameProvider = current.provider == location.provider, nowElapsedNanos = now,
+                    approximate = approximate,
                 )
             )
             log {
@@ -122,7 +132,8 @@ class LocationTracker(context: Context) {
         }
         staleCheck = check
         // isUsable still passes at exactly the limit, so check just after it.
-        handler.postDelayed(check, policy.millisUntilStale(fixElapsedNanos, SystemClock.elapsedRealtimeNanos()) + 50L)
+        val remaining = policy.millisUntilStale(fixElapsedNanos, SystemClock.elapsedRealtimeNanos(), isApproximate())
+        handler.postDelayed(check, remaining + 50L)
     }
 
     fun stop() {

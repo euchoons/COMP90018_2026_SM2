@@ -107,6 +107,8 @@ data class FloraGuideUiState(
             pendingPhotoConsent == null &&
             selectedCandidate != null &&
             capture?.location != null &&
+            // A fix blurred to about 2 km can inform ALA, but would pin the plant in the wrong place.
+            capture?.locationSource != CaptureLocationSource.APPROXIMATE &&
             !isClassifying &&
             !isContextLoading &&
             !isSaving
@@ -394,12 +396,13 @@ class FloraGuideViewModel(
         _uiState.update { it.copy(locationSkipped = false, locationStatus = "Waiting for a recent device location...") }
         container.locationTracker.start(
             onLocation = { point ->
+                val approximate = container.locationTracker.isApproximate()
                 _uiState.update {
                     it.copy(
                         location = point,
                         usingDemoLocation = false,
                         locationStatus = buildString {
-                            append("Device location ready")
+                            append(if (approximate) "Approximate location ready" else "Device location ready")
                             point.accuracyMetres?.let { accuracy -> append(" · ±${accuracy.toInt()} m") }
                         },
                     )
@@ -614,7 +617,11 @@ class FloraGuideViewModel(
             observationId = UUID.randomUUID().toString(),
             capturedAt = Instant.now(),
             location = location,
-            locationSource = if (location != null) CaptureLocationSource.DEVICE else CaptureLocationSource.UNAVAILABLE,
+            locationSource = when {
+                location == null -> CaptureLocationSource.UNAVAILABLE
+                container.locationTracker.isApproximate() -> CaptureLocationSource.APPROXIMATE
+                else -> CaptureLocationSource.DEVICE
+            },
             headingDegrees = null,
         )
     }
@@ -762,6 +769,10 @@ class FloraGuideViewModel(
         val selected = current.selectedCandidate ?: return
         if (capture.location == null) {
             showMessage("A usable capture location is required before saving this observation. Retake with location enabled.")
+            return
+        }
+        if (capture.locationSource == CaptureLocationSource.APPROXIMATE) {
+            showMessage("Saving needs precise location. Tap Use precise location on Observe, then take a new photo.")
             return
         }
         val observation = runCatching {

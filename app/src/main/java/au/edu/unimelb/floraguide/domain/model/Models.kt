@@ -91,6 +91,8 @@ enum class CaptureLocationSource(val label: String) {
     GUIDED_DEMO("Guided demo location"),
     UNAVAILABLE("No usable capture location"),
     LEGACY_UNKNOWN("Legacy location; origin not recorded"),
+    /** Blurred by Android to about 2 km: used for ALA, never saved as a map pin. */
+    APPROXIMATE("Approximate location at capture"),
 }
 
 /** Snapshot taken at the shutter press, like the heading. Retries reuse the same time/location. */
