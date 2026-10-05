@@ -80,15 +80,12 @@ fun ScanScreen(
             results.containsKey(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (requestedLocation) onPermissionResult(locationGranted)
     }
-    // Permissions can be granted from system settings while this screen stays composed.
+    // Permissions can change in system settings while this screen is away. Revoking one restarts the
+    // app, and rememberSaveable would then restore the old "granted" value, so re-read them all.
     LifecycleResumeEffect(Unit) {
-        if (!cameraGranted && granted(Manifest.permission.CAMERA)) {
-            cameraGranted = true
-            cameraPermanentlyDenied = false
-        }
-        if (!locationGranted && (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION))) {
-            locationGranted = true
-        }
+        cameraGranted = granted(Manifest.permission.CAMERA)
+        if (cameraGranted) cameraPermanentlyDenied = false
+        locationGranted = granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
         onPauseOrDispose { }
     }
     // Re-runs after rotation or theme changes, so it must not override an explicit skip.
