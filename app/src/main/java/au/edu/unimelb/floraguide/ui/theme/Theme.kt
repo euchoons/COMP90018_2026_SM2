@@ -1,11 +1,18 @@
 package au.edu.unimelb.floraguide.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+private val AppShapes = Shapes(
+    medium = RoundedCornerShape(10.dp),
+)
 
 internal val LightColours = lightColorScheme(
     primary = Color(0xFF242424),
@@ -45,6 +52,7 @@ fun FloraGuideTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) DarkColours else LightColours,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content,
     )
 }

@@ -1,16 +1,22 @@
 package au.edu.unimelb.floraguide.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 
 @Composable
@@ -77,10 +83,9 @@ fun AuthScreen(
 
     Column(
         modifier = modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("FloraGuide Account", style = MaterialTheme.typography.headlineMedium)
-        Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.")
+        Spacer(modifier = Modifier.height(48.dp))
 
         if (authState == AuthState.Authenticating) {
             CircularProgressIndicator()
@@ -102,7 +107,7 @@ fun AuthScreen(
                 onClick = { confirmAccountDeletion = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                shape = MaterialTheme.shapes.medium
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Text("Delete account and all data")
             }
@@ -136,25 +141,62 @@ fun AuthScreen(
                 label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
             )
         }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
         OutlinedTextField(
-            value = email, onValueChange = { email = it }, label = { Text("Email address") },
+            value = email, onValueChange = { email = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = MaterialTheme.shapes.medium,
+            placeholder = { Text("Email", fontSize = 14.sp) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+
         )
         OutlinedTextField(
-            value = password, onValueChange = { password = it }, label = { Text("Password") },
+            value = password, onValueChange = { password = it }, placeholder = { Text("Password", fontSize = 14.sp) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+
         )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
                 if (registering) onRegister(email, password, displayName) else onSignIn(email, password)
                 password = ""
             },
             enabled = email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank()),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().alpha(if (email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank())) 1f else 0.8f).height(48.dp),
             shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                disabledContainerColor = MaterialTheme.colorScheme.primary,
+                disabledContentColor =MaterialTheme.colorScheme.onPrimary
+            ),
         ) {
             Text(if (upgrading) "Upgrade guest account" else if (registering) "Create account" else "Sign in")
         }
@@ -162,17 +204,31 @@ fun AuthScreen(
             TextButton(onClick = { isRegistering = !isRegistering }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
                 Text(if (isRegistering) "Already have an account? Sign in" else "Need an account? Register")
             }
-            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-                Text("Continue as cloud guest (internet required)")
+            Spacer(modifier = Modifier.height(20.dp))
+            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier.fillMaxWidth().height(48.dp), shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+                border = null) {
+                Text("Continue as Guest (Internet Required)")
             }
             if (authState != AuthState.OfflineGuest) {
-                OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-                    Text("Continue offline · guided demo")
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth().height(48.dp), shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                    border = null) {
+                    Text("Continue Offline (Demo)")
                 }
             }
         } else {
             Text("To use a different existing account, sign out first. This guest's cloud records stay with the guest.")
             TextButton(onClick = { confirmGuestSignOut = true }) { Text("Sign out") }
         }
+        Spacer(modifier = Modifier.height(20.dp))
+        Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium)
     }
 }

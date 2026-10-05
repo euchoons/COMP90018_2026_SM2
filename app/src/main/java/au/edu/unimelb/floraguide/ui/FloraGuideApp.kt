@@ -46,7 +46,9 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     if (authState !is AuthState.Authenticated && authState != AuthState.OfflineGuest) {
-        Surface {
+        Surface (
+            color = MaterialTheme.colorScheme.background
+        ) {
             AuthScreen(
                 authState = authState,
                 onSignIn = viewModel::signIn,
