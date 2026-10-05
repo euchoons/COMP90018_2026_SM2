@@ -38,7 +38,7 @@ A missing or unusable location never blocks capture: identification continues im
 
 Two independent arguments support the limit.
 
-1. **Approximate location must stay usable.** From Android 12 a user can grant approximate location only. The platform then reports a deliberately coarsened position whose accuracy is at least its coarse-accuracy setting, 2,000 m by default in AOSP. Any lower limit would silently switch ALA off for everyone who makes that privacy choice, so 2,000 m is the smallest workable value. Device case DE-04 confirms the value phones actually report. Approximate fixes also arrive only about every 10 minutes, so they have their own freshness limit, described in the next section.
+1. **Approximate location must stay usable.** From Android 12 a user can grant approximate location only. The platform then reports a deliberately coarsened position whose accuracy is at least its coarse-accuracy setting, 2,000 m by default in AOSP. Any lower limit would silently switch ALA off for everyone who makes that privacy choice, so 2,000 m is the smallest workable value. Device case DE-04 confirms the value phones actually report: Phone A reported exactly 2,000 m. Approximate fixes also arrive only about every 10 minutes, so they have their own freshness limit, described in the next section.
 2. **The ALA search area barely moves.** ALA counts records within 8 km of the query point. If the query point is d km from the true position, the two circles share (2/π)(acos x − x√(1 − x²)) of their area, with x = d / 16 km:
 
 | Offset d | 10 m | 100 m | 500 m | 1 km | 2 km | 3.24 km |
@@ -73,7 +73,7 @@ The map grouped observations by their stored coordinates as given. Records creat
 
 ### Defect: approximate location never became usable
 
-On Phone A, Observe never reported a usable fix with approximate location granted (DE-04). The 60 s limit rejected each approximate fix long before the next one arrived. Approximate fixes now keep for 15 minutes in `LocationFreshnessPolicy`, feed the ALA query, and show as "Approximate location ready · ±2000 m". A fix blurred by up to about 2 km is fine for an 8 km search but would pin the plant in the wrong place, so a capture with only approximate location cannot be saved: Results explains why, and Observe offers **Use precise location**, which asks Android to upgrade the permission. Tested in `LocationFreshnessPolicyTest` and `FloraGuideViewModelTest`; DE-04 needs a re-run.
+On Phone A, Observe never reported a usable fix with approximate location granted (DE-04). The 60 s limit rejected each approximate fix long before the next one arrived. Approximate fixes now keep for 15 minutes in `LocationFreshnessPolicy`, feed the ALA query, and show as "Approximate location ready · ±2000 m". A fix blurred by up to about 2 km is fine for an 8 km search but would pin the plant in the wrong place, so a capture with only approximate location cannot be saved: Results explains why, and Observe offers **Use precise location**, which asks Android to upgrade the permission. Tested in `LocationFreshnessPolicyTest` and `FloraGuideViewModelTest`; The Phone A re-run passed (DE-04).
 
 ### Finding for the map owner: "Following your location" on the Field Guide
 
@@ -109,19 +109,19 @@ Phone A is a OnePlus PGP110 on Android 15, running a debug build of `e0bb84a`, m
 | Phone A | Tree canopy | GPS: 51 fixes, 4 / 4 m reported, error 2 / 4 m, 94% within; first fresh GPS fix within 3.0 s. Network: 14 fixes, 64 / 100 m reported, 10 m error |
 | Phone A | Beside a building | GPS: 43 fixes, 10 / 10 m reported, error 4 / 7 m, 81% within; a fresh GPS fix was already available. Network: 9 fixes, 34 / 135 m reported, 8 m error |
 | Phone A | Indoors | GPS: 45 fixes, 13 / 55 m reported, error 31 / 36 m, 8% within. Network: 21 fixes, 100 m reported, 6 m error. DE-16: 1 stale report and a capture without location |
-| Phone A | GPS only; approximate | GPS only: 44 GPS fixes, 4 / 4 m reported, error 0 / 1 m, 100% within; first fresh GPS fix after 1.1 s. 8 network fixes also arrived, so Wi-Fi probably stayed on in airplane mode. Approximate: not recorded; see DE-04 (FAIL) |
+| Phone A | GPS only; approximate | GPS only: 44 GPS fixes, 4 / 4 m reported, error 0 / 1 m, 100% within; first fresh GPS fix after 1.1 s. 8 network fixes also arrived, so Wi-Fi probably stayed on in airplane mode. Approximate, after `63f3fb1` (`A-loc-approx`, no reference point): every fix reported ±2000 m. Android delivered cached fixes 5–7 min old, which the old 60 s limit would all have rejected; the 15 min limit accepted them, and a capture 16 s after opening Observe had a usable location (DE-04 PASS). The session was too short to measure the 10 min delivery interval. |
 | Phone B | Same five sessions | not run |
 
 Against the acceptance criteria, Phone A:
 
 - **Outdoors: passes.** The median reported GPS accuracy is 4–10 m, and the first fresh GPS fix arrives within 3.2 s.
 - **Honest accuracy: mixed.** Beside the building, 81% of GPS fixes fall within their reported accuracy, inside the expected band. In open sky and under canopy 94–100% do, because the phone reports a flat 4 m, more cautious than its actual error. Indoors only 8% do: GPS claims about 13 m but is about 31 m off, while network fixes claim 100 m and are about 6 m off.
-- **Network and approximate fixes: partly met.** Network fixes of about 100 m were accepted, but approximate fixes never became usable (DE-04 FAIL). Fixed in `63f3fb1`; the approximate session needs a re-run.
+- **Network and approximate fixes: met after the fix.** Network fixes of about 100 m were accepted, but approximate fixes never became usable (DE-04 FAIL). After `63f3fb1` they were accepted at ±2000 m and used at capture (DE-04 PASS).
 - **Indoors without GPS: passes** (DE-16).
 
 ## Remaining limitations
 
-- Phone A's results are in, but Phone B and the approximate session are still to be measured, so the limits are only partly confirmed by measurement.
+- Phone A's results are in, but Phone B is still to be measured, so the limits are only partly confirmed by measurement.
 - Indoors, reported GPS accuracy is optimistic (Phone A: about 13 m claimed, about 31 m actual), so it is a poor guide to which indoor fix is better. The impact is small: stored coordinates use a grid of about 100 m, and ALA searches 8 km.
 - Reference points read from a satellite map carry a few metres of uncertainty. That is negligible against the 2 km limit but blurs the "within reported accuracy" share for GPS fixes.
-- The approximate-location argument relies on the AOSP default; a manufacturer could configure a coarser value, which DE-04 would reveal.
+- The approximate-location argument relies on the AOSP default. Phone A (OnePlus, Android 15) reports exactly 2,000 m, but another manufacturer could configure a coarser value.
