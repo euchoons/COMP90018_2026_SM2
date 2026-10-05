@@ -19,6 +19,7 @@ androidxTest = "1.7.0"
 work = "2.11.2"
 mockk = "1.14.11"
 mapsCompose = "6.12.0"
+sqlcipher = "4.19.1"
 minSdk = "26"
 targetSdk = "36"
 compileSdk = "36"
@@ -59,6 +60,7 @@ firebase-firestore = { module = "com.google.firebase:firebase-firestore" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher" }
 androidx-test-core-ktx = { module = "androidx.test:core-ktx", version.ref = "androidxTest" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }

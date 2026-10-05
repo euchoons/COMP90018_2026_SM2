@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import net.sqlcipher.database.SupportFactory
-import net.sqlcipher.database.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -94,7 +94,7 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                 }
             }
 
-            // Return UTF-8 bytes of the Base64 string to ensure exact matching between SupportFactory and ATTACH string literals.
+            // Return UTF-8 bytes of the Base64 string to ensure exact matching between SupportOpenHelperFactory and ATTACH string literals.
             return passphrase.toByteArray(Charsets.UTF_8)
         }
 
@@ -112,7 +112,6 @@ abstract class FloraGuideDatabase : RoomDatabase() {
                 // Open the existing plaintext DB with an empty password
                 oldDbConn = SQLiteDatabase.openDatabase(
                     oldDb.absolutePath,
-                    "",
                     null,
                     SQLiteDatabase.OPEN_READWRITE
                 )
@@ -129,9 +128,10 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             try {
                 verifyDb = SQLiteDatabase.openDatabase(
                     tmpDb.absolutePath,
-                    passphraseStr,
+                    passphraseBytes,
                     null,
-                    SQLiteDatabase.OPEN_READONLY
+                    SQLiteDatabase.OPEN_READONLY,
+                    null
                 )
                 verifyDb.version // Trigger a read to guarantee structural integrity and successful encryption
             } finally {
@@ -151,7 +151,7 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
                 .addMigrations(MIGRATION_1_2)
             if (passphrase != null) {
-                builder.openHelperFactory(SupportFactory(passphrase))
+                builder.openHelperFactory(SupportOpenHelperFactory(passphrase))
             }
             val db = builder.build()
             // Force immediate connection opening and verification to catch decryption/corruption errors inside getInstance
@@ -163,7 +163,7 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             instance ?: run {
                 val appContext = context.applicationContext
                 val hasSqlCipher = runCatching {
-                    SQLiteDatabase.loadLibs(appContext)
+                    System.loadLibrary("sqlcipher")
                     true
                 }.getOrDefault(false)
 
