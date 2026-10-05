@@ -12,6 +12,8 @@ complete account erasure or a safe encrypted-storage upgrade.
 - Debug builds log each location fix, including precise coordinates, to Logcat under
   `FloraGuide-Location` for accuracy measurement; release builds do not. Logcat stays on the
   phone and is read over adb, and committed measurement evidence reports distances only.
+- With approximate location only, Android's blurred position is used for the ALA query but never
+  saved: saving an observation needs precise location.
 - ALA receives approximate coordinates, a query radius and taxon information. It does not need
   the user's Firebase UID or plant photo.
 - Live identification uploads photos to Firebase Storage and sends image data to Pl@ntNet over

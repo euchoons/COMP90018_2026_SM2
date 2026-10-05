@@ -11,6 +11,7 @@ Related: the [missing-context policy](../technical/MISSING_CONTEXT_POLICY.md) fo
 | Area | Result | Commit |
 |---|---|---|
 | Eligibility limits | Justified: 2 km admits Android's approximate location and keeps at least 84% of the 8 km ALA search area; 60 s keeps walking drift below one grid cell. Device measurements pending. | — |
+| Approximate location | Defect fixed: approximate fixes arrive only about every 10 min, so the 60 s limit made approximate location unusable (DE-04). They now keep for 15 min and feed ALA, but cannot be saved as a map pin. | `fix(location): use approximate location for ALA without pinning it` |
 | Status | Defect fixed: "Device location ready" stayed on screen after the fix aged out or its provider was switched off, while a capture then skipped ALA. | `fix(location): stop presenting an aged-out fix as ready` |
 | Map data | Defect fixed: imported or synced records with finer coordinates were pinned at their exact position. | `fix(map): keep observation pins on the storage grid` |
 | Grid | Refactor: the 0.001° rule existed twice; `GeoPoint.coarsened()` is now the only copy. | `refactor(location): define the 0.001° coarsening grid once` |
@@ -37,7 +38,7 @@ A missing or unusable location never blocks capture: identification continues im
 
 Two independent arguments support the limit.
 
-1. **Approximate location must stay usable.** From Android 12 a user can grant approximate location only. The platform then reports a deliberately coarsened position whose accuracy is at least its coarse-accuracy setting, 2,000 m by default in AOSP. Any lower limit would silently switch ALA off for everyone who makes that privacy choice, so 2,000 m is the smallest workable value. Device case DE-04 confirms the value phones actually report.
+1. **Approximate location must stay usable.** From Android 12 a user can grant approximate location only. The platform then reports a deliberately coarsened position whose accuracy is at least its coarse-accuracy setting, 2,000 m by default in AOSP. Any lower limit would silently switch ALA off for everyone who makes that privacy choice, so 2,000 m is the smallest workable value. Device case DE-04 confirms the value phones actually report. Approximate fixes also arrive only about every 10 minutes, so they have their own freshness limit, described in the next section.
 2. **The ALA search area barely moves.** ALA counts records within 8 km of the query point. If the query point is d km from the true position, the two circles share (2/π)(acos x − x√(1 − x²)) of their area, with x = d / 16 km:
 
 | Offset d | 10 m | 100 m | 500 m | 1 km | 2 km | 3.24 km |
@@ -51,6 +52,8 @@ The limit decides only whether ALA context is fetched. The Observe status shows 
 ## Freshness limit: 60 s
 
 `LocationTracker` requests updates every 2.5 s, so a fix older than 60 s means about 24 missed updates: the signal is lost (indoors, dense canopy) or the fix is a cached last-known location. Walking at 1.4 m/s covers about 84 m in 60 s, less than one 111 m grid cell, so a fix at the limit still lands in the right cell or its neighbour. Cycling (300 m) or driving (830 m) would not, but neither is a field-observation condition. Age is measured on the monotonic `elapsedRealtimeNanos` clock, so wall-clock changes cannot make a stale fix look fresh.
+
+**Approximate location: 15 minutes.** Android sends an app with approximate permission only about one fix every 10 minutes, already blurred to a grid of about 2 km. Under the 60 s limit each fix expired long before the next arrived, so approximate location never became usable (DE-04). Approximate fixes now stay usable for 15 minutes, the 10-minute delivery interval plus a margin. A walker covers about 1.3 km in that time, less than the 2 km blur, so an older approximate fix is no worse than a new one.
 
 ## Storage grid: 0.001°
 
@@ -67,6 +70,10 @@ The status was set when a fix arrived and never revisited. Under canopy or indoo
 ### Defect: map pins could show finer coordinates than storage
 
 The map grouped observations by their stored coordinates as given. Records created by the app are already coarse, but imported legacy records or cloud documents could carry more precision, and the map would pin them exactly. `observationMapLocations()` now re-coarsens every point, so pins never show more precision than storage. Coarsening is idempotent, so existing pins do not move. Tested in `ObservationMapLocationsTest` and `GeoPointTest`.
+
+### Defect: approximate location never became usable
+
+On Phone A, Observe never reported a usable fix with approximate location granted (DE-04). The 60 s limit rejected each approximate fix long before the next one arrived. Approximate fixes now keep for 15 minutes in `LocationFreshnessPolicy`, feed the ALA query, and show as "Approximate location ready · ±2000 m". A fix blurred by up to about 2 km is fine for an 8 km search but would pin the plant in the wrong place, so a capture with only approximate location cannot be saved: Results explains why, and Observe offers **Use precise location**, which asks Android to upgrade the permission. Tested in `LocationFreshnessPolicyTest` and `FloraGuideViewModelTest`; DE-04 needs a re-run.
 
 ### Finding for the map owner: "Following your location" on the Field Guide
 
@@ -109,7 +116,7 @@ Against the acceptance criteria, Phone A:
 
 - **Outdoors: passes.** The median reported GPS accuracy is 4–10 m, and the first fresh GPS fix arrives within 3.2 s.
 - **Honest accuracy: mixed.** Beside the building, 81% of GPS fixes fall within their reported accuracy, inside the expected band. In open sky and under canopy 94–100% do, because the phone reports a flat 4 m, more cautious than its actual error. Indoors only 8% do: GPS claims about 13 m but is about 31 m off, while network fixes claim 100 m and are about 6 m off.
-- **Network and approximate fixes: partly met.** Network fixes of about 100 m were accepted, but approximate fixes never became usable (DE-04 FAIL).
+- **Network and approximate fixes: partly met.** Network fixes of about 100 m were accepted, but approximate fixes never became usable (DE-04 FAIL). Fixed in `63f3fb1`; the approximate session needs a re-run.
 - **Indoors without GPS: passes** (DE-16).
 
 ## Remaining limitations

@@ -37,6 +37,8 @@ Method:
 | Permissions | Defect fixed: after a permanent denial the Enable button did nothing. | `fix(camera): route permanently denied camera permission to app settings` |
 | Permissions | Defect fixed: a permission granted in system settings was ignored until the screen was re-entered. | same |
 | Permissions | Regression fixed: both permission fixes were lost in a later `ScanScreen` rewrite and have been re-applied. | `fix(camera): restore the app-settings route for permanently denied camera access` |
+| Lifecycle | Defect fixed: the shutter stayed enabled when the camera never opened, closed after a permission change or was taken by another app. | `fix(camera): enable the shutter only while the camera is open` |
+| Permissions | Defect fixed: after camera access was revoked in system settings, the restarted app restored the old "granted" value and kept the camera card. | `fix(scan): re-read permissions whenever Observe resumes` |
 | Rotation | Defect fixed: with auto-rotate locked, landscape photos were tagged as portrait. | `fix(camera): follow physical orientation and bound capture resolution` |
 | Resize | Defect fixed: full-sensor JPEGs were uploaded to Pl@ntNet and Firebase on every capture. | same |
 | Resize | Thumbnail decoding: no change needed; `ObservationPhotoLoader` on `main` already samples by size off the main thread. | — |
@@ -63,6 +65,12 @@ Method:
 `CameraSelector.DEFAULT_BACK_CAMERA` was hard-coded. The manifest declares `android.hardware.camera.any` as not required, so the app installs on devices with only a front camera (some tablets and Chromebooks) or no camera. There, binding threw, a snackbar appeared briefly, and the overlay said "Starting CameraX…" forever.
 
 **Fix:** use the back camera if present, otherwise the front camera, otherwise fail with an explicit message. A `cameraFailed` state replaces the loading text with "Camera unavailable — the guided demo on Home still works", which matches the fallback listed in [architecture](../technical/ARCHITECTURE.md).
+
+### Defect: the shutter outlived the camera
+
+Binding only asks CameraX for the camera. Opening happens afterwards and can fail, and another app can take the camera at any time. The card marked itself ready as soon as binding returned, so device testing found the shutter still offered over a closed preview (DE-05), and the case of another app taking the camera could not be shown (DE-11).
+
+**Fix:** the card observes `CameraInfo.cameraState`. Capture is enabled only while the camera is open. While another app holds it, the hint reads "Another app is using the camera. Close it to continue.", and CameraX reopens the camera by itself once it is free. `CameraAvailabilityTest` pins the state mapping.
 
 ### Known behaviour, not changed
 
@@ -128,7 +136,7 @@ An earlier commit on this branch sized the thumbnail sample rate to the photo. `
 - Camera is requested from that button and location from the location card's **Enable / refresh** button. A location denial skips ALA for the scan; live scans never substitute the campus demo location.
 - Granting either fine **or** coarse location counts, which respects Android 12's approximate-location choice.
 - Duplicate location starts (from the permission callback and the `LaunchedEffect`) are harmless because `LocationTracker.start` calls `stop()` first.
-- Revoking a permission in system settings kills the process, so a stale "granted" state cannot survive.
+- Revoking a permission in system settings kills the process. That alone did not reset the screen: `rememberSaveable` restored the old "granted" value on restart until the resume check below re-read it (DE-05).
 
 ### Defect: permanent denial was a dead end
 
@@ -142,7 +150,7 @@ Known edge case: if the user *dismisses* the very first dialog (back gesture or 
 
 Permission state was only read when the screen was first composed, or when a request returned. A user who granted camera access from settings and came back still saw the permission card.
 
-**Fix:** `LifecycleResumeEffect` re-checks both permissions on every resume.
+**Fix:** `LifecycleResumeEffect` re-reads both permissions on every resume, so revocations are noticed as well as grants. Device case DE-05 found the revocation gap.
 
 ### Regression: both fixes were lost, then restored
 
