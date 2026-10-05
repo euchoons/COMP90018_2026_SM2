@@ -34,8 +34,8 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | DE-01 | Fresh install (`fresh`), open Observe, deny camera once | **Enable camera** stays and asks again when tapped | PASS | NOT RUN | |
 | DE-02 | Deny camera a second time, tap **Open app settings**, allow camera, return | The camera slot says access is off and offers **Open app settings**; after allowing, the preview appears without leaving Observe | PASS | NOT RUN | |
 | DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | PASS | NOT RUN | |
-| DE-04 | Grant approximate location only (Android 12+) | Status shows about "±2000 m" and ALA counts appear on results | BLOCK | NOT RUN | Grant approximate location does not enable location |
-| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | BLOCK | NOT RUN | Camera is closed but option to take photo is still there, only changing applicaiton pages such as field guide/home/account page does it pop up with camera is closed message and camera closes properly |
+| DE-04 | Grant approximate location only (Android 12+) | Status shows about "±2000 m" and ALA counts appear on results | FAIL | NOT RUN | Grant approximate location does not enable location |
+| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | FAIL | NOT RUN | Camera is closed but option to take photo is still there, only changing applicaiton pages such as field guide/home/account page does it pop up with camera is closed message and camera closes properly |
 | DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | PASS | NOT RUN | |
 | **Missing or unreliable sensors** | | | | | |
 | DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | NOT RUN | NOT RUN | |
@@ -45,7 +45,7 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | **Camera failures** | | | | | |
 | DE-11 | Open Observe while another app holds the camera, such as a video call | "Camera unavailable — the guided demo on Home still works" and no crash; BLOCKED if the phone hands the camera over | BLOCK | NOT RUN | Camera is handed over to Floraguide and video call camera freezes|
 | DE-12 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed message | PASS | NOT RUN | Popup message of camera is closed appears |
-| DE-13 | In airplane mode, capture and agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | BLOCK | NOT RUN | The program will continue to try to upload with no signs of failure message |
+| DE-13 | In airplane mode, capture and agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | FAIL | NOT RUN | The program will continue to try to upload with no signs of failure message |
 | **Location failures** | | | | | |
 | DE-14 | Location services off, open Observe | Status "Device location is off. Enable it before capture to add ALA context."; a capture is identified without ALA | PASS | NOT RUN | |
 | DE-15 | Get a fix, then turn location services off | Status "Device location is off; no capture location is available." | PASS | NOT RUN | |
