@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -42,14 +42,15 @@ import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import au.edu.unimelb.floraguide.ui.LOCAL_TIME_FORMAT
-
+import au.edu.unimelb.floraguide.ui.components.CandidateResultCard
+import au.edu.unimelb.floraguide.ui.components.CandidateSetCard
+import au.edu.unimelb.floraguide.ui.components.CloudIdentificationCard
 import au.edu.unimelb.floraguide.ui.components.EvidenceBar
 import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
 import au.edu.unimelb.floraguide.ui.components.PhotoThumbnail
 import au.edu.unimelb.floraguide.ui.components.RelativeScoreLabel
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
-import au.edu.unimelb.floraguide.ui.components.SelectableCard
 import au.edu.unimelb.floraguide.ui.components.StatusPill
 import java.time.format.TextStyle
 import java.util.Locale
@@ -86,42 +87,45 @@ fun ResultsScreen(
                 }
             }
         }
-        // Keep retry available without the duplicate identification card.
-        state.analysisError?.let { error ->
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+        // 1. Keep the unmodified image scores separate from context-adjusted scores.
+        item(key = "before-context-scores") {
+            CloudIdentificationCard(state = state, onRetry = onRetryIdentification)
+        }
+        // 2. Reuse the same section and candidate cards, with a green outer container.
+        if (state.displayedRanking.isNotEmpty()) {
+            item(key = "final-candidate-set") {
+                CandidateSetCard(
+                    title = "Final candidate set",
+                    subtitle = "Select a suggestion. Scores are relative, not accuracy estimates.",
+                    highlighted = true,
                 ) {
-                    Text(
-                        "Identification failed",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-
-                    Text(
-                        error,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-
-                    if (state.photoPath != null && !state.isClassifying) {
-                        FilledTonalButton(onClick = onRetryIdentification) {
-                            Text("Retry identification")
+                    state.displayedRanking.forEach { candidate ->
+                        key(candidate.species.id) {
+                            CandidateResultCard(
+                                selected = state.selectedCandidate?.species?.id == candidate.species.id,
+                                onClick = { onSelectSpecies(candidate.species.id) },
+                            ) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("#${candidate.finalRank}", fontWeight = FontWeight.Bold)
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Text(candidate.species.commonName, fontWeight = FontWeight.Bold)
+                                        Text(candidate.species.scientificName, fontStyle = FontStyle.Italic,
+                                            style = MaterialTheme.typography.bodySmall)
+                                        Text("Image rank #${candidate.imageRank} -> final #${candidate.finalRank}",
+                                            style = MaterialTheme.typography.labelSmall)
+                                        Text(recordLabel(candidate, state), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    RelativeScoreLabel(candidate.relativeScore)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        item { ContextProgress(state, onRetryContext) }
-        if (state.isClassifying) {
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(Modifier.size(28.dp))
-                    Text(state.identificationStage?.label ?: "Preparing image candidates")
-                }
-            }
-        }
+        // 3. Preserve the existing before-and-after comparison.
         if (state.imageOnlyRanking.isNotEmpty()) {
-            item {
+            item(key = "before-after") {
                 ResultCard {
                     Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -133,26 +137,8 @@ fun ResultsScreen(
                 }
             }
         }
-        if (state.displayedRanking.isNotEmpty()) {
-            item { SectionHeading(title = "Final candidate set", subtitle = "Select a suggestion. Scores are relative, not accuracy estimates.") }
-            items(state.displayedRanking, key = { it.species.id }) { candidate ->
-                SelectableCard(selected = state.selectedCandidate?.species?.id == candidate.species.id,
-                    onClick = { onSelectSpecies(candidate.species.id) }) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("#${candidate.finalRank}", fontWeight = FontWeight.Bold)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(candidate.species.commonName, fontWeight = FontWeight.Bold)
-                            Text(candidate.species.scientificName, fontStyle = FontStyle.Italic,
-                                style = MaterialTheme.typography.bodySmall)
-                            Text("Image rank #${candidate.imageRank} -> final #${candidate.finalRank}",
-                                style = MaterialTheme.typography.labelSmall)
-                            Text(recordLabel(candidate, state), style = MaterialTheme.typography.labelSmall)
-                        }
-                        RelativeScoreLabel(candidate.relativeScore)
-                    }
-                }
-            }
-        }
+        // 4. Keep lookup status and ALA-only retry after the comparison.
+        item(key = "ala-lookup") { ContextProgress(state, onRetryContext) }
         state.selectedCandidate?.let { selected ->
             item {
                 ResultCard {
