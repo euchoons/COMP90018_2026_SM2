@@ -94,19 +94,27 @@ Acceptance criteria:
 
 ### Results
 
-Pending device runs. Paste each session's summary here; logs stay under `docs/evidence/` (git-ignored) because they contain coordinates.
+Phone A is a OnePlus PGP110 on Android 15, running a debug build of `e0bb84a`, measured on the Parkville campus on 2026-10-05. Each reference point was long-pressed in Google Maps at the standing point and cross-checked against a feature in the satellite image. Logs stay under `docs/evidence/` (git-ignored) because they contain coordinates. Accuracy and error are given as median / 95th percentile, and "within" is the share of fixes whose error is inside their reported accuracy.
 
 | Phone | Point / mode | Summary |
 |---|---|---|
-| Phone A | Open sky | not run |
-| Phone A | Tree canopy | not run |
-| Phone A | Beside a building | not run |
-| Phone A | Indoors | not run |
-| Phone A | GPS only; approximate | not run |
+| Phone A | Open sky | GPS: 65 fixes, reported accuracy 4 / 4 m, error 0 / 1 m, 100% within; first fresh GPS fix after 3.2 s. Network: 12 fixes, 100 / 129 m reported, 31 m error |
+| Phone A | Tree canopy | GPS: 51 fixes, 4 / 4 m reported, error 2 / 4 m, 94% within; first fresh GPS fix within 3.0 s. Network: 14 fixes, 64 / 100 m reported, 10 m error |
+| Phone A | Beside a building | GPS: 43 fixes, 10 / 10 m reported, error 4 / 7 m, 81% within; a fresh GPS fix was already available. Network: 9 fixes, 34 / 135 m reported, 8 m error |
+| Phone A | Indoors | GPS: 45 fixes, 13 / 55 m reported, error 31 / 36 m, 8% within. Network: 21 fixes, 100 m reported, 6 m error. DE-16: 1 stale report and a capture without location |
+| Phone A | GPS only; approximate | GPS only: 44 GPS fixes, 4 / 4 m reported, error 0 / 1 m, 100% within; first fresh GPS fix after 1.1 s. 8 network fixes also arrived, so Wi-Fi probably stayed on in airplane mode. Approximate: not recorded; see DE-04 (FAIL) |
 | Phone B | Same five sessions | not run |
+
+Against the acceptance criteria, Phone A:
+
+- **Outdoors: passes.** The median reported GPS accuracy is 4–10 m, and the first fresh GPS fix arrives within 3.2 s.
+- **Honest accuracy: mixed.** Beside the building, 81% of GPS fixes fall within their reported accuracy, inside the expected band. In open sky and under canopy 94–100% do, because the phone reports a flat 4 m, more cautious than its actual error. Indoors only 8% do: GPS claims about 13 m but is about 31 m off, while network fixes claim 100 m and are about 6 m off.
+- **Network and approximate fixes: partly met.** Network fixes of about 100 m were accepted, but approximate fixes never became usable (DE-04 FAIL).
+- **Indoors without GPS: passes** (DE-16).
 
 ## Remaining limitations
 
-- Until the results are filled in, the limits are justified analytically, not measured.
+- Phone A's results are in, but Phone B and the approximate session are still to be measured, so the limits are only partly confirmed by measurement.
+- Indoors, reported GPS accuracy is optimistic (Phone A: about 13 m claimed, about 31 m actual), so it is a poor guide to which indoor fix is better. The impact is small: stored coordinates use a grid of about 100 m, and ALA searches 8 km.
 - Reference points read from a satellite map carry a few metres of uncertainty. That is negligible against the 2 km limit but blurs the "within reported accuracy" share for GPS fixes.
 - The approximate-location argument relies on the AOSP default; a manufacturer could configure a coarser value, which DE-04 would reveal.

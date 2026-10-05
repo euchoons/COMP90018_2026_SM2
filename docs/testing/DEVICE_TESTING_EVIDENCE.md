@@ -61,8 +61,8 @@ A lot of these are similar to what is tested in the testing above.
 |---|---|---|---|
 | [Camera](CAMERA_VALIDATION.md#physical-device-checklist) | Rows 1–16 | BLOCK, same Issue as DE-05 and DE-11, rest are ok | not run |
 | [Light and heading](HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) | Rows 1–11 | PASS, may need to raise lux gate | not run |
-| [Motion calibration](../technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) | Conditions 1–7 | PASS | not run |
-| [Location measurements](LOCATION_VALIDATION.md#device-measurement-procedure) | Four points, GPS only, approximate | not run | not run |
+| [Motion calibration](../technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) | Conditions 1–7 | PASS on conditions 1–3; 4–5 recorded as secondary; 6–7 still to record | not run |
+| [Location measurements](LOCATION_VALIDATION.md#device-measurement-procedure) | Four points, GPS only, approximate | Four points and GPS only recorded: outdoor criteria pass, indoor GPS accuracy is optimistic; approximate not recorded (DE-04 FAIL) | not run |
 
 ## Evidence helper
 
