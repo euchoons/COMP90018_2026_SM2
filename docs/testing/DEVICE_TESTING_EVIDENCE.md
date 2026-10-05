@@ -8,15 +8,15 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 
 ## Phones
 
-| | Phone A | Phone B |
-|---|---|---|
-| Manufacturer and model | Oneplus PGP110 | |
-| Android version (API) | 15 (API 35) | |
-| Accelerometer / gyroscope / light / magnetometer | yes / yes / yes / yes | |
-| Tested commit | e0bb84a | |
-| Date | 05/10/2026 | |
+| | Phone A | Phone B | Emulator (Simulated) |
+|---|---|---|---|
+| Manufacturer and model | Oneplus PGP110 | | Google sdk_gphone64_x86_64 (Android Emulator) |
+| Android version (API) | 15 (API 35) | | 17 (API 37) |
+| Accelerometer / gyroscope / light / magnetometer | yes / yes / yes / yes | | yes / no / no / no (disabled in `config.ini`) |
+| Tested commit | e0bb84a | | 69fd0b4 |
+| Date | 05/10/2026 | | 06/10/2026 |
 
-`tools/device-evidence.sh info` collects these from the connected phone.
+`tools/device-evidence.sh info` collects these from the connected phone. The emulator is used only for DE-07 and DE-08, because no available phone lacks those sensors.
 
 ## Recording rules
 
@@ -38,8 +38,8 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | PASS | NOT RUN | Before the fix: the camera closed but the option to take a photo was still there; only changing pages (Field Guide, Home or Account) showed the camera-closed message and closed the camera properly. Fixed in `34a40c7` (permissions re-read on resume) and `8494f7c` (shutter follows the camera state). Re-run on 2026-10-06 verified the camera has to be re-enabled. Evidence: `DE-05.png` |
 | DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | PASS | NOT RUN | |
 | **Missing or unreliable sensors** | | | | | |
-| DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | NOT RUN | NOT RUN | |
-| DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; the saved observation has no heading | NOT RUN | NOT RUN | |
+| DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | N/A (has all four sensors) | NOT RUN | **PASS (Simulated)** on the emulator: switch greyed out with "Sensor unavailable: manual capture", pill "Stability n/a", hint "Manual capture: motion sensors unavailable", shutter enabled. Evidence: `sdk_gphone64_x86_64/DE-07.png` |
+| DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; capture still works; the stored heading is null (check in Firestore, or covered by unit tests, since no screen shows a saved heading) | N/A (has all four sensors) | NOT RUN | **PASS (Simulated)** on the emulator: pills "Light n/a" and "Heading n/a" on the same screen as DE-07. The stored heading was not checked in Firestore; `FloraGuideViewModelTest` covers a missing heading being saved as null. Evidence: `sdk_gphone64_x86_64/DE-08.png` |
 | DE-09 | Cover the light sensor while holding still | Pill "Low light"; hint adds "· low light may blur the photo"; capture still allowed | PASS | NOT RUN | |
 | DE-10 | Hold a magnet near the phone, then do the figure-8 gesture | Pill "Calibrate compass", then the bearing returns | PASS | NOT RUN | |
 | **Camera failures** | | | | | |
