@@ -11,6 +11,7 @@ written out. Stdlib only:
         --exclude app/src/test/resources/evaluation/pilot.json --out app/src/test/resources/evaluation/train.json
     python3 tools/build-evaluation-set.py --per-stratum 1 --out /tmp/x.json  # smoke test
     python3 tools/build-evaluation-set.py --add-counts-without-inaturalist app/src/test/resources/evaluation/pilot.json
+    python3 tools/build-evaluation-set.py --fill-missing-counts app/src/test/resources/evaluation/pilot.json
 """
 import argparse
 import concurrent.futures
@@ -161,9 +162,13 @@ def ala_name(name):
     return {k: match.get(k) for k in ("success", "scientificName", "rank", "matchType", "synonymType", "taxonConceptID")}
 
 
+# The ranks AlaOccurrenceClient counts: a species or one plant below it, including unranked cultivars (#76).
+COUNTABLE_RANKS = {"species", "subspecies", "variety", "form", "cultivar", "unranked"}
+
+
 def countable(match):
     """A superset of what the app accepts; the evaluation applies the app's own parser to decide."""
-    return (match.get("success") is True and (match.get("rank") or "").lower() == "species"
+    return (match.get("success") is True and (match.get("rank") or "").lower() in COUNTABLE_RANKS
             and match.get("matchType") in ("exactMatch", "canonicalMatch") and match.get("taxonConceptID"))
 
 
@@ -195,6 +200,31 @@ def add_counts_without_inaturalist(path, radius=8):
     print(f"added counts without iNaturalist to {path}", file=sys.stderr)
 
 
+def fill_missing_counts(path):
+    """After the matching rule widened (#76), count the candidates the old rule skipped. Only those are queried."""
+    with open(path, encoding="utf-8") as source:
+        data = json.load(source)
+    todo = [(case, r["name"]) for case in data["cases"] for r in case["plantnet"]["results"][:CANDIDATES]
+            if countable(data["alaNames"][r["name"]]) and r["name"] not in case["alaCounts"]]
+    taxon = lambda name: data["alaNames"][name]["taxonConceptID"]
+    jobs = [((case["id"], name, radius), (taxon(name), case["latitude"], case["longitude"], radius, case["id"]))
+            for case, name in todo for radius in ALA_RADII_KM]
+    without = data["ala"].get("withoutINaturalist")
+    if without:
+        jobs += [((case["id"], name, "without"), (taxon(name), case["latitude"], case["longitude"], without["radiusKm"],
+                                                   case["id"], True)) for case, name in todo]
+    counts = run_parallel("missing ALA counts", ala_count, jobs, 4)
+    for case, name in todo:
+        case["alaCounts"][name] = {str(radius): counts[(case["id"], name, radius)] for radius in ALA_RADII_KM}
+        if without:
+            case["alaCountsWithoutINaturalist"][name] = {str(without["radiusKm"]): counts[(case["id"], name, "without")]}
+    data["ala"]["filledAfterMatchingChange"] = {"issue": "#76", "pairs": len(todo),
+                                                "retrieved": datetime.date.today().isoformat()}
+    with open(path, "w", encoding="utf-8") as out:
+        out.write(json.dumps(data, indent=1, ensure_ascii=False) + "\n")
+    print(f"filled {len(todo)} candidate counts in {path}", file=sys.stderr)
+
+
 def run_parallel(label, function, items, workers):
     results = {}
     with concurrent.futures.ThreadPoolExecutor(workers) as executor:
@@ -212,9 +242,15 @@ def main():
     parser.add_argument("--out", default=OUT)
     parser.add_argument("--split", help="label every case with this split instead of the hash-based dev/holdout")
     parser.add_argument("--exclude", action="append", default=[], help="an earlier dataset whose observations to avoid")
+    parser.add_argument("--fill-missing-counts", action="append", default=[], metavar="DATASET",
+                        help="query ALA counts only for candidates an earlier, narrower matching rule skipped")
     parser.add_argument("--add-counts-without-inaturalist", action="append", default=[], metavar="DATASET",
                         help="recount an existing dataset's ALA records without iNaturalist, instead of collecting")
     args = parser.parse_args()
+    if args.fill_missing_counts:
+        for path in args.fill_missing_counts:
+            fill_missing_counts(path)
+        return
     if args.add_counts_without_inaturalist:
         for path in args.add_counts_without_inaturalist:
             add_counts_without_inaturalist(path)

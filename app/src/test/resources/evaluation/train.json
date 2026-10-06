@@ -72,6 +72,11 @@
    "fq": "-dataResourceUid:dr1411",
    "radiusKm": 8,
    "retrieved": "2026-09-30"
+  },
+  "filledAfterMatchingChange": {
+   "issue": "#76",
+   "pairs": 5,
+   "retrieved": "2026-10-06"
   }
  },
  "alaNames": {
@@ -6559,6 +6564,11 @@
      "2": 0,
      "8": 0,
      "25": 1
+    },
+    "Acacia sophorae": {
+     "2": 8,
+     "8": 17,
+     "25": 543
     }
    },
    "alaCountsWithoutINaturalist": {
@@ -6573,6 +6583,9 @@
     },
     "Acacia notabilis": {
      "8": 0
+    },
+    "Acacia sophorae": {
+     "8": 11
     }
    }
   },
@@ -9645,6 +9658,11 @@
      "2": 1,
      "8": 17,
      "25": 66
+    },
+    "Medicago × varia": {
+     "2": 0,
+     "8": 0,
+     "25": 0
     }
    },
    "alaCountsWithoutINaturalist": {
@@ -9653,6 +9671,9 @@
     },
     "Medicago falcata": {
      "8": 12
+    },
+    "Medicago × varia": {
+     "8": 0
     }
    }
   },
@@ -13953,11 +13974,19 @@
      "2": 1,
      "8": 3,
      "25": 8
+    },
+    "Urtica gracilis": {
+     "2": 0,
+     "8": 0,
+     "25": 0
     }
    },
    "alaCountsWithoutINaturalist": {
     "Urtica dioica": {
      "8": 2
+    },
+    "Urtica gracilis": {
+     "8": 0
     }
    }
   },
@@ -16913,6 +16942,11 @@
      "2": 1,
      "8": 2,
      "25": 11
+    },
+    "Schinus areira": {
+     "2": 3,
+     "8": 86,
+     "25": 159
     }
    },
    "alaCountsWithoutINaturalist": {
@@ -16921,6 +16955,9 @@
     },
     "Salix × pendulina": {
      "8": 1
+    },
+    "Schinus areira": {
+     "8": 0
     }
    }
   },
@@ -17001,6 +17038,11 @@
      "2": 1,
      "8": 3,
      "25": 16
+    },
+    "Schinus areira": {
+     "2": 6,
+     "8": 77,
+     "25": 160
     }
    },
    "alaCountsWithoutINaturalist": {
@@ -17011,6 +17053,9 @@
      "8": 0
     },
     "Acacia pendula": {
+     "8": 0
+    },
+    "Schinus areira": {
      "8": 0
     }
    }
