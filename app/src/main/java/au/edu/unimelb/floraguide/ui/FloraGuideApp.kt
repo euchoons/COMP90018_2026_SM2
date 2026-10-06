@@ -1,7 +1,9 @@
 package au.edu.unimelb.floraguide.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.domain.repository.AuthState
+import au.edu.unimelb.floraguide.ui.components.FlowerConfetti
 import au.edu.unimelb.floraguide.ui.components.PhotoConsentDialog
 import au.edu.unimelb.floraguide.ui.components.UploadFailureDialog
 import au.edu.unimelb.floraguide.ui.screens.AuthScreen
@@ -101,72 +104,76 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
     }
 
     val showNavigation = state.screen != AppScreen.RESULTS && state.pendingPhotoConsent == null
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (showNavigation) {
-                FloraGuideNavigationBar(
-                    selected = state.screen,
-                    onHome = viewModel::goHome,
-                    onScan = viewModel::goToScan,
-                    onCollection = viewModel::goToCollection,
-                    onAccount = viewModel::goToAccount,
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                if (showNavigation) {
+                    FloraGuideNavigationBar(
+                        selected = state.screen,
+                        onHome = viewModel::goHome,
+                        onScan = viewModel::goToScan,
+                        onCollection = viewModel::goToCollection,
+                        onAccount = viewModel::goToAccount,
+                    )
+                }
+            },
+        ) { padding ->
+            when (state.screen) {
+                AppScreen.HOME -> HomeScreen(
+                    state = state,
+                    onStartScan = viewModel::goToScan,
+                    onGuidedDemo = viewModel::runGuidedDemo,
+                    onOpenCollection = viewModel::goToCollection,
+                    modifier = Modifier.padding(padding),
+                )
+
+                AppScreen.SCAN -> ScanScreen(
+                    state = state,
+                    onHabitatSelected = viewModel::setHabitat,
+                    onPermissionResult = viewModel::onLocationPermissionResult,
+                    onUseDemoLocation = { viewModel.useCampusDemoLocation() },
+                    onCaptureStarted = viewModel::beginCapture,
+                    onPhotoCaptured = viewModel::analyzeCapturedPhoto,
+                    onGuidedDemo = viewModel::runGuidedDemo,
+                    onError = viewModel::showMessage,
+                    modifier = Modifier.padding(padding),
+                )
+
+                AppScreen.RESULTS -> ResultsScreen(
+                    state = state,
+                    onBackToScan = viewModel::goToScan,
+                    onHabitatSelected = viewModel::setHabitat,
+                    onSelectSpecies = viewModel::selectSpecies,
+                    onRetryContext = viewModel::retryContextLookup,
+                    onRetryIdentification = viewModel::retryIdentification,
+                    onConfirm = viewModel::confirmSelectedObservation,
+                    modifier = Modifier.padding(padding),
+                )
+
+                AppScreen.COLLECTION -> CollectionScreen(
+                    state = state,
+                    onStartScan = viewModel::goToScan,
+                    onDelete = viewModel::deleteObservation,
+                    modifier = Modifier.padding(padding),
+                )
+
+                AppScreen.ACCOUNT -> AuthScreen(
+                    authState = authState,
+                    onSignIn = viewModel::signIn,
+                    onRegister = viewModel::register,
+                    onAnonymousSignIn = viewModel::signInAnonymously,
+                    onContinueOffline = viewModel::continueOffline,
+                    onImportLocal = viewModel::importLocalObservations,
+                    onRetrySync = viewModel::retrySync,
+                    onSignOut = viewModel::signOut,
+                    onDeleteAccount = viewModel::deleteAccount,
+                    modifier = Modifier.padding(padding),
                 )
             }
-        },
-    ) { padding ->
-        when (state.screen) {
-            AppScreen.HOME -> HomeScreen(
-                state = state,
-                onStartScan = viewModel::goToScan,
-                onGuidedDemo = viewModel::runGuidedDemo,
-                onOpenCollection = viewModel::goToCollection,
-                modifier = Modifier.padding(padding),
-            )
-
-            AppScreen.SCAN -> ScanScreen(
-                state = state,
-                onHabitatSelected = viewModel::setHabitat,
-                onPermissionResult = viewModel::onLocationPermissionResult,
-                onUseDemoLocation = { viewModel.useCampusDemoLocation() },
-                onCaptureStarted = viewModel::beginCapture,
-                onPhotoCaptured = viewModel::analyzeCapturedPhoto,
-                onGuidedDemo = viewModel::runGuidedDemo,
-                onError = viewModel::showMessage,
-                modifier = Modifier.padding(padding),
-            )
-
-            AppScreen.RESULTS -> ResultsScreen(
-                state = state,
-                onBackToScan = viewModel::goToScan,
-                onHabitatSelected = viewModel::setHabitat,
-                onSelectSpecies = viewModel::selectSpecies,
-                onRetryContext = viewModel::retryContextLookup,
-                onRetryIdentification = viewModel::retryIdentification,
-                onConfirm = viewModel::confirmSelectedObservation,
-                modifier = Modifier.padding(padding),
-            )
-
-            AppScreen.COLLECTION -> CollectionScreen(
-                state = state,
-                onStartScan = viewModel::goToScan,
-                onDelete = viewModel::deleteObservation,
-                modifier = Modifier.padding(padding),
-            )
-
-            AppScreen.ACCOUNT -> AuthScreen(
-                authState = authState,
-                onSignIn = viewModel::signIn,
-                onRegister = viewModel::register,
-                onAnonymousSignIn = viewModel::signInAnonymously,
-                onContinueOffline = viewModel::continueOffline,
-                onImportLocal = viewModel::importLocalObservations,
-                onRetrySync = viewModel::retrySync,
-                onSignOut = viewModel::signOut,
-                onDeleteAccount = viewModel::deleteAccount,
-                modifier = Modifier.padding(padding),
-            )
         }
+        // Once, after the save that completes the starter mission; it only draws, so taps pass through.
+        if (state.celebrateMission) FlowerConfetti(onFinished = viewModel::onMissionCelebrated)
     }
 }
 

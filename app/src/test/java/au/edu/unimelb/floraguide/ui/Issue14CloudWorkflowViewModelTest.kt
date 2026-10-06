@@ -30,6 +30,7 @@ class Issue14CloudWorkflowViewModelTest {
     private val records = mockk<ObservationRepository>()
     private val authFlow = MutableStateFlow<AuthState>(AuthState.Authenticated(UserProfile(UID, null, null, false)))
     private val persisted = mutableListOf<Observation>()
+    private val stored = MutableStateFlow<List<Observation>>(emptyList())
     private val journal = mutableMapOf<String, PendingPhotoRecord>()
     private val events = mutableListOf<String>()
     private val deleted = mutableListOf<String>()
@@ -94,7 +95,7 @@ class Issue14CloudWorkflowViewModelTest {
         every { auth.authState } returns authFlow
         every { auth.getCurrentUser() } answers { (authFlow.value as? AuthState.Authenticated)?.user }
         every { container.observationRepository } returns records
-        every { records.observeAll() } returns MutableStateFlow(emptyList())
+        every { records.observeAll() } returns stored
         coEvery { records.save(any()) } coAnswers { persisted += firstArg<Observation>(); Unit }
         every { container.pendingPhotos } returns registry
         every { container.photoStorage } returns store
@@ -271,6 +272,16 @@ class Issue14CloudWorkflowViewModelTest {
         model.goHome()
         assertFalse(container.cleanupPendingPhotos(UID))
         assertTrue(deleted.isEmpty())
+    }
+
+    @Test fun theSaveThatCompletesTheMissionCelebratesOnce() = runTest(dispatcher) {
+        stored.value = listOf(MissionProgressTest.saved("a"), MissionProgressTest.saved("b"))
+        scan(); runCurrent()
+        model.confirmSelectedObservation(); runCurrent()
+        assertTrue(model.uiState.value.celebrateMission)
+        assertTrue(model.uiState.value.message.orEmpty().startsWith("Observation saved. Mission complete"))
+        model.onMissionCelebrated()
+        assertFalse(model.uiState.value.celebrateMission)
     }
 
     @Test fun saveBlocksDuplicateClicksAndNavigationUntilTheLocalWriteCompletes() = runTest(dispatcher) {

@@ -8,6 +8,8 @@ import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.domain.model.Species
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MissionProgressTest {
@@ -16,6 +18,14 @@ class MissionProgressTest {
     @Test fun repeatsAndGuidedDemoSavesDoNotCountTowardsTheMission() {
         assertEquals(2, twoSpecies.uniqueSpeciesCount)
         assertEquals(2, twoSpecies.copy(observations = twoSpecies.observations + saved("c", ImageSource.DEMO_ADAPTER)).uniqueSpeciesCount)
+    }
+
+    @Test fun onlyTheSaveThatReachesTheGoalCompletesTheMission() {
+        assertTrue(twoSpecies.completesMission(saved("c")))
+        assertFalse(twoSpecies.completesMission(saved("a")))
+        assertFalse(twoSpecies.completesMission(saved("c", ImageSource.DEMO_ADAPTER)))
+        // A fourth species after completion does not celebrate again.
+        assertFalse(twoSpecies.copy(observations = twoSpecies.observations + saved("c")).completesMission(saved("d")))
     }
 
     companion object {

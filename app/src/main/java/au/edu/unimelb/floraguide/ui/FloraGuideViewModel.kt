@@ -88,6 +88,8 @@ data class FloraGuideUiState(
     val isSaving: Boolean = false,
     val observations: List<Observation> = emptyList(),
     val message: String? = null,
+    /** Set once by the save that completes the starter mission; the UI clears it after the animation. */
+    val celebrateMission: Boolean = false,
     val analysisPrefersLiveData: Boolean = true,
 ) {
     val displayedRanking: List<RankedCandidate>
@@ -105,6 +107,11 @@ data class FloraGuideUiState(
             .map { it.species.id }
             .distinct()
             .size
+
+    /** True only for the save that takes the mission from below its goal to the goal. */
+    fun completesMission(observation: Observation): Boolean =
+        uniqueSpeciesCount < MISSION_SPECIES_GOAL &&
+            copy(observations = observations + observation).uniqueSpeciesCount >= MISSION_SPECIES_GOAL
 
     val canSave: Boolean
 
@@ -795,6 +802,8 @@ class FloraGuideViewModel(
             showMessage(it.message ?: "Could not prepare this observation.")
             return
         }
+        // Decided before saving: the repository may emit the new list before the save returns.
+        val completesMission = current.completesMission(observation)
         val photoUri = current.storedPhoto?.gsUri
         try {
             container.pendingPhotos.beginSave(photoUri)
@@ -818,7 +827,10 @@ class FloraGuideViewModel(
                             storedPhoto = null,
                             photoPath = null,
                             isSaving = false,
-                            message = "Observation saved using the capture-time location.",
+                            celebrateMission = completesMission,
+                            message = if (completesMission) {
+                                "Observation saved. Mission complete: $MISSION_SPECIES_GOAL different species recorded!"
+                            } else "Observation saved using the capture-time location.",
                         )
                     }
                 }
@@ -832,6 +844,10 @@ class FloraGuideViewModel(
                 if (isCurrentRequest(generation, uid)) _uiState.update { it.copy(isSaving = false) }
             }
         }
+    }
+
+    fun onMissionCelebrated() {
+        _uiState.update { it.copy(celebrateMission = false) }
     }
 
     fun deleteObservation(id: String) {
