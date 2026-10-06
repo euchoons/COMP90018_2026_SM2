@@ -183,30 +183,30 @@ Open points for the cloud-data owners:
 
 ## Physical-device checklist
 
-Record each result with the phone model and Android version ([contribution policy](../../CONTRIBUTING.md) requires this for camera changes). Keep small screenshots under `docs/evidence/`.
+Record each result with the phone model and Android version ([contribution policy](../../CONTRIBUTING.md) requires this for camera changes). Keep small screenshots under `docs/evidence/`. Phone A is the OnePlus PGP110 (Android 15) listed in the [device testing evidence](DEVICE_TESTING_EVIDENCE.md#phones); Phone B has not run this checklist.
 
 | # | Scenario | Expected | Phone A | Phone B |
 |---|---|---|---|---|
-| 1 | Fresh install → Observe → allow camera and location | Preview starts; shutter enables when steady | | |
-| 2 | Deny camera once | **Enable camera** stays; request can be repeated | | |
-| 3 | Deny camera twice (or "Don't ask again") | Camera slot says access is off and shows **Open app settings** | | |
-| 4 | From 3, grant camera in settings and return | Camera card appears without leaving Observe | | |
-| 5 | Revoke camera in settings while the app is in the background, then return | App restarts; **Enable camera** is shown | | |
-| 6 | Allow camera, deny location | Camera works; the location card says ALA will be skipped | | |
-| 7 | Choose approximate location (Android 12+) | Treated as granted; live location shown | | |
-| 8 | Open Observe and immediately tap Home | Camera privacy indicator turns off | | |
-| 9 | Home button while previewing, then return | Preview resumes; capture still works | | |
-| 10 | Rotate the phone with auto-rotate **on**, then capture | Thumbnail is upright | | |
-| 11 | Auto-rotate **off**, hold the phone landscape, capture | Thumbnail is upright (was sideways before the fix) | | |
-| 12 | Capture, then check the JPEG size and dimensions (Device Explorer → `files/photos`) | About 1920×1440 or the nearest supported size | | |
-| 13 | Capture with network on and a Pl@ntNet key, then agree to online identification | Candidates returned; note the latency in Logcat | | |
-| 14 | Sign in, capture, agree to online identification, then check Firebase Storage `plant_photos/<uid>/` | New JPEG under your own account; identification reports its stage on failure | | |
-| 14b | Capture with the network disabled, then agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | | |
-| 15 | Capture several photos, open Field Guide | Thumbnails upright and scrolling smooth | | |
-| 16 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed snackbar | | |
+| 1 | Fresh install → Observe → allow camera and location | Preview starts; shutter enables when steady | PASS | |
+| 2 | Deny camera once | **Enable camera** stays; request can be repeated | PASS (DE-01) | |
+| 3 | Deny camera twice (or "Don't ask again") | Camera slot says access is off and shows **Open app settings** | PASS (DE-02) | |
+| 4 | From 3, grant camera in settings and return | Camera card appears without leaving Observe | PASS (DE-02) | |
+| 5 | Revoke camera in settings while the app is in the background, then return | App restarts; **Enable camera** is shown | PASS (DE-05, after the fix) | |
+| 6 | Allow camera, deny location | Camera works; the location card says ALA will be skipped | PASS (DE-03) | |
+| 7 | Choose approximate location (Android 12+) | Treated as granted; live location shown | PASS (DE-04, after the fix) | |
+| 8 | Open Observe and immediately tap Home | Camera privacy indicator turns off | PASS | |
+| 9 | Home button while previewing, then return | Preview resumes; capture still works | PASS | |
+| 10 | Rotate the phone with auto-rotate **on**, then capture | Thumbnail is upright | PASS | |
+| 11 | Auto-rotate **off**, hold the phone landscape, capture | Thumbnail is upright (was sideways before the fix) | PASS | |
+| 12 | Capture, then check the JPEG size and dimensions (Device Explorer → `files/photos`) | About 1920×1440 or the nearest supported size | PASS | |
+| 13 | Capture with network on and a Pl@ntNet key, then agree to online identification | Candidates returned; note the latency in Logcat | PASS | |
+| 14 | Sign in, capture, agree to online identification, then check Firebase Storage `plant_photos/<uid>/` | New JPEG under your own account; identification reports its stage on failure | PASS | |
+| 14b | Capture with the network disabled, then agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | FAIL: no failure message with the network off; same as DE-13, outside this workstream | |
+| 15 | Capture several photos, open Field Guide | Thumbnails upright and scrolling smooth | PASS | |
+| 16 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed snackbar | PASS (DE-12) | |
 
 ## Remaining limitations
 
-- No physical-device results are recorded yet; the checklist above is the evidence still owed.
+- Phone A's results are recorded above; Phone B has not run this checklist, and row 14b fails with DE-13.
 - The 1920×1440 cap is justified by one Pl@ntNet measurement, not by an accuracy comparison across resolutions.
 - Photo retention, offline identification and storage rules belong to the persistence and cloud workstreams and are recorded above rather than changed here.

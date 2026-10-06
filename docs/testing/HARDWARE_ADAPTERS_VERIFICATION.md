@@ -111,25 +111,25 @@ Once the shutter is enabled, low or very bright light adds a warning, as in "Rea
 
 ## Device checklist
 
-Not yet run. Record phone model and Android version with each result.
+Phone A is the OnePlus PGP110 (Android 15) listed in the [device testing evidence](DEVICE_TESTING_EVIDENCE.md#phones); Phone B has not run this checklist. Record phone model and Android version with each result.
 
 | # | Scenario | Expected | Phone A | Phone B |
 |---|---|---|---|---|
-| 1 | Point the camera north, east, south and west while standing, phone upright | Pill bearing matches a separate compass app within a few degrees | | |
-| 2 | Tilt the phone down to photograph ground cover | Bearing stays sensible, then switches to the top-edge reference when nearly flat | | |
-| 3 | Hold a magnet or magnetic case near the phone | Pill changes to "Calibrate compass" | | |
-| 4 | Perform the figure-8 calibration gesture | Bearing returns | | |
-| 5 | Save an observation, then check the Field Guide entry | Stored heading matches the direction at capture, not at confirmation | | |
-| 6 | Indoors under normal lighting | "Low light" only below about 25 lux; compare with a lux meter app | | |
+| 1 | Point the camera north, east, south and west while standing, phone upright | Pill bearing matches a separate compass app within a few degrees | PASS | |
+| 2 | Tilt the phone down to photograph ground cover | Bearing stays sensible, then switches to the top-edge reference when nearly flat | PASS | |
+| 3 | Hold a magnet or magnetic case near the phone | Pill changes to "Calibrate compass" | PASS (DE-10) | |
+| 4 | Perform the figure-8 calibration gesture | Bearing returns | PASS (DE-10) | |
+| 5 | Save an observation, then check the Field Guide entry | Stored heading matches the direction at capture, not at confirmation | PASS | |
+| 6 | Indoors under normal lighting | "Low light" only below about 25 lux; compare with a lux meter app | PASS | |
 | 7 | Outdoors in open sun | Note how often "Very bright" appears; it should not be constant on an ordinary day | FAIL at the old 20,000 lux line: over 30,000 lux and "Very bright" under cloud on South Lawn. Threshold raised to 50,000 lux; a direct-sun re-check is pending | |
-| 8 | Cover the light sensor with a finger | Warning appears and the hint changes | | |
-| 9 | A phone without a gyroscope, if the team can borrow one | "Stability n/a", manual capture works | | |
-| 10 | Airplane mode plus no location | Light and heading pills unaffected | | |
-| 11 | Wave the phone with "Stability-gated capture" on, then off; leave and reopen Observe | On: shutter greys out and the hint says "Hold still". Off: shutter stays enabled and the pill reads "Moving". The choice survives reopening Observe | | |
+| 8 | Cover the light sensor with a finger | Warning appears and the hint changes | PASS (DE-09) | |
+| 9 | A phone without a gyroscope, if the team can borrow one | "Stability n/a", manual capture works | N/A (has a gyroscope); covered by DE-07 (Simulated) | |
+| 10 | Airplane mode plus no location | Light and heading pills unaffected | PASS | |
+| 11 | Wave the phone with "Stability-gated capture" on, then off; leave and reopen Observe | On: shutter greys out and the hint says "Hold still". Off: shutter stays enabled and the pill reads "Moving". The choice survives reopening Observe | PASS | |
 
 ## Follow-ups
 
-1. Run the checklist; the light thresholds in particular need lux-meter comparison before they can be called verified.
+1. Done on Phone A. A direct-sun reading still has to confirm the 50,000 lux threshold.
 2. Decide whether `SENSOR_STATUS_LOW` should also prompt calibration, based on how often phones report it.
 3. Apply `GeomagneticField` to convert magnetic heading to true north, or label the stored value as magnetic wherever it is displayed.
 4. Done on 2026-10-06: the 20,000 lux threshold proved too eager under cloud and was raised to 50,000 lux. Confirm it with a reading in direct sun.
