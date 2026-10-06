@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -98,22 +99,35 @@ fun AuthScreen(
                 if (upgrading) "Anonymous cloud guest" else user.displayName ?: user.email ?: "Signed in",
                 style = MaterialTheme.typography.titleMedium,
             )
-            OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+            OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+                border = null) {
                 Text("Import local guest observations")
             }
-            OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) { Text("Retry cloud sync") }
+            OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+                border = null) { Text("Retry cloud sync") }
 
             OutlinedButton(
                 onClick = { confirmAccountDeletion = true },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFFB2C36).copy(alpha = 0.2f), contentColor = Color(0xFFe7000b)),
                 shape = RoundedCornerShape(10.dp),
+                border = null
             ) {
                 Text("Delete account and all data")
             }
 
             if (upgrading) {
-                Text("Create an account below to keep this guest's observations under the same account.")
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Create an account below to keep this guest's observations under the same account.", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Button(onClick = onSignOut) { Text("Sign out") }
                 return@Column
@@ -127,10 +141,6 @@ fun AuthScreen(
 //            }
 
 
-        }
-        if (authState == AuthState.OfflineGuest) {
-            Text("Local guest mode · the guided demo works without an internet connection.")
-            Text("After signing in, use Import local guest observations in Account to move these records into your account.")
         }
         if (authState is AuthState.Error) {
             Text(authState.message, color = MaterialTheme.colorScheme.error)
@@ -236,10 +246,29 @@ fun AuthScreen(
                 }
             }
         } else {
-            Text("To use a different existing account, sign out first. This guest's cloud records stay with the guest.")
-            TextButton(onClick = { confirmGuestSignOut = true }) { Text("Sign out") }
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(onClick = { confirmGuestSignOut = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary,
+                    disabledContentColor =MaterialTheme.colorScheme.onPrimary
+                ),) { Text("Sign out") }
         }
+
         Spacer(modifier = Modifier.height(20.dp))
-        Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium)
+            if (authState == AuthState.OfflineGuest) {
+                Text("Currently sign in as local guest.", style = MaterialTheme.typography.bodyMedium)
+                Text("After signing in, use Import local guest observations in Account to move these records into your account.", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
     }
 }
