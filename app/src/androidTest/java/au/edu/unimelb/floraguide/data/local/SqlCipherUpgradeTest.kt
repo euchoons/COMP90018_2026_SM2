@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -85,6 +86,20 @@ class SqlCipherUpgradeTest {
         val reopened = FloraGuideDatabase.getInstance(context)
         assertNotNull(reopened.observationDao().find("u1", "fresh"))
         reopened.close()
+    }
+
+    @Test fun missingKeyForAnEncryptedDatabaseIsRefused() = runBlocking {
+        FloraGuideDatabase.getInstance(context).apply {
+            observationDao().insertOrUpdate(row("kept"))
+            close()
+        }
+        val before = context.getDatabasePath("floraguide.db").readBytes()
+        context.deleteSharedPreferences("secure_db_prefs")
+        FloraGuideDatabase::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, null)
+
+        assertTrue(runCatching { FloraGuideDatabase.getInstance(context) }.exceptionOrNull() is IllegalStateException)
+        assertTrue(before.contentEquals(context.getDatabasePath("floraguide.db").readBytes()))
+        assertNull(securePrefs().getString("sqlcipher_passphrase", null))
     }
 
     private fun header() = String(context.getDatabasePath("floraguide.db").readBytes().copyOf(15))

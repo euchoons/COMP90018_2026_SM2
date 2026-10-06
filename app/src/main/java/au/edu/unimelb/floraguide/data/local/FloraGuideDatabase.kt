@@ -83,8 +83,13 @@ internal object DatabaseSecurityManager {
     fun getWorkingPassphrase(context: Context): ByteArray {
         val prefs = getSecureSharedPreferences(context)
         var passphraseB64 = prefs.getString("sqlcipher_passphrase", null)
+        val dbFile = context.getDatabasePath("floraguide.db")
 
         if (passphraseB64 == null) {
+            // A replacement key could never open the existing database, so refuse instead.
+            check(!dbFile.exists() || isPlaintext(dbFile)) {
+                "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
+            }
             val randomBytes = ByteArray(32)
             SecureRandom().nextBytes(randomBytes)
             passphraseB64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
@@ -97,7 +102,6 @@ internal object DatabaseSecurityManager {
         val decodedBytes = Base64.decode(passphraseB64, Base64.NO_WRAP)
         val utf8Bytes = passphraseB64.toByteArray(Charsets.UTF_8)
 
-        val dbFile = context.getDatabasePath("floraguide.db")
         if (!dbFile.exists() || isPlaintext(dbFile)) {
             return decodedBytes
         }
