@@ -175,9 +175,9 @@ Debug builds log every gate update under `FloraGuide-Motion`: the acceleration d
 
 | # | Condition | Phone A: median / 95th percentile | Phone B |
 |---|---|---|---|
-| 1 | Flat on a table, untouched (measures bias) | Shake 0.01 / 0.02 m/s², rotation 0.0 / 0.1 °/s; open 100%, no switches. **Pass** | |
-| 2 | Held still, standing, arms braced | Shake 0.07 / 0.29 m/s², rotation 1.3 / 6.3 °/s; open 99%, 9 switches. **Pass** | |
-| 3 | Held still, standing, arms extended | Shake 0.08 / 0.35 m/s², rotation 1.6 / 8.1 °/s; open 98%, 10 switches. **Pass** | |
+| 1 | Flat on a table, untouched (measures bias) | Shake 0.01 / 0.02 m/s², rotation 0.0 / 0.1 °/s; open 100%, no switches. **Pass** | Shake 0.03 / 0.04 m/s², rotation 0.0 / 0.1 °/s; open 100%, no switches. **Pass** |
+| 2 | Held still, standing, arms braced | Shake 0.07 / 0.29 m/s², rotation 1.3 / 6.3 °/s; open 99%, 9 switches. **Pass** | Shake 0.06 / 0.22 m/s², rotation 2.1 / 5.1 °/s; open 100%, no switches. **Pass** |
+| 3 | Held still, standing, arms extended | Shake 0.08 / 0.35 m/s², rotation 1.6 / 8.1 °/s; open 98%, 10 switches. **Pass** | Shake 0.09 / 0.29 m/s², rotation 1.9 / 5.3 °/s; open 99%, 6 switches. **Pass** |
 | 4 | Held still immediately after walking up | Shake 0.13 / 1.17 m/s², rotation 2.0 / 77.4 °/s; open 73%, 45 switches. Secondary; the log also covers walking back to the laptop | |
 | 5 | Walking slowly while framing | Shake 0.36 / 1.56 m/s², rotation 24.4 / 99.9 °/s; open 32%, 81 switches. Secondary; phone held as steady as possible | |
 | 6 | Phone without a gyroscope, if the team has one | Covered by DE-07: **Pass (Simulated)** on an emulator without a gyroscope; the gate is disabled and capture is manual | |
@@ -202,7 +202,15 @@ OnePlus PGP110 on Android 15, running a debug build of `e0bb84a`. The gate updat
 - **Conditions 2–3 pass.** The gate stayed open for 98–99% of a still hold, braced or extended, with a median unlock lag of at most 32 ms. The current thresholds do not get in the way of a careful capture.
 - **Condition 5:** with the phone held as steady as possible while walking slowly, the gate was open for 32% of samples, in the steadier moments between steps, and closed with a median lag of 26 ms when motion resumed. It switched 81 times in about 74 s. That flicker is a known limitation; hysteresis is the fix if it proves distracting.
 - **Condition 4:** the log also covers walking back to the laptop to plug the phone in, so it does not isolate a hold after walking. The median unlock lag was 40 ms.
-- Conditions 6 and 7, and Phone B, are still to be recorded.
+- Conditions 6 and 7 are still to be recorded.
+
+### Phone B results (2026-10-06)
+
+Pixel 10a on Android 16, running a debug build of `2fa9a4c`. The gate updated about 70 times per second. Each condition was recorded for 45 s and analysed with `--skip 10`, because the same person started the recording and then took up the pose. The logs stay in `docs/evidence/device/Pixel_10a/`, which is git-ignored.
+
+- **Condition 1:** the bias is about 0.04 m/s² and 0.1 °/s at the 95th percentile, slightly above Phone A's but far below the levels that conditions 2–3 open at.
+- **Conditions 2–3 pass.** The gate stayed open for 99–100% of a still hold, braced or extended, with 0 and 6 switches; the median unlock and lock lags were 9 and 10 ms.
+- Conditions 4–5 were not recorded on Phone B.
 
 ## Recommended follow-ups
 
