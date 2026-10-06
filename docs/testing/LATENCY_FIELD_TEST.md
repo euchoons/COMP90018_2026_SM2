@@ -7,7 +7,7 @@ This test measures how long a live capture waits for its results on a real phone
 - An Android phone with USB debugging enabled, a USB cable, and a computer with this repository and `adb`.
 - `local.properties` with the Pl@ntNet key (`plantnet.api.key` or `PLANTNET_API_KEY`). Without it, live identification fails.
 - A FloraGuide account to sign in with. Photo upload needs a signed-in session.
-- About 30 identifications from Pl@ntNet's shared daily quota of 500.
+- About 20 identifications per network tested, from Pl@ntNet's shared daily quota of 500.
 
 ## 1. Install the test build
 
@@ -34,7 +34,7 @@ adb logcat -G 16M
 ## 2. Take the photos
 
 1. Sign in on the Account screen, and allow camera access and precise location.
-2. Take about 15 captures on Wi-Fi. Then turn Wi-Fi off, note the time, and take about 15 on mobile data.
+2. Take about 20 captures on each network you were asked to test. For mobile data, turn Wi-Fi off first. If you test both, note the time you switch.
 3. Photograph different plants: some garden plants, and some common natives or weeds such as eucalypts, wattles, grasses or dandelions.
 4. For each capture, open Observe, take the photo, agree to send it, and wait until the ALA result appears, with the app open and the screen on. You do not need to save the observation.
 5. If a step fails, retry as usual. The log labels retries, and they are analysed separately.
@@ -66,8 +66,8 @@ Copy the sheet below into a comment on #53, fill it in, and attach `latency-log.
 
 | Block | Network (for example UniWireless, home Wi-Fi, carrier name) | Start time | End time | Captures |
 |---|---|---|---|---|
-| A | Wi-Fi: | | | |
-| B | Mobile data: | | | |
+| A | Wi-Fi (if tested): | | | |
+| B | Mobile data (if tested): | | | |
 
 | # | Time | What you photographed (common name if known) | Final first choice looked right? (yes / no / unsure) | Notes (errors, retries, very slow) |
 |---|---|---|---|---|
