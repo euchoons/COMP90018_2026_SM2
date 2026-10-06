@@ -21,6 +21,7 @@ Related: [`MOTION_STABILITY_CALIBRATION.md`](../technical/MOTION_STABILITY_CALIB
 | Stability switch | Defect fixed: with the gate off, the pill still said "Hold still" while the hint said "Ready to capture", and on and off looked identical while the phone was still. | `fix(sensor): show the stability gate state in the capture hint and pill` |
 | Fallbacks | Regression fixed: phones without motion sensors had lost their manual-capture hint and showed "Ready to capture". | same |
 | Light | Regression fixed: the low-light and glare warning had dropped out of the capture hint in a later `ScanScreen` rewrite (`5b7bf9e`). | `fix(sensor): restore the light warning in the capture hint` |
+| Light | Threshold raised: "Very bright" now starts at 50,000 lux, because Phone A read over 30,000 lux under cloud. | `fix(sensor): raise the very-bright light threshold to 50,000 lux` |
 
 ## Ambient light
 
@@ -43,10 +44,10 @@ The model used `25f..<20_000f` while both pills used `25f..20_000f`. At exactly 
 | Condition | Range | Basis |
 |---|---|---|
 | `LOW` | below 25 lux | Dimmer than typical indoor lighting; handheld exposures lengthen and blur risk rises |
-| `USABLE` | 25 to 20,000 lux | Overcast to bright daylight |
-| `VERY_BRIGHT` | 20,000 lux and above | Inside the 10,000–25,000 lux band of full daylight; direct sun reads higher still |
+| `USABLE` | 25 to 50,000 lux | Overcast to bright daylight, including bright cloud |
+| `VERY_BRIGHT` | 50,000 lux and above | Direct sun, which typically reads about 60,000–100,000 lux on a phone's light sensor |
 
-These are inherited prototype values, kept rather than changed because there is no device measurement to justify moving them. The 20,000 lux line is the weaker of the two: it sits inside normal daylight, so on a sunny day the warning may fire on most captures. If field testing shows that, raising it towards the 32,000 lux direct-sun figure is the first thing to try. "Very bright" replaced "possible glare" because the sensor cannot actually see glare in the lens.
+The low-light value is still an inherited prototype value. The very-bright line used to be 20,000 lux, inside the 10,000–25,000 lux band of ordinary daylight. On 2026-10-05 Phone A read over 30,000 lux on South Lawn under cloud, so the warning fired on overcast days, which are good light for plant photos. It now starts at 50,000 lux: clear of those cloudy readings and below typical direct sun. The often-quoted 32,000 lux direct-sun figure would still have been within reach of cloudy readings. The sensor faces the screen side, so with the sun ahead of the user it can read low even in harsh light; the warning is advice and never blocks capture. "Very bright" replaced "possible glare" because the sensor cannot actually see glare in the lens.
 
 The low-light warning matters more than it first appears: the stability gate's tolerance allows roughly 49 °/s of rotation, which is harmless at daylight shutter speeds but visible at the long exposures low light forces. Light and motion interact, and tying the stability threshold to lux is a recorded follow-up in the calibration document.
 
@@ -120,7 +121,7 @@ Not yet run. Record phone model and Android version with each result.
 | 4 | Perform the figure-8 calibration gesture | Bearing returns | | |
 | 5 | Save an observation, then check the Field Guide entry | Stored heading matches the direction at capture, not at confirmation | | |
 | 6 | Indoors under normal lighting | "Low light" only below about 25 lux; compare with a lux meter app | | |
-| 7 | Outdoors in open sun | Note how often "Very bright" appears; it should not be constant on an ordinary day | | |
+| 7 | Outdoors in open sun | Note how often "Very bright" appears; it should not be constant on an ordinary day | FAIL at the old 20,000 lux line: over 30,000 lux and "Very bright" under cloud on South Lawn. Threshold raised to 50,000 lux; a direct-sun re-check is pending | |
 | 8 | Cover the light sensor with a finger | Warning appears and the hint changes | | |
 | 9 | A phone without a gyroscope, if the team can borrow one | "Stability n/a", manual capture works | | |
 | 10 | Airplane mode plus no location | Light and heading pills unaffected | | |
@@ -131,4 +132,4 @@ Not yet run. Record phone model and Android version with each result.
 1. Run the checklist; the light thresholds in particular need lux-meter comparison before they can be called verified.
 2. Decide whether `SENSOR_STATUS_LOW` should also prompt calibration, based on how often phones report it.
 3. Apply `GeomagneticField` to convert magnetic heading to true north, or label the stored value as magnetic wherever it is displayed.
-4. Reconsider the 20,000 lux threshold if the "Very bright" warning proves too eager outdoors.
+4. Done on 2026-10-06: the 20,000 lux threshold proved too eager under cloud and was raised to 50,000 lux. Confirm it with a reading in direct sun.
