@@ -1,0 +1,14 @@
+DE-10 heading pill, Pixel 10a, build 2fa9a4c, 2026-10-06, magnet held near the phone.
+Sampled with uiautomator dumps (seconds since start: pill text).
+
+Run 1: 2.4 Calibrate compass | 4.8 176° | 7.2 176° | 9.5 176° | 11.9 176° | 14.3 176° |
+       16.7 Calibrate compass | 19.7 176° | 22.0 Calibrate compass | 24.3 176°
+Run 2: 19.3 229° | 25.5 Calibrate compass (229° again on the next read)
+
+The pill alternates between "Calibrate compass" and a fixed bearing every few seconds while the
+magnet stays near. SensorMonitor flags calibration only while the magnetometer accuracy is
+SENSOR_STATUS_UNRELIABLE, and this phone's accuracy keeps moving in and out of that state, so the
+pill follows it. The bearing shown between flags is fixed by the magnet's field, not north.
+screenrecord fails on this phone (UNASSIGNED_LAYER_STACK), so no video was captured.
+
+After removing the magnet and a figure-8: 0.0 310° | 3.4 311° | 5.9 313° | 8.3 324° | 10.6 329° | 13.0 4°
