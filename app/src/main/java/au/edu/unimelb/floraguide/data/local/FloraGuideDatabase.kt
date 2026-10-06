@@ -151,29 +151,15 @@ internal object DatabaseSecurityManager {
         context.getDatabasePath("floraguide.db-shm").delete()
     }
 
+    // No fallback: deleting these prefs loses the only copy of the key, and plain prefs would store it
+    // unencrypted. A Keystore error fails this start and leaves the key and the database intact.
     private fun getSecureSharedPreferences(context: Context): android.content.SharedPreferences {
-        return runCatching {
-            val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-            EncryptedSharedPreferences.create(
-                context, "secure_db_prefs", masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-        }.getOrElse {
-            // Tier 2: Attempt to recover from Keystore state corruption by wiping the broken prefs
-            runCatching {
-                context.deleteSharedPreferences("secure_db_prefs")
-                val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-                EncryptedSharedPreferences.create(
-                    context, "secure_db_prefs", masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                )
-            }.getOrElse {
-                // Tier 3: Graceful degradation trading encryption for crash prevention
-                context.getSharedPreferences("secure_db_prefs", Context.MODE_PRIVATE)
-            }
-        }
+        val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        return EncryptedSharedPreferences.create(
+            context, "secure_db_prefs", masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
     }
 
     private fun isPlaintext(dbFile: File): Boolean {
