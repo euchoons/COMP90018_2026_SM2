@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import androidx.compose.foundation.Image
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import au.edu.unimelb.floraguide.R
 
 @Composable
@@ -88,6 +90,10 @@ fun AuthScreen(
     Column(
         modifier = modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
     ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         Image(
             painter = painterResource(R.drawable.ic_launcher),
             contentDescription = "FloraGuide logo",
@@ -96,6 +102,7 @@ fun AuthScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text("FloraGuide Account", style = MaterialTheme.typography.headlineMedium)
+        }
         Spacer(modifier = Modifier.height(48.dp))
 
         if (authState == AuthState.Authenticating) {
@@ -108,6 +115,7 @@ fun AuthScreen(
             Text(
                 if (upgrading) "Anonymous cloud guest" else user.displayName ?: user.email ?: "Signed in",
                 style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
             )
             OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.filledTonalButtonColors(
@@ -136,7 +144,7 @@ fun AuthScreen(
 
             if (upgrading) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Create an account below to keep this guest's observations under the same account.", style = MaterialTheme.typography.bodyMedium)
+                Text("Create an account below to keep this guest's observations under the same account.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(16.dp))
             } else {
                 Button(onClick = onSignOut) { Text("Sign out") }
@@ -271,12 +279,13 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(20.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium)
+            Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             if (authState == AuthState.OfflineGuest) {
-                Text("Currently sign in as local guest.", style = MaterialTheme.typography.bodyMedium)
-                Text("After signing in, use Import local guest observations in Account to move these records into your account.", style = MaterialTheme.typography.bodyMedium)
+                Text("After signing in, use Import local guest observations in Account to move these records into your account.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+                Text("Currently sign in as local guest.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             }
         }
 
