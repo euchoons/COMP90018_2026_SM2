@@ -1,0 +1,9 @@
+model: Google Pixel 10a
+android: 16 (API 36)
+commit: 2fa9a4c
+app: versionName=0.1.0-baseline
+sensors:
+  accelerometer: yes
+  gyroscope: yes
+  light: yes
+  magnetic_field: yes
