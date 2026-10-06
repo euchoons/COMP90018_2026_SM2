@@ -88,7 +88,7 @@ The accelerometer's deviation from gravity and gyroscope angular speed feed a sm
 
 ### Heading
 
-Low-pass-filtered gravity and magnetic vectors feed the rear-camera-axis heading calculation; a flat phone uses the top-edge reference. Heading is optional, magnetic rather than true north, and recorded at capture time. Unavailable or unreliable measurements are surfaced instead of being presented as a good bearing. See [hardware adapter verification](../testing/HARDWARE_ADAPTERS_VERIFICATION.md).
+Low-pass-filtered gravity and magnetic vectors feed the rear-camera-axis heading calculation; a flat phone uses the top-edge reference. Heading is optional, converted to true north when a device location is known (labelled magnetic otherwise), and recorded at capture time. Unavailable or unreliable measurements are surfaced instead of being presented as a good bearing. See [hardware adapter verification](../testing/HARDWARE_ADAPTERS_VERIFICATION.md).
 
 ### Light
 

@@ -13,6 +13,7 @@ Related: [`MOTION_STABILITY_CALIBRATION.md`](../technical/MOTION_STABILITY_CALIB
 | Heading | Defect fixed: the azimuth was measured along the phone's top edge, which is undefined in the normal photographing pose. | `fix(sensor): measure observation heading along the rear camera axis` |
 | Heading | Defect fixed: an unreliable compass was displayed and saved as if it were good. | `feat(sensor): flag an uncalibrated compass instead of showing its heading` |
 | Heading | Defect fixed: observations stored the heading from confirmation time, not capture time. | `fix(observation): record the compass heading at capture time` |
+| Heading | Fixed: bearings were magnetic, about 12° off true north in Melbourne; they now use true north whenever a location is known. | `feat(sensor): show and store compass bearings relative to true north` |
 | Light | Defect fixed: the low-light and glare assessment was computed but never shown. | `fix(sensor): show light guidance and missing-sensor states to the user` |
 | Light | Defect fixed: pills duplicated the thresholds, disagreeing at exactly 20,000 lux. | same |
 | Fallbacks | Defect fixed: phones without a gyroscope showed "Hold still" permanently. | same |
@@ -71,9 +72,9 @@ The low-light warning matters more than it first appears: the stability gate's t
 
 **Fix:** the heading is captured with the photo and carried through the analysis state. Retrying identification keeps the original value, and the guided demo stores none.
 
-### Known limitation: magnetic north
+### Fixed: bearings were magnetic
 
-The value is a **magnetic** bearing. True north in Melbourne differs by roughly 11–12° east, and correcting it requires `GeomagneticField` with the observation's location and date. The app does not do this, so the stored heading should be described as magnetic. This matters if headings are ever compared with map bearings.
+The bearing used to be **magnetic**, about 11–12° east of true north in Melbourne, so it disagreed with ordinary compass apps by that much. Bearings now use true north whenever a device location is known. The pill adds the declination that Android's `GeomagneticField` gives for the current fix. Saved observations, which always have a capture location, store true bearings. Without a fix the pill shows the magnetic bearing, labelled "magnetic". Observations saved before this change hold magnetic bearings.
 
 ## Missing-sensor fallbacks
 
@@ -115,7 +116,7 @@ Phone A is the OnePlus PGP110 (Android 15) listed in the [device testing evidenc
 
 | # | Scenario | Expected | Phone A | Phone B |
 |---|---|---|---|---|
-| 1 | Point the camera north, east, south and west while standing, phone upright | Pill bearing matches a separate compass app within a few degrees | PASS | |
+| 1 | Point the camera north, east, south and west while standing, phone upright | Pill bearing matches a separate compass app set to true north within about 10°, with the phones at least 50 cm apart | PASS | |
 | 2 | Tilt the phone down to photograph ground cover | Bearing stays sensible, then switches to the top-edge reference when nearly flat | PASS | |
 | 3 | Hold a magnet or magnetic case near the phone | Pill changes to "Calibrate compass" | PASS (DE-10) | |
 | 4 | Perform the figure-8 calibration gesture | Bearing returns | PASS (DE-10) | |
@@ -131,5 +132,5 @@ Phone A is the OnePlus PGP110 (Android 15) listed in the [device testing evidenc
 
 1. Done on Phone A. A direct-sun reading still has to confirm the 50,000 lux threshold.
 2. Decide whether `SENSOR_STATUS_LOW` should also prompt calibration, based on how often phones report it.
-3. Apply `GeomagneticField` to convert magnetic heading to true north, or label the stored value as magnetic wherever it is displayed.
+3. Done on 2026-10-06: bearings use true north via `GeomagneticField` when a location is known, and are labelled magnetic otherwise.
 4. Done on 2026-10-06: the 20,000 lux threshold proved too eager under cloud and was raised to 50,000 lux. Confirm it with a reading in direct sun.
