@@ -53,6 +53,9 @@ private const val MAX_ALA_CANDIDATES = 5
 private const val PENDING_CLEANUP_TIMEOUT_MS = 20_000L
 private const val PENDING_CLEANUP_POLL_MS = 1_000L
 
+/** The starter mission asks for this many different species from live captures. */
+const val MISSION_SPECIES_GOAL = 3
+
 /** One immutable state object makes loading, fallback and before/after ranking states explicit. */
 data class FloraGuideUiState(
     val screen: AppScreen = AppScreen.HOME,
