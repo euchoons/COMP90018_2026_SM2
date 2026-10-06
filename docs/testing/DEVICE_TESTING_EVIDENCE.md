@@ -10,11 +10,11 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 
 | | Phone A | Phone B | Emulator (Simulated) |
 |---|---|---|---|
-| Manufacturer and model | Oneplus PGP110 | | Google sdk_gphone64_x86_64 (Android Emulator) |
-| Android version (API) | 15 (API 35) | | 17 (API 37) |
-| Accelerometer / gyroscope / light / magnetometer | yes / yes / yes / yes | | yes / no / no / no (disabled in `config.ini`) |
-| Tested commit | e0bb84a | | 69fd0b4 |
-| Date | 05/10/2026 | | 06/10/2026 |
+| Manufacturer and model | Oneplus PGP110 | Google Pixel 10a | Google sdk_gphone64_x86_64 (Android Emulator) |
+| Android version (API) | 15 (API 35) | 16 (API 36) | 17 (API 37) |
+| Accelerometer / gyroscope / light / magnetometer | yes / yes / yes / yes | yes / yes / yes / yes | yes / no / no / no (disabled in `config.ini`) |
+| Tested commit | e0bb84a | 2fa9a4c | 69fd0b4 |
+| Date | 05/10/2026 | 06/10/2026 | 06/10/2026 |
 
 `tools/device-evidence.sh info` collects these from the connected phone. The emulator is used only for DE-07 and DE-08, because no available phone lacks those sensors.
 
@@ -31,23 +31,23 @@ All cases are **NOT RUN** until results with evidence are recorded below.
 | ID | Scenario | Expected | Phone A | Phone B | Evidence |
 |---|---|---|---|---|---|
 | **Permissions** | | | | | |
-| DE-01 | Fresh install (`fresh`), open Observe, deny camera once | **Enable camera** stays and asks again when tapped | PASS | NOT RUN | |
-| DE-02 | Deny camera a second time, tap **Open app settings**, allow camera, return | The camera slot says access is off and offers **Open app settings**; after allowing, the preview appears without leaving Observe | PASS | NOT RUN | |
-| DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | PASS | NOT RUN | |
-| DE-04 | Grant approximate location only (Android 12+) | Status "Approximate location ready · ±2000 m" and ALA counts on results; Save is disabled with an explanation, and **Use precise location** asks to upgrade | PASS | NOT RUN | Fixed in `63f3fb1`: approximate fixes now stay usable for 15 min. Re-run on 2026-10-06 verified it. Evidence: `DE-04.png`, `DE-04-Disabled-save.png`, `DE-04-Precise.png`, `A-loc-approx.log` |
-| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | PASS | NOT RUN | Before the fix: the camera closed but the option to take a photo was still there; only changing pages (Field Guide, Home or Account) showed the camera-closed message and closed the camera properly. Fixed in `34a40c7` (permissions re-read on resume) and `8494f7c` (shutter follows the camera state). Re-run on 2026-10-06 verified the camera has to be re-enabled. Evidence: `DE-05.png` |
-| DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | PASS | NOT RUN | |
+| DE-01 | Fresh install (`fresh`), open Observe, deny camera once | **Enable camera** stays and asks again when tapped | PASS | PASS | Phone B: `Pixel_10a/DE-01.png` |
+| DE-02 | Deny camera a second time, tap **Open app settings**, allow camera, return | The camera slot says access is off and offers **Open app settings**; after allowing, the preview appears without leaving Observe | PASS | PASS | Phone B: `Pixel_10a/DE-02-denied.png`, `DE-02-preview.png` |
+| DE-03 | Deny location from **Enable / refresh** | Status "Location permission denied. Identification can continue, but ALA will be skipped."; a capture is identified without ALA counts | PASS | PASS | Phone B: status shown; the capture was identified with ALA not queried. `Pixel_10a/DE-03-status.png`, `DE-03-result.png` |
+| DE-04 | Grant approximate location only (Android 12+) | Status "Approximate location ready · ±2000 m" and ALA counts on results; Save is disabled with an explanation, and **Use precise location** asks to upgrade | PASS | PASS | Fixed in `63f3fb1`: approximate fixes now stay usable for 15 min. Re-run on 2026-10-06 verified it. Evidence: `DE-04.png`, `DE-04-Disabled-save.png`, `DE-04-Precise.png`, `A-loc-approx.log`<br>Phone B: DE-03's denial left location as "don't ask again", so FloraGuide's location flags were reset with `pm clear-permission-flags` first. ALA records shown, Save disabled with its explanation, precise prompt shown. `Pixel_10a/DE-04-status.png`, `DE-04-ala-counts.png`, `DE-04-disabled-save.png`, `DE-04-precise.png` |
+| DE-05 | With FloraGuide in the background, revoke camera, then location, in system settings and return | The app restarts without crashing and asks for the revoked permission again | PASS | PASS | Before the fix: the camera closed but the option to take a photo was still there; only changing pages (Field Guide, Home or Account) showed the camera-closed message and closed the camera properly. Fixed in `34a40c7` (permissions re-read on resume) and `8494f7c` (shutter follows the camera state). Re-run on 2026-10-06 verified the camera has to be re-enabled. Evidence: `DE-05.png`<br>Phone B: no FloraGuide entry in the crash log; Observe asks for camera and location again. `Pixel_10a/DE-05.png` |
+| DE-06 | Tap **Skip location**, grant location in system settings, return | Location stays skipped until **Enable / refresh** | PASS | PASS | Phone B: stays skipped after granting in settings; **Enable / refresh** then shows "Device location ready · ±100 m". `Pixel_10a/DE-06-skipped.png`, `DE-06-refreshed.png` |
 | **Missing or unreliable sensors** | | | | | |
-| DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | N/A (has all four sensors) | NOT RUN | **PASS (Simulated)** on the emulator: switch greyed out with "Sensor unavailable: manual capture", pill "Stability n/a", hint "Manual capture: motion sensors unavailable"; a photo was captured. Evidence: `sdk_gphone64_x86_64/DE-07.png` |
-| DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; capture still works; the stored heading is null (check in Firestore, or covered by unit tests, since no screen shows a saved heading) | N/A (has all four sensors) | NOT RUN | **PASS (Simulated)** on the emulator: pills "Light n/a" and "Heading n/a" on the same screen as DE-07, and capture works. The stored heading was not checked in Firestore; `FloraGuideViewModelTest` covers a missing heading being saved as null. Evidence: `sdk_gphone64_x86_64/DE-08.png` |
-| DE-09 | Cover the light sensor while holding still | Pill "Low light"; hint adds "· low light may blur the photo"; capture still allowed | PASS | NOT RUN | |
-| DE-10 | Hold a magnet near the phone, then do the figure-8 gesture | Pill "Calibrate compass", then the bearing returns | PASS | NOT RUN | |
+| DE-07 | Phone without a gyroscope, or emulator with `hw.gyroscope=no` (Simulated) | Switch greyed out with "Sensor unavailable: manual capture"; pill "Stability n/a"; hint "Manual capture: motion sensors unavailable"; capture works | N/A (has all four sensors) | N/A (has all four sensors) | **PASS (Simulated)** on the emulator: switch greyed out with "Sensor unavailable: manual capture", pill "Stability n/a", hint "Manual capture: motion sensors unavailable"; a photo was captured. Evidence: `sdk_gphone64_x86_64/DE-07.png` |
+| DE-08 | Phone without a light sensor or magnetometer, or emulator with both disabled (Simulated) | Pills "Light n/a" and "Heading n/a"; capture still works; the stored heading is null (check in Firestore, or covered by unit tests, since no screen shows a saved heading) | N/A (has all four sensors) | N/A (has all four sensors) | **PASS (Simulated)** on the emulator: pills "Light n/a" and "Heading n/a" on the same screen as DE-07, and capture works. The stored heading was not checked in Firestore; `FloraGuideViewModelTest` covers a missing heading being saved as null. Evidence: `sdk_gphone64_x86_64/DE-08.png` |
+| DE-09 | Cover the light sensor while holding still | Pill "Low light"; hint adds "· low light may blur the photo"; capture still allowed | PASS | PASS | Phone B: "Low light · 4 lux", shutter still enabled. `Pixel_10a/DE-09.png` |
+| DE-10 | Hold a magnet near the phone, then do the figure-8 gesture | Pill "Calibrate compass", then the bearing returns | PASS | FAIL | Phone B: with the magnet near, the pill alternated every few seconds between "Calibrate compass" and a fixed bearing set by the magnet (176°, then 229°); after a figure-8 the bearing returned and stayed stable. #78. `Pixel_10a/DE-10-calibrate.png`, `DE-10-restored.png`, `DE-10-flicker.txt` |
 | **Camera failures** | | | | | |
 | DE-11 | Put Observe and a video call (or the Camera app) side by side in split-screen, tap the other app, then tap FloraGuide again | While the other app has focus, FloraGuide's half shows "Another app is using the camera. Close it to continue." with the shutter disabled; tapping FloraGuide brings its preview back. The other app's camera then freezes, because Android gives the camera to the app in focus | PASS | NOT RUN | Redefined 2026-10-05 with `8494f7c`. Re-run on 2026-10-06: the app correctly shows that another application is using the camera and asks to close it first. Evidence: `DE-11.png` |
-| DE-12 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed message | PASS | NOT RUN | Popup message of camera is closed appears |
+| DE-12 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed message | PASS | PASS | Popup message of camera is closed appears<br>Phone B: "Camera is closed." shown, no crash. `Pixel_10a/DE-12.png` |
 | DE-13 | In airplane mode, capture and agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | FAIL | NOT RUN | The program will continue to try to upload with no signs of failure message |
 | **Location failures** | | | | | |
-| DE-14 | Location services off, open Observe | Status "Device location is off. Enable it before capture to add ALA context."; a capture is identified without ALA | PASS | NOT RUN | |
+| DE-14 | Location services off, open Observe | Status "Device location is off. Enable it before capture to add ALA context."; a capture is identified without ALA | PASS | PASS | Phone B: status shown; the capture was identified with ALA not queried. `Pixel_10a/DE-14-status.png`, `DE-14-result.png` |
 | DE-15 | Get a fix, then turn location services off | Status "Device location is off; no capture location is available." | PASS | NOT RUN | |
 | DE-16 | Get a fix outdoors, then go indoors or cover the phone for over a minute | Within about 61 s the status reads "Waiting for a new device location. A capture now would skip ALA."; a capture then has no ALA counts | PASS | NOT RUN | |
 | DE-17 | Indoors in airplane mode with location on (GPS only, no fix) | Status stays "Waiting for a recent device location..." and never claims a fix | PASS | NOT RUN | |
@@ -66,7 +66,7 @@ A lot of these are similar to what is tested in the testing above.
 
 ## Evidence helper
 
-`tools/device-evidence.sh` runs from the repository root in Git Bash or any POSIX shell. It needs `adb` and one connected phone with USB debugging enabled, and finds `adb` in the default Android SDK location if it is not on `PATH`.
+`tools/device-evidence.sh` runs from the repository root in Git Bash or any POSIX shell. It needs `adb` and one connected phone with USB debugging enabled, and finds `adb` in the default Android SDK location if it is not on `PATH`. With an emulator or a second phone attached, set `ANDROID_SERIAL` to the phone's serial for every command, and install with `./gradlew assembleDebug` and `adb -s <serial> install -r app/build/outputs/apk/debug/app-debug.apk`: `install` runs `./gradlew installDebug`, which installs on every attached device.
 
 | Command | Effect |
 |---|---|
