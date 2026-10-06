@@ -144,6 +144,7 @@ fun ScanScreen(
         }
         if (cameraGranted) item {
             CameraCaptureCard(snapshot = state.sensorSnapshot, guidance = guidance,
+                headingDeclinationDegrees = state.headingDeclinationDegrees,
                 onCaptureStarted = onCaptureStarted, onPhotoCaptured = onPhotoCaptured, onError = onError)
         } else if (cameraPermanentlyDenied) item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

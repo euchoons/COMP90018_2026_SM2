@@ -53,12 +53,15 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
+import au.edu.unimelb.floraguide.domain.sensor.trueHeadingDegrees
 import java.io.File
 
 @Composable
 fun CameraCaptureCard(
     snapshot: SensorSnapshot,
     guidance: CaptureGuidance,
+    /** Declination at the current fix; null shows the bearing as magnetic. */
+    headingDeclinationDegrees: Float?,
     onCaptureStarted: () -> String?,
     onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
@@ -194,7 +197,9 @@ fun CameraCaptureCard(
                 text = when {
                     !isRearCamera || snapshot.headingDegrees == null -> "Heading n/a"
                     snapshot.compassNeedsCalibration -> "Calibrate compass"
-                    else -> "${snapshot.headingDegrees.toInt()}°"
+                    // True north matches ordinary compass apps; without a fix, say it is magnetic.
+                    headingDeclinationDegrees == null -> "${snapshot.headingDegrees.toInt()}° magnetic"
+                    else -> "${trueHeadingDegrees(snapshot.headingDegrees, headingDeclinationDegrees).toInt()}°"
                 },
                 positive = heading != null,
             )

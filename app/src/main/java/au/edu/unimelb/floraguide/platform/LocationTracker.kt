@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.GeomagneticField
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -31,6 +32,10 @@ class LocationTracker(context: Context) {
 
     private fun hasPermission(): Boolean =
         granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+    /** Magnetic declination at a place and time, east-positive, from Android's World Magnetic Model. */
+    fun magneticDeclinationDegrees(point: GeoPoint, timeMillis: Long): Float =
+        GeomagneticField(point.latitude.toFloat(), point.longitude.toFloat(), 0f, timeMillis).declination
 
     /** Approximate-only permission: Android blurs fixes to about 2 km and sends one about every 10 minutes. */
     fun isApproximate(): Boolean =

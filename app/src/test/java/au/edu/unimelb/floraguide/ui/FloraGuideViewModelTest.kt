@@ -296,6 +296,27 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
+    @Test fun `saved heading is converted to true north at the capture location`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val fix = GeoPoint(-37.7963, 144.9614, 5f)
+        every { container.locationTracker.snapshotForObservation() } returns fix
+        every { container.locationTracker.magneticDeclinationDegrees(fix, any()) } returns 12f
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+
+        model.goToScan()
+        val captureId = requireNotNull(model.beginCapture())
+        model.analyzeCapturedPhoto("/capture.jpg", 350f)
+        model.approvePhotoUpload(captureId)
+        runCurrent()
+
+        // 350° magnetic plus 12° east declination wraps to 2° true.
+        assertEquals(2f, requireNotNull(model.uiState.value.captureHeadingDegrees), 0.001f)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `approximate location feeds ALA but cannot pin a saved observation`() = runTest(dispatcher) {
         prepareLiveIdentification()
         val approximateFix = GeoPoint(-37.80, 144.96, 2_000f)

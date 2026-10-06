@@ -32,3 +32,12 @@ fun observationHeadingDegrees(rotationMatrix: FloatArray): Float {
     val normalised = (degrees + 360f) % 360f
     return if (normalised >= 360f) 0f else normalised
 }
+
+/**
+ * Converts a magnetic bearing to true north. Declination is east-positive, as Android's
+ * `GeomagneticField` reports it; in Melbourne it is about 12°.
+ */
+fun trueHeadingDegrees(magneticDegrees: Float, declinationDegrees: Float): Float {
+    val degrees = ((magneticDegrees + declinationDegrees) % 360f + 360f) % 360f
+    return if (degrees >= 360f) 0f else degrees
+}

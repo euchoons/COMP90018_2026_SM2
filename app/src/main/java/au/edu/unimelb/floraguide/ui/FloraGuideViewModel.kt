@@ -21,6 +21,7 @@ import au.edu.unimelb.floraguide.domain.privacy.PendingPhotoConsent
 import au.edu.unimelb.floraguide.domain.privacy.PhotoConsentGate
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
+import au.edu.unimelb.floraguide.domain.sensor.trueHeadingDegrees
 import au.edu.unimelb.floraguide.domain.usecase.CreateObservationUseCase
 import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
 import java.time.Instant
@@ -56,6 +57,8 @@ data class FloraGuideUiState(
     val sensorSnapshot: SensorSnapshot = SensorSnapshot(),
     val location: GeoPoint = CAMPUS_DEMO_LOCATION,
     val usingDemoLocation: Boolean = true,
+    /** Declination at the last device fix; null means bearings are shown as magnetic. */
+    val headingDeclinationDegrees: Float? = null,
     val locationStatus: String = "Location not yet available; enable it before capture",
     /** Explicit "Skip location" for this scan; survives Activity recreation, unlike Compose effects. */
     val locationSkipped: Boolean = false,
@@ -401,6 +404,10 @@ class FloraGuideViewModel(
                     it.copy(
                         location = point,
                         usingDemoLocation = false,
+                        headingDeclinationDegrees = container.locationTracker.magneticDeclinationDegrees(
+                            point,
+                            System.currentTimeMillis(),
+                        ),
                         locationStatus = buildString {
                             append(if (approximate) "Approximate location ready" else "Device location ready")
                             point.accuracyMetres?.let { accuracy -> append(" · ±${accuracy.toInt()} m") }
@@ -428,6 +435,7 @@ class FloraGuideViewModel(
         _uiState.update {
             it.copy(
                 usingDemoLocation = true,
+                headingDeclinationDegrees = null,
                 locationStatus = reason ?: "Location skipped for this live scan. ALA will not be queried.",
                 message = reason,
             )
@@ -495,8 +503,17 @@ class FloraGuideViewModel(
         pendingCaptureOwner = null
         container.locationTracker.stop()
 
+        // The camera card reports a magnetic bearing. A savable capture always has a location,
+        // so stored headings are true north; without one the magnetic value is kept.
         val capture = pending.copy(
-            headingDegrees = captureHeadingDegrees,
+            headingDegrees = captureHeadingDegrees?.let { magnetic ->
+                pending.location?.let { point ->
+                    trueHeadingDegrees(
+                        magnetic,
+                        container.locationTracker.magneticDeclinationDegrees(point, pending.capturedAt.toEpochMilli()),
+                    )
+                } ?: magnetic
+            },
         )
 
         val request = PendingPhotoConsent(
