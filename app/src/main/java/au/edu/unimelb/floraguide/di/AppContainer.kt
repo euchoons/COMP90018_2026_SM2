@@ -16,12 +16,14 @@ import au.edu.unimelb.floraguide.data.plantnet.PlantNetClient
 import au.edu.unimelb.floraguide.data.plantnet.PlantNetImageClassifier
 import au.edu.unimelb.floraguide.domain.repository.AuthRepository
 import au.edu.unimelb.floraguide.domain.repository.ImageClassifier
+import au.edu.unimelb.floraguide.domain.repository.NetworkStatusProvider
 import au.edu.unimelb.floraguide.domain.repository.ObservationRepository
 import au.edu.unimelb.floraguide.domain.repository.PhotoStore
 import au.edu.unimelb.floraguide.domain.repository.SpeciesContextRepository
 import au.edu.unimelb.floraguide.domain.usecase.IdentifyStoredPhotoUseCase
 import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoCleanupUseCase
 import au.edu.unimelb.floraguide.domain.usecase.RankSpeciesCandidatesUseCase
+import au.edu.unimelb.floraguide.platform.AndroidNetworkStatusProvider
 import au.edu.unimelb.floraguide.platform.LocationTracker
 import au.edu.unimelb.floraguide.platform.SensorMonitor
 import java.io.File
@@ -56,7 +58,12 @@ class AppContainer(context: Context) {
         client = PlantNetClient(apiKey = BuildConfig.PLANTNET_API_KEY.trim()),
     )
     val pendingPhotos = PendingPhotoUploads.get(appContext)
-    val photoStorage: PhotoStore = FirebasePhotoStorage(appContext, pendingUploads = pendingPhotos)
+    val networkStatus: NetworkStatusProvider = AndroidNetworkStatusProvider(appContext)
+    val photoStorage: PhotoStore = FirebasePhotoStorage(
+        appContext,
+        pendingUploads = pendingPhotos,
+        networkStatus = networkStatus,
+    )
     val identifyStoredPhoto = IdentifyStoredPhotoUseCase(
         photoStorage,
         imageClassifier,

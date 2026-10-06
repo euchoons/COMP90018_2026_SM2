@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import au.edu.unimelb.floraguide.domain.model.AppScreen
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import au.edu.unimelb.floraguide.ui.components.PhotoConsentDialog
+import au.edu.unimelb.floraguide.ui.components.UploadFailureDialog
 import au.edu.unimelb.floraguide.ui.screens.AuthScreen
 import au.edu.unimelb.floraguide.ui.screens.CollectionScreen
 import au.edu.unimelb.floraguide.ui.screens.HomeScreen
@@ -70,7 +71,8 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
         }
     }
 
-    BackHandler(enabled = state.screen != AppScreen.HOME && state.pendingPhotoConsent == null) {
+    BackHandler(enabled = state.screen != AppScreen.HOME && state.pendingPhotoConsent == null &&
+        state.uploadFailureDialog == null) {
         when (state.screen) {
             AppScreen.RESULTS -> viewModel.goToScan()
             AppScreen.SCAN, AppScreen.COLLECTION, AppScreen.ACCOUNT -> viewModel.goHome()
@@ -84,6 +86,18 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
             onAgree = { viewModel.approvePhotoUpload(request.captureId) },
             onCancel = { viewModel.cancelPhotoUpload(request.captureId) },
         )
+    }
+
+    if (state.screen == AppScreen.RESULTS && state.pendingPhotoConsent == null) {
+        state.uploadFailureDialog?.let { failure ->
+            UploadFailureDialog(
+                state = failure,
+                onClose = { viewModel.dismissUploadFailure(failure.requestGeneration) },
+                onRetry = { viewModel.retryUploadAfterTimeout(failure.requestGeneration) },
+                retryEnabled = state.photoPath != null && !state.isClassifying &&
+                    !state.isContextLoading && !state.isSaving,
+            )
+        }
     }
 
     val showNavigation = state.screen != AppScreen.RESULTS && state.pendingPhotoConsent == null

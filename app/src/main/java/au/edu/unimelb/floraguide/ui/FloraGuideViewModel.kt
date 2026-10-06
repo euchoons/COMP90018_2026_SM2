@@ -20,9 +20,12 @@ import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import au.edu.unimelb.floraguide.domain.privacy.PendingPhotoConsent
 import au.edu.unimelb.floraguide.domain.privacy.PhotoConsentGate
 import au.edu.unimelb.floraguide.domain.repository.AuthState
+import au.edu.unimelb.floraguide.domain.repository.NetworkStatus
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
 import au.edu.unimelb.floraguide.domain.usecase.CreateObservationUseCase
 import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
+import au.edu.unimelb.floraguide.domain.usecase.PhotoIdentificationException
+import au.edu.unimelb.floraguide.domain.usecase.PhotoUploadTimeoutException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -66,6 +69,7 @@ data class FloraGuideUiState(
     val capture: CaptureSnapshot? = null,
     val identificationStage: IdentificationStage? = null,
     val analysisError: String? = null,
+    val uploadFailureDialog: UploadFailureDialogState? = null,
     val imagePredictions: List<ImagePrediction> = emptyList(),
     val imageSource: ImageSource? = null,
     val imageElapsedMillis: Long? = null,
@@ -140,7 +144,8 @@ class FloraGuideViewModel(
         if (old != null && old.gsUri != keepPhoto?.gsUri) container.pendingPhotos.abandon(old.gsUri)
         pendingCapture = null
         _uiState.update {
-            it.copy(storedPhoto = keepPhoto, identificationStage = null, isClassifying = false, isContextLoading = false)
+            it.copy(storedPhoto = keepPhoto, identificationStage = null, isClassifying = false,
+                isContextLoading = false, uploadFailureDialog = null)
         }
     }
 
@@ -496,6 +501,7 @@ class FloraGuideViewModel(
                 pendingPhotoConsent = request,
                 storedPhoto = null,
                 analysisError = null,
+                uploadFailureDialog = null,
                 identificationStage = null,
                 imagePredictions = emptyList(),
                 imageSource = null,
@@ -602,6 +608,27 @@ class FloraGuideViewModel(
             locationSource = if (location != null) CaptureLocationSource.DEVICE else CaptureLocationSource.UNAVAILABLE,
             headingDegrees = null,
         )
+    }
+
+    fun dismissUploadFailure(generation: Long) {
+        if (!isCurrentUploadFailure(generation)) return
+        _uiState.update { it.copy(uploadFailureDialog = null) }
+    }
+
+    fun retryUploadAfterTimeout(generation: Long) {
+        if (!isCurrentUploadFailure(generation)) return
+        // retryIdentification rechecks consent and the busy/account guards, and startAnalysis
+        // clears the old dialog synchronously before launching a fresh attempt.
+        retryIdentification()
+    }
+
+    private fun isCurrentUploadFailure(generation: Long): Boolean {
+        val current = _uiState.value
+        val dialog = current.uploadFailureDialog ?: return false
+        return !disposed && current.screen == AppScreen.RESULTS &&
+            dialog.requestGeneration == generation &&
+            isCurrentRequest(generation, dialog.userId) &&
+            current.capture?.observationId == dialog.captureId
     }
 
     fun retryIdentification() {
@@ -904,6 +931,7 @@ class FloraGuideViewModel(
                 capture = capture,
                 identificationStage = null,
                 analysisError = null,
+                uploadFailureDialog = null,
                 imagePredictions = emptyList(),
                 imageSource = null,
                 imageElapsedMillis = null,
@@ -1022,6 +1050,7 @@ class FloraGuideViewModel(
                         imagePredictions = predictions,
                         identificationStage = null,
                         analysisError = null,
+                        uploadFailureDialog = null,
                         imageSource = classification.source,
                         imageElapsedMillis = classification.elapsedMillis,
                         predictedOrgan = classification.predictedOrgan,
@@ -1051,12 +1080,32 @@ class FloraGuideViewModel(
                     return@launch
                 }
 
+                val uploadTimedOut = error is PhotoUploadTimeoutException ||
+                    (error is PhotoIdentificationException &&
+                        error.stage == IdentificationStage.UPLOADING &&
+                        error.cause is PhotoUploadTimeoutException)
+                val dialog = if (uploadTimedOut) {
+                    val status = try {
+                        container.networkStatus.currentStatus()
+                    } catch (_: RuntimeException) {
+                        NetworkStatus.UNKNOWN
+                    }
+                    UploadFailureDialogState(
+                        requestGeneration = generation,
+                        captureId = capture.observationId,
+                        userId = uid,
+                        kind = uploadFailureKind(status),
+                    )
+                } else null
+                val errorMessage = dialog?.message ?: error.message ?: "Analysis failed."
                 _uiState.update {
                     it.copy(
                         isClassifying = false,
                         isContextLoading = false,
-                        message = error.message ?: "Analysis failed.",
-                        analysisError = error.message ?: "Analysis failed.",
+                        // A modal timeout must not also enqueue the same Snackbar message.
+                        message = if (dialog == null) errorMessage else null,
+                        analysisError = errorMessage,
+                        uploadFailureDialog = dialog,
                         identificationStage = null,
                     )
                 }

@@ -99,12 +99,15 @@ internal object IdentifyStoredPhotoContract {
                 override suspend fun downloadPhoto(photo: StoredPhoto): File = error("Must not download")
                 override suspend fun deletePhoto(gsUri: String) = error("Must not delete")
             }
-            val error = runCatching { IdentifyStoredPhotoUseCase(store, f.classifier)(f.original.absolutePath) }
-                .exceptionOrNull()
-            check(error === cancelled)
-            check(f.events.isEmpty())
+            val error = runCatching {
+                IdentifyStoredPhotoUseCase(store, f.classifier)(f.original.absolutePath)
+                    }.exceptionOrNull()
+
+                    check(error is CancellationException)
+                        check(error.message == cancelled.message)
+                    check(f.events.isEmpty())
+            }
         }
-    }
 
     fun cancellingAnActiveClassificationCleansTheCache() = runBlocking {
         Fixture().use { f ->
