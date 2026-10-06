@@ -3,6 +3,7 @@ package au.edu.unimelb.floraguide.data.firebase
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import au.edu.unimelb.floraguide.domain.repository.NetworkStatusProvider
 import au.edu.unimelb.floraguide.domain.repository.PhotoStore
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
 import au.edu.unimelb.floraguide.domain.usecase.PendingPhotoRegistry
@@ -66,6 +67,8 @@ class FirebasePhotoStorage(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val expectedUserId: String? = null,
     private val pendingUploads: PendingPhotoRegistry? = null,
+    // Only foreground identification injects this gate; background sync keeps its old policy.
+    private val networkStatus: NetworkStatusProvider? = null,
 ) : PhotoStore {
     private val appContext = context.applicationContext
     private val cacheDirectory = File(appContext.cacheDir, "plantnet-cloud")
@@ -85,6 +88,14 @@ class FirebasePhotoStorage(
                 val contentType = imageContentType(file)
                 val digest = sha256(file)
                 check(ensureUser() == uid) { "Account changed before upload." }
+                networkStatus?.let { network ->
+                    // Validate the account and local image before waiting. Do not create a cloud
+                    // reference or journal entry until connectivity permits an actual attempt.
+                    network.awaitUsableNetwork()
+                    currentCoroutineContext().ensureActive()
+                    check(ensureUser() == uid) { "Account changed while waiting to upload." }
+                }
+                currentCoroutineContext().ensureActive()
                 val extension = if (contentType == "image/png") "png" else "jpg"
                 // Only identification uploads get exclusive ownership. Existing observation-sync
                 // uploads keep their historical content-addressed paths and are never auto-cleaned.
@@ -99,6 +110,8 @@ class FirebasePhotoStorage(
                     pendingUri = reference.toString()
                 }
                 val upload = try {
+                    // If cancellation wins after registration, the catch marks it terminal.
+                    currentCoroutineContext().ensureActive()
                     reference.putFile(Uri.fromFile(file), metadata)
                 } catch (error: Exception) {
                     pendingUri?.let { pendingUploads?.uploadFinished(it) }
@@ -249,11 +262,12 @@ class FirebasePhotoStorage(
 
     private fun imageContentType(file: File): String = file.inputStream().use(PhotoContentValidation::contentType)
 
-    private fun sha256(file: File): String {
+    private suspend fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().buffered().use { input ->
             val buffer = ByteArray(8192)
             while (true) {
+                currentCoroutineContext().ensureActive()
                 val count = input.read(buffer)
                 if (count < 0) break
                 digest.update(buffer, 0, count)

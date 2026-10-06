@@ -99,7 +99,11 @@ class Issue14CloudWorkflowViewModelTest {
         every { container.pendingPhotos } returns registry
         every { container.photoStorage } returns store
         every { container.imageClassifier } returns classifier
-        every { container.identifyStoredPhoto } returns IdentifyStoredPhotoUseCase(store, classifier) { registry.abandon(it.gsUri) }
+        every { container.identifyStoredPhoto } returns IdentifyStoredPhotoUseCase(
+            photoStore = store,
+            classifier = classifier,
+            onUndeliveredUpload = { photo -> registry.abandon(photo.gsUri) },
+        )
         every { container.cleanupPendingPhotos } returns PendingPhotoCleanupUseCase(
             registry, { auth.getCurrentUser()?.uid }, { _, uri -> persisted.any { it.cloudPhotoUri == uri } }, { _, uri -> store.deletePhoto(uri) },
         )

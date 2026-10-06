@@ -8,6 +8,7 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class IdentificationStage(val label: String) {
     UPLOADING("Uploading photo to Firebase"),
@@ -25,7 +26,12 @@ class IdentifyStoredPhotoUseCase(
     private val photoStore: PhotoStore,
     private val classifier: ImageClassifier,
     private val onUndeliveredUpload: (StoredPhoto) -> Unit = {},
+    private val uploadTimeoutMillis: Long = PHOTO_UPLOAD_TIMEOUT_MS,
 ) {
+    init {
+        require(uploadTimeoutMillis > 0) { "Upload timeout must be positive." }
+    }
+
     suspend operator fun invoke(
         localPath: String,
         previouslyUploaded: StoredPhoto? = null,
@@ -40,7 +46,17 @@ class IdentifyStoredPhotoUseCase(
             currentCoroutineContext().ensureActive()
             val uploaded = previouslyUploaded ?: run {
                 onStage(stage)
-                photoStore.uploadPhoto(localPath)
+                // Network waiting, SDK retries and transfer share one upload-only deadline.
+                // Capture the reference INSIDE the boundary so a completion at the deadline
+                // can still be journalled for cleanup if the timeout discards the return value.
+                val completed = withTimeoutOrNull(uploadTimeoutMillis) {
+                    stored = photoStore.uploadPhoto(localPath)
+                    currentCoroutineContext().ensureActive()
+                    true
+                } ?: false
+                currentCoroutineContext().ensureActive()
+                if (!completed) throw PhotoUploadTimeoutException(uploadTimeoutMillis)
+                checkNotNull(stored)
             }
             stored = uploaded
             currentCoroutineContext().ensureActive()
