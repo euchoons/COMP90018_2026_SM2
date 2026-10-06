@@ -139,13 +139,16 @@ data class SensorSnapshot(
             else -> LightCondition.VERY_BRIGHT
         }
 
-    // Prototype thresholds pending field calibration; see docs/testing/HARDWARE_ADAPTERS_VERIFICATION.md.
+    // See docs/testing/HARDWARE_ADAPTERS_VERIFICATION.md; only the very-bright line has device data so far.
     companion object {
         /** Dimmer than a typical living room; handheld shots need long exposures. */
         const val LOW_LIGHT_LUX = 25f
 
-        /** Inside the 10,000–25,000 lux band of full daylight; direct sun reads higher. */
-        const val VERY_BRIGHT_LUX = 20_000f
+        /**
+         * Above Phone A's readings under cloud (over 30,000 lux on South Lawn) and below typical
+         * direct sun on a phone's light sensor (about 60,000–100,000 lux).
+         */
+        const val VERY_BRIGHT_LUX = 50_000f
     }
 }
 

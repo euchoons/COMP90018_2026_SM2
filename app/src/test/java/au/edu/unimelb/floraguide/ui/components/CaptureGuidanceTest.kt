@@ -67,7 +67,7 @@ class CaptureGuidanceTest {
         assertEquals("Choose whether to use online identification",
             captureGuidance(dim, gateEnabled = true, consentPending = true).hint)
         assertEquals("Manual capture: motion sensors unavailable · harsh light may wash out detail",
-            captureGuidance(SensorSnapshot(lightLux = 30_000f), gateEnabled = true, consentPending = false).hint)
+            captureGuidance(SensorSnapshot(lightLux = 60_000f), gateEnabled = true, consentPending = false).hint)
         for (lux in listOf(300f, null)) {
             assertEquals("Ready to capture",
                 captureGuidance(steady.copy(lightLux = lux), gateEnabled = true, consentPending = false).hint)
