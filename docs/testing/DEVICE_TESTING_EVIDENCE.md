@@ -59,10 +59,10 @@ A lot of these are similar to what is tested in the testing above.
 
 | Checklist | Scope | Phone A | Phone B |
 |---|---|---|---|
-| [Camera](CAMERA_VALIDATION.md#physical-device-checklist) | Rows 1–16 | BLOCK, same Issue as DE-05 and DE-11, rest are ok | not run |
-| [Light and heading](HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) | Rows 1–11 | PASS, may need to raise lux gate | not run |
+| [Camera](CAMERA_VALIDATION.md#physical-device-checklist) | Rows 1–16 | PASS, except row 14b: an upload with the network off showed no failure, the same issue as DE-13 (FAIL, outside this workstream). Rows first BLOCKED by the DE-05 and DE-11 defects pass after those fixes | not run |
+| [Light and heading](HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) | Rows 1–11 | PASS, except row 7: "Very bright" fired under cloud at the old 20,000 lux line, so the threshold is now 50,000 lux, with a direct-sun re-check pending. Row 9 is covered by DE-07 (Simulated) | not run |
 | [Motion calibration](../technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) | Conditions 1–6 | PASS on conditions 1–3; 4–5 recorded as secondary; 6 covered by DE-07 (Simulated); panning dropped | not run |
-| [Location measurements](LOCATION_VALIDATION.md#device-measurement-procedure) | Four points, GPS only, approximate | Four points and GPS only recorded: outdoor criteria pass, indoor GPS accuracy is optimistic; approximate not recorded (DE-04 FAIL) | not run |
+| [Location measurements](LOCATION_VALIDATION.md#device-measurement-procedure) | Four points, GPS only, approximate | All recorded. Four points and GPS only: outdoor criteria pass, indoor GPS accuracy is optimistic. Approximate: accepted at ±2000 m after the DE-04 fix; the delivery interval was not measured | not run |
 
 ## Evidence helper
 
