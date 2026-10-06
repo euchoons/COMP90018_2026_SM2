@@ -135,16 +135,27 @@ fun AuthScreen(
         if (authState is AuthState.Error) {
             Text(authState.message, color = MaterialTheme.colorScheme.error)
         }
-        if (registering) {
-            OutlinedTextField(
-                value = displayName, onValueChange = { displayName = it },
-                label = { Text("Display name") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-        }
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            if (registering) {
+                OutlinedTextField(
+                    value = displayName, onValueChange = { displayName = it },
+                    shape = MaterialTheme.shapes.medium,
+                    placeholder = { Text("Display Name", fontSize = 14.sp) }, singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        focusedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                )
+            }
         OutlinedTextField(
             value = email, onValueChange = { email = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
