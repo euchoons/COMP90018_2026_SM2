@@ -239,6 +239,22 @@ class AlaOccurrenceClientTest {
         assertNull(parseTaxon(fuzzyMatch, "Eucalyptus camaldulensis"))
     }
 
+    @Test fun `counts cultivar and subspecies entries that ALA confirms are the same plant`() {
+        // ALA's answers on 2026-10-06: London plane is filed as an unranked cultivar, Acacia sophorae as a subspecies.
+        val londonPlane = """{"success":true,"scientificName":"Platanus x hispanica 'Acerifolia'","rank":"unranked","matchType":"exactMatch","synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"https://id.biodiversity.org.au/node/apni/2916742"}"""
+        val subspecies = """{"success":true,"scientificName":"Acacia longifolia subsp. sophorae","rank":"subspecies","matchType":"exactMatch","synonymType":"OBJECTIVE_SYNONYM","taxonConceptID":"https://id.biodiversity.org.au/taxon/apni/51263217"}"""
+        // A different subspecies without an objective synonym, and a genus-only answer, stay unmatched.
+        val notSynonym = """{"success":true,"scientificName":"Urtica dioica subsp. gracilis","rank":"subspecies","matchType":"exactMatch","synonymType":null,"taxonConceptID":"https://id.biodiversity.org.au/name/apni/248829"}"""
+        val genusOnly = """{"success":true,"scientificName":"Pinus","rank":"genus","matchType":"higherMatch","synonymType":null,"taxonConceptID":"https://id.biodiversity.org.au/node/apni/2902806"}"""
+
+        assertEquals(AlaTaxon("https://id.biodiversity.org.au/node/apni/2916742", "Platanus x hispanica 'Acerifolia'"),
+            parseTaxon(londonPlane, "Platanus × hispanica"))
+        assertEquals(AlaTaxon("https://id.biodiversity.org.au/taxon/apni/51263217", "Acacia longifolia subsp. sophorae"),
+            parseTaxon(subspecies, "Acacia sophorae"))
+        assertNull(parseTaxon(notSynonym, "Urtica gracilis"))
+        assertNull(parseTaxon(genusOnly, "Pinus thunbergii"))
+    }
+
     @Test fun `malformed JSON structure throws AlaResponseException`() {
         for (body in listOf("not-json", "{}", "{\"success\":\"true\"}")) {
             assertThrows(AlaResponseException::class.java) { parseTaxon(body, NAME) }
