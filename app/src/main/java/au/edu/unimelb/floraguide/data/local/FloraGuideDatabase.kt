@@ -147,7 +147,11 @@ internal object DatabaseSecurityManager {
             oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
         }
 
-        check(oldDb.delete() && tmpDb.renameTo(oldDb)) {
+        // Keep the plaintext original until the encrypted copy opens with the key.
+        SQLiteDatabase.openDatabase(tmpDb.absolutePath, passphraseBytes, null, SQLiteDatabase.OPEN_READONLY, null).use { it.version }
+
+        // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+        check(tmpDb.renameTo(oldDb)) {
             "Failed to replace old plaintext database with the encrypted version."
         }
 
