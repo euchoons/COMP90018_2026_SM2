@@ -51,7 +51,7 @@ Measured on 2026-09-07 with a 1123x1600, 963 KB JPEG: HTTP 200 in ~3.4 s.
 
 ## ALA occurrence request
 
-The client first resolves an exact species-level match:
+The client first resolves a match at species level or below:
 
 ```text
 GET https://api.ala.org.au/namematching/api/searchByClassification
@@ -77,8 +77,9 @@ timeout/retry budget. `UNRESOLVED_TAXON` is not retried. The repository reports 
 counts, and live ranking counts it as zero records.
 
 Matching accepts an exact or canonical match (authorship or formatting only) on the queried
-name or an objective synonym of it, counted under ALA's accepted species, and excludes
-fuzzy, higher-rank, subjective, pro parte and misapplied matches. It is
+name or an objective synonym of it, counted under ALA's accepted entry: a species, or a subspecies,
+variety or cultivar entry such as London plane's (#76). It excludes fuzzy, genus-or-higher,
+subjective, pro parte and misapplied matches. It is
 not complete synonym resolution. A successful zero is a zero occurrence-query result,
 not proof of ecological absence. See [missing-context policy](MISSING_CONTEXT_POLICY.md).
 

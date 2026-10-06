@@ -51,7 +51,7 @@ Compose screens render state and send events. They do not perform HTTP requests 
 | `domain/usecase` | Stored-photo identification stages, capture-location eligibility, ranking and observation creation. |
 | `data/classifier` | Deterministic guided-demo candidates; does not inspect pixels or perform live recognition. |
 | `data/plantnet` | Streamed cloud identification, strict candidate parsing, request telemetry and optional predicted-organ metadata. |
-| `data/ala` | Species-level name matching, occurrence counts, cancellation, bounded retries and source states. |
+| `data/ala` | Name matching at species level or below, occurrence counts, cancellation, bounded retries and source states. |
 | `data/catalog` | Synthetic demo data and the sourced VicFlora flowering table. |
 | `data/local` | Room database, observation entities and local synchronisation state. |
 | `data/observation` | `OfflineFirstObservationRepository`, legacy Preferences import, record codecs and `ObservationSyncWorker`. |

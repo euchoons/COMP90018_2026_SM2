@@ -5,8 +5,9 @@ live ranking rule. Do not restore the older location or storage implementation.
 
 ## Live lookup
 
-- Resolve the candidate's scientific name to a species-level ALA taxon ID before
-  querying occurrences by `taxonConceptID`. ALA must match the name exactly, or
+- Resolve the candidate's scientific name to an ALA taxon ID at species level or below before
+  querying occurrences by `taxonConceptID`. ALA files some plants below species: every London
+  plane name resolves to the cultivar *Platanus x hispanica* 'Acerifolia' (#76). ALA must match the name exactly, or
   canonically (differing only in authorship or formatting). An objective synonym (same
   type as the accepted name, e.g. Pl@ntNet's *Melaleuca citrina* for ALA's *Callistemon
   citrinus*) is the same species, so it resolves to the accepted taxon, whose ID ALA
@@ -28,7 +29,8 @@ live ranking rule. Do not restore the older location or storage implementation.
 The geographic part of the live rule is `imageScore * (1 + 20.5 * support)`,
 normalised over the candidate set, with `support = ln(1 + min(count, 50)) / ln(51)`.
 #20 trained the cap of 20.5 and kept the 8 km radius ([training](FUSION_EVALUATION.md));
-the saturation of 50 was not trained.
+the saturation of 50 was not trained. After #76 widened name matching the refit moved to 38.5
+with identical Top-1, so 20.5 stays.
 
 Support applies when every candidate lookup has completed, with either a count or a name ALA
 cannot match, which counts as zero records. A failed lookup (network, HTTP or malformed
