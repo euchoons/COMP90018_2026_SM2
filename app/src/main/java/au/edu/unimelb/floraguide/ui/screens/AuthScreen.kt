@@ -19,6 +19,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import au.edu.unimelb.floraguide.domain.repository.AuthState
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import au.edu.unimelb.floraguide.R
 
 @Composable
 fun AuthScreen(
@@ -85,6 +88,13 @@ fun AuthScreen(
     Column(
         modifier = modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
     ) {
+        Image(
+            painter = painterResource(R.drawable.ic_launcher),
+            contentDescription = "FloraGuide logo",
+            modifier = Modifier
+                .size(44.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Text("FloraGuide Account", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(48.dp))
 
