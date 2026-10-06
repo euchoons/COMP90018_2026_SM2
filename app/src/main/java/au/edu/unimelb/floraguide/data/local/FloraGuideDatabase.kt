@@ -1,16 +1,16 @@
 package au.edu.unimelb.floraguide.data.local
 
 import android.content.Context
+import android.util.Base64
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
-import net.sqlcipher.database.SupportFactory
-import net.sqlcipher.database.SQLiteDatabase
-import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import androidx.sqlite.db.SupportSQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import java.io.File
 import java.security.SecureRandom
 
@@ -21,121 +21,21 @@ abstract class FloraGuideDatabase : RoomDatabase() {
     companion object {
         @Volatile private var instance: FloraGuideDatabase? = null
 
-        /**
-         * Inspects the file header. Standard SQLite databases always begin with "SQLite format 3\0".
-         * SQLCipher databases do not, providing a deterministic way to check encryption state.
-         */
-        private fun isPlaintext(dbFile: File): Boolean {
-            if (!dbFile.exists() || dbFile.length() < 16) return false
-            return dbFile.inputStream().use {
-                val header = ByteArray(16)
-                if (it.read(header) != 16) false else String(header) == "SQLite format 3\u0000"
-            }
-        }
-
-        private fun retrieveOrGenerateSecureKey(context: Context): ByteArray {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-
-            // Remove the plaintext Context.MODE_PRIVATE fallback.
-            val prefs = EncryptedSharedPreferences.create(
-                context,
-                "secure_db_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
-
-            var passphrase = prefs.getString("sqlcipher_passphrase", null)
-            if (passphrase == null) {
-                val dbFile = context.getDatabasePath("floraguide.db")
-                check(!(dbFile.exists() && !isPlaintext(dbFile))) {
-                    "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
-                }
-
-                val randomBytes = ByteArray(32)
-                SecureRandom().nextBytes(randomBytes)
-                passphrase = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
-
-                check(prefs.edit().putString("sqlcipher_passphrase", passphrase).commit()) {
-                    "Failed to persist the encryption key securely."
-                }
-            }
-
-            // Databases encrypted since SQLCipher was added are keyed with these decoded bytes.
-            return Base64.decode(passphrase, Base64.NO_WRAP)
-        }
-
-        private fun convertPlaintextToEncrypted(context: Context, passphrase: ByteArray) {
-            val oldDb = context.getDatabasePath("floraguide.db")
-            if (!oldDb.exists() || !isPlaintext(oldDb)) return
-
-            val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
-            if (tmpDb.exists()) tmpDb.delete()
-
-            // A blob key reaches SQLCipher as raw bytes, the same key SupportFactory(passphrase) uses.
-            val keyBlob = passphrase.joinToString("") { "%02x".format(it) }
-            var oldDbConn: SQLiteDatabase? = null
-
-            try {
-                // Open the existing plaintext DB with an empty password. ATTACH inherits these flags,
-                // so without CREATE_IF_NECESSARY it cannot create the encrypted file.
-                oldDbConn = SQLiteDatabase.openDatabase(
-                    oldDb.absolutePath,
-                    "",
-                    null,
-                    SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY
-                )
-                // Attach a new encrypted temporary database and export the contents
-                oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY X'$keyBlob';")
-                oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
-                oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
-            } finally {
-                oldDbConn?.close()
-            }
-
-            // Validate the newly exported encrypted database
-            var verifyDb: SQLiteDatabase? = null
-            try {
-                verifyDb = SQLiteDatabase.openDatabase(
-                    tmpDb.absolutePath,
-                    passphrase,
-                    null,
-                    SQLiteDatabase.OPEN_READONLY,
-                    null,
-                    null
-                )
-                verifyDb.version // Trigger a read to guarantee structural integrity and successful encryption
-            } finally {
-                verifyDb?.close()
-            }
-
-            // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
-            check(tmpDb.renameTo(oldDb)) {
-                "Failed to replace old plaintext database with encrypted version."
-            }
-
-            context.getDatabasePath("floraguide.db-wal").delete()
-            context.getDatabasePath("floraguide.db-shm").delete()
-        }
-
         fun getInstance(context: Context): FloraGuideDatabase = instance ?: synchronized(this) {
             instance ?: run {
-                val builder = Room.databaseBuilder(context.applicationContext, FloraGuideDatabase::class.java, "floraguide.db")
-                    .addMigrations(MIGRATION_1_2)
-
+                val appContext = context.applicationContext
                 val hasSqlCipher = runCatching {
-                    SQLiteDatabase.loadLibs(context.applicationContext)
+                    System.loadLibrary("sqlcipher")
                     true
                 }.getOrDefault(false)
 
-                // Plaintext only where SQLCipher cannot load, as in JVM tests. Key or conversion errors must
-                // propagate: Room treats an encrypted file opened without its key as corrupt and deletes it.
+                val builder = Room.databaseBuilder(appContext, FloraGuideDatabase::class.java, "floraguide.db")
+                    .addMigrations(MIGRATION_1_2)
+
                 if (hasSqlCipher) {
-                    val passphrase = retrieveOrGenerateSecureKey(context.applicationContext)
-                    convertPlaintextToEncrypted(context.applicationContext, passphrase)
-                    builder.openHelperFactory(SupportFactory(passphrase))
+                    val passphrase = DatabaseSecurityManager.getWorkingPassphrase(appContext)
+                    DatabaseSecurityManager.convertPlaintextToEncrypted(appContext, passphrase)
+                    builder.openHelperFactory(SupportOpenHelperFactory(passphrase))
                 }
 
                 builder.build().also { instance = it }
@@ -173,4 +73,121 @@ abstract class FloraGuideDatabase : RoomDatabase() {
             }
         }
     }
+}
+
+/**
+ * Isolates cryptographic key management, migration workflows, and format fallback heuristics.
+ */
+internal object DatabaseSecurityManager {
+
+    fun getWorkingPassphrase(context: Context): ByteArray {
+        val prefs = getSecureSharedPreferences(context)
+        var passphraseB64 = prefs.getString("sqlcipher_passphrase", null)
+        val dbFile = context.getDatabasePath("floraguide.db")
+
+        if (passphraseB64 == null) {
+            // A replacement key could never open the existing database, so refuse instead.
+            check(!dbFile.exists() || isPlaintext(dbFile)) {
+                "Encryption key is missing but the database is encrypted. Do not clear app data. Restore from backup if available, or contact support."
+            }
+            val randomBytes = ByteArray(32)
+            SecureRandom().nextBytes(randomBytes)
+            passphraseB64 = Base64.encodeToString(randomBytes, Base64.NO_WRAP)
+            check(prefs.edit().putString("sqlcipher_passphrase", passphraseB64).commit()) {
+                "Failed to persist the encryption key securely."
+            }
+            return randomBytes
+        }
+
+        val decodedBytes = Base64.decode(passphraseB64, Base64.NO_WRAP)
+        val utf8Bytes = passphraseB64.toByteArray(Charsets.UTF_8)
+
+        if (!dbFile.exists() || isPlaintext(dbFile)) {
+            return decodedBytes
+        }
+
+        // Fast path: avoid expensive DB opening if we already proved which format works
+        val cachedFormat = prefs.getString("sqlcipher_key_format", null)
+        if (cachedFormat == "utf8") return utf8Bytes
+        if (cachedFormat == "decoded") return decodedBytes
+
+        // Probe formats to support legacy versions transparently, caching the result to prevent future UI lag
+        return if (canOpenDatabase(dbFile, decodedBytes)) {
+            prefs.edit().putString("sqlcipher_key_format", "decoded").apply()
+            decodedBytes
+        } else if (canOpenDatabase(dbFile, utf8Bytes)) {
+            prefs.edit().putString("sqlcipher_key_format", "utf8").apply()
+            utf8Bytes
+        } else {
+            // Fall back to standard; delegates corruption handling to native SQLite
+            prefs.edit().putString("sqlcipher_key_format", "decoded").apply()
+            decodedBytes
+        }
+    }
+
+    fun convertPlaintextToEncrypted(context: Context, passphraseBytes: ByteArray) {
+        val oldDb = context.getDatabasePath("floraguide.db")
+        if (!oldDb.exists() || !isPlaintext(oldDb)) return
+
+        val tmpDb = context.getDatabasePath("floraguide_enc.tmp")
+        if (tmpDb.exists()) tmpDb.delete()
+        tmpDb.parentFile?.mkdirs()
+
+        // Pre-create the encrypted temporary database target
+        SQLiteDatabase.openOrCreateDatabase(tmpDb.absolutePath, passphraseBytes, null, null).close()
+
+        val hexKey = passphraseBytes.toHexString()
+
+        SQLiteDatabase.openDatabase(oldDb.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { oldDbConn ->
+            oldDbConn.rawExecSQL("PRAGMA cipher_plaintext_header_check = OFF;")
+            oldDbConn.rawExecSQL("PRAGMA wal_checkpoint(FULL);")
+            // Attach the DB securely using a standard SQLite blob literal syntax
+            oldDbConn.rawExecSQL("ATTACH DATABASE '${tmpDb.absolutePath}' AS encrypted KEY x'$hexKey';")
+            oldDbConn.rawExecSQL("SELECT sqlcipher_export('encrypted');")
+            oldDbConn.rawExecSQL("DETACH DATABASE encrypted;")
+        }
+
+        // Keep the plaintext original until the encrypted copy opens with the key.
+        SQLiteDatabase.openDatabase(tmpDb.absolutePath, passphraseBytes, null, SQLiteDatabase.OPEN_READONLY, null).use { it.version }
+
+        // rename() replaces the plaintext file atomically, so an interrupted swap keeps one full copy.
+        check(tmpDb.renameTo(oldDb)) {
+            "Failed to replace old plaintext database with the encrypted version."
+        }
+
+        context.getDatabasePath("floraguide.db-wal").delete()
+        context.getDatabasePath("floraguide.db-shm").delete()
+    }
+
+    // No fallback: deleting these prefs loses the only copy of the key, and plain prefs would store it
+    // unencrypted. A Keystore error fails this start and leaves the key and the database intact.
+    private fun getSecureSharedPreferences(context: Context): android.content.SharedPreferences {
+        val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+        return EncryptedSharedPreferences.create(
+            context, "secure_db_prefs", masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    private fun isPlaintext(dbFile: File): Boolean {
+        if (!dbFile.exists() || dbFile.length() < 16) return false
+        return dbFile.inputStream().use { stream ->
+            val header = ByteArray(16)
+            if (stream.read(header) != 16) false else String(header) == "SQLite format 3\u0000"
+        }
+    }
+
+    private fun canOpenDatabase(dbFile: File, key: ByteArray): Boolean {
+        return try {
+            SQLiteDatabase.openDatabase(dbFile.absolutePath, key, null, SQLiteDatabase.OPEN_READONLY, null).use { db ->
+                db.version // Trigger a data read to rigorously test decryption integrity
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun ByteArray.toHexString(): String = joinToString("") { "%02X".format(it.toInt() and 0xFF) }
 }

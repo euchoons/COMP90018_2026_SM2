@@ -8,11 +8,10 @@ import androidx.security.crypto.MasterKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
-import net.sqlcipher.database.SQLiteDatabase
-import net.sqlcipher.database.SupportFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,7 +27,7 @@ class SqlCipherUpgradeTest {
         context.deleteDatabase("floraguide.db")
         context.getDatabasePath("floraguide_enc.tmp").delete()
         context.deleteSharedPreferences("secure_db_prefs")
-        SQLiteDatabase.loadLibs(context)
+        System.loadLibrary("sqlcipher")
     }
 
     @Test fun plaintextDatabaseIsEncryptedWithItsRows() = runBlocking {
@@ -44,17 +43,37 @@ class SqlCipherUpgradeTest {
         assertFalse(header().startsWith("SQLite format 3"))
     }
 
-    @Test fun databaseEncryptedByMainStillOpens() = runBlocking {
-        // main stores Base64 of 32 random bytes and keys SupportFactory with the decoded bytes.
+    @Test fun databaseEncryptedWithLegacyBase64BytesStillOpens() = runBlocking {
         val raw = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", Base64.encodeToString(raw, Base64.NO_WRAP)).commit())
+        val passphrase = Base64.encodeToString(raw, Base64.NO_WRAP)
+        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", passphrase).commit())
+
+        // Simulates the original standard where OpenHelper Factory relied directly on Base64 decoded bytes
         Room.databaseBuilder(context, FloraGuideDatabase::class.java, "floraguide.db")
-            .openHelperFactory(SupportFactory(raw.copyOf())).build().apply {
-                observationDao().insertOrUpdate(row("encrypted"))
+            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(raw)).build().apply {
+                observationDao().insertOrUpdate(row("encrypted_legacy"))
                 close()
             }
+
         val db = FloraGuideDatabase.getInstance(context)
-        assertNotNull(db.observationDao().find("u1", "encrypted"))
+        assertNotNull(db.observationDao().find("u1", "encrypted_legacy"))
+        db.close()
+    }
+
+    @Test fun databaseEncryptedWithUtf8StringBytesStillOpens() = runBlocking {
+        val raw = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        val passphrase = Base64.encodeToString(raw, Base64.NO_WRAP)
+        assertTrue(securePrefs().edit().putString("sqlcipher_passphrase", passphrase).commit())
+
+        // Simulates the interim structural bug where OpenHelper Factory used UTF-8 bytes from the base64 string
+        Room.databaseBuilder(context, FloraGuideDatabase::class.java, "floraguide.db")
+            .openHelperFactory(net.zetetic.database.sqlcipher.SupportOpenHelperFactory(passphrase.toByteArray(Charsets.UTF_8))).build().apply {
+                observationDao().insertOrUpdate(row("encrypted_utf8"))
+                close()
+            }
+
+        val db = FloraGuideDatabase.getInstance(context)
+        assertNotNull(db.observationDao().find("u1", "encrypted_utf8"))
         db.close()
     }
 
@@ -67,6 +86,20 @@ class SqlCipherUpgradeTest {
         val reopened = FloraGuideDatabase.getInstance(context)
         assertNotNull(reopened.observationDao().find("u1", "fresh"))
         reopened.close()
+    }
+
+    @Test fun missingKeyForAnEncryptedDatabaseIsRefused() = runBlocking {
+        FloraGuideDatabase.getInstance(context).apply {
+            observationDao().insertOrUpdate(row("kept"))
+            close()
+        }
+        val before = context.getDatabasePath("floraguide.db").readBytes()
+        context.deleteSharedPreferences("secure_db_prefs")
+        FloraGuideDatabase::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, null)
+
+        assertTrue(runCatching { FloraGuideDatabase.getInstance(context) }.exceptionOrNull() is IllegalStateException)
+        assertTrue(before.contentEquals(context.getDatabasePath("floraguide.db").readBytes()))
+        assertNull(securePrefs().getString("sqlcipher_passphrase", null))
     }
 
     private fun header() = String(context.getDatabasePath("floraguide.db").readBytes().copyOf(15))
