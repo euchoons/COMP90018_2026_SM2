@@ -131,6 +131,7 @@ fun FloraGuideApp(viewModel: FloraGuideViewModel) {
                 AppScreen.SCAN -> ScanScreen(
                     state = state,
                     onHabitatSelected = viewModel::setHabitat,
+                    onStabilityGateChanged = viewModel::setStabilityGateEnabled,
                     onPermissionResult = viewModel::onLocationPermissionResult,
                     onUseDemoLocation = { viewModel.useCampusDemoLocation() },
                     onCaptureStarted = viewModel::beginCapture,

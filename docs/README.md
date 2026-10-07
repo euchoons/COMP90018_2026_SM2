@@ -28,6 +28,8 @@ These documents distinguish test specifications, earlier checks and pending phys
 - [Device API test cases](testing/DEVICE_API_TEST_CASES.md) — DT-01 through DT-14 specifications and the execution register.
 - [Camera validation](testing/CAMERA_VALIDATION.md) — camera fixes, the reviewed capture/upload path and outstanding device checks.
 - [Hardware adapters verification](testing/HARDWARE_ADAPTERS_VERIFICATION.md) — light/heading behaviour and outstanding device checks.
+- [Location validation](testing/LOCATION_VALIDATION.md) — accuracy and freshness limits, the storage grid, map data and the location measurement procedure.
+- [Device testing evidence](testing/DEVICE_TESTING_EVIDENCE.md) — two-phone register for denied permissions, missing sensors and camera/location failures, and the evidence helper.
 
 `evidence/` holds local screenshots, run summaries, recordings and import archives. Its contents are git-ignored by default; only `.gitkeep` is tracked. Review and deliberately include any evidence needed for submission. Keep maintained specifications and reports in the tracked directories above.
 
@@ -36,6 +38,8 @@ These documents distinguish test specifications, earlier checks and pending phys
 - [Project plan — Markdown](assignment-1/COMP90018_2026_T01_03_03_Assignment_1.md) — original proposal wording, tables, formulas and nine figures.
 - [Project plan — original PDF](<assignment-1/COMP90018_2026_T01_03_03 Assignment 1.pdf>) — source document for the Markdown conversion.
 - [AI use log](assignment-1/AI_USE_LOG.md) — tool-use record and acknowledgement draft.
+- [Assignment rubrics — Markdown](assignment-1/COMP90018_Assignment_Rubrics.md) — Assignment 1 and Assignment 2 marking criteria, with original wording.
+- [Assignment rubrics — original PDF](<assignment-1/COMP90018 - Assignment Rubrics.pdf>) — source document for the rubric conversion.
 
 The submitted plan is a historical scope reference. Later decisions belong in the current roadmap. Keep its Markdown file beside `COMP90018_2026_T01_03_03_Assignment_1_assets/` so the figures resolve.
 

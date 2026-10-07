@@ -29,8 +29,10 @@ class SensorSnapshotTest {
         assertEquals(LightCondition.LOW, SensorSnapshot(lightLux = 0f).lightCondition)
         assertEquals(LightCondition.LOW, SensorSnapshot(lightLux = 24.9f).lightCondition)
         assertEquals(LightCondition.USABLE, SensorSnapshot(lightLux = 25f).lightCondition)
-        assertEquals(LightCondition.USABLE, SensorSnapshot(lightLux = 19_999f).lightCondition)
-        assertEquals(LightCondition.VERY_BRIGHT, SensorSnapshot(lightLux = 20_000f).lightCondition)
+        // Phone A read over 30,000 lux under cloud; bright overcast is good light, not glare.
+        assertEquals(LightCondition.USABLE, SensorSnapshot(lightLux = 32_000f).lightCondition)
+        assertEquals(LightCondition.USABLE, SensorSnapshot(lightLux = 49_999f).lightCondition)
+        assertEquals(LightCondition.VERY_BRIGHT, SensorSnapshot(lightLux = 50_000f).lightCondition)
     }
 
     @Test

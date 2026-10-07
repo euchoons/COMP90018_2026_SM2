@@ -5,10 +5,13 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.util.Log
+import au.edu.unimelb.floraguide.BuildConfig
 import au.edu.unimelb.floraguide.domain.model.SensorAvailability
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
 import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import au.edu.unimelb.floraguide.domain.sensor.observationHeadingDegrees
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -77,7 +80,23 @@ class SensorMonitor(context: Context) : SensorEventListener {
 
         updateHeading()
         stabilityEstimator.update(accelerationDeviation, angularVelocity)
+        if (BuildConfig.DEBUG) logMotion(event)
         publish()
+    }
+
+    /** Debug builds only: every gate update, for tools/motion-calibration.py. */
+    private fun logMotion(event: SensorEvent) {
+        val score = stabilityEstimator.score
+        Log.i(
+            TAG,
+            String.format(
+                Locale.US,
+                "t=%d event=motion sensor=%d accDev=%.4f gyro=%.4f target=%.4f score=%.4f open=%b",
+                event.timestamp / 1_000_000L, event.sensor.type, accelerationDeviation, angularVelocity,
+                MotionStabilityEstimator.target(accelerationDeviation, angularVelocity), score,
+                MotionStabilityEstimator.isStable(score),
+            ),
+        )
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -121,4 +140,8 @@ class SensorMonitor(context: Context) : SensorEventListener {
     private fun vectorMagnitude(values: FloatArray): Double = sqrt(
         values.take(3).sumOf { value -> (value * value).toDouble() },
     )
+
+    private companion object {
+        const val TAG = "FloraGuide-Motion"
+    }
 }

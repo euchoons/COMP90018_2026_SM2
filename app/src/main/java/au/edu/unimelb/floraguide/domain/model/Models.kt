@@ -4,6 +4,7 @@ import au.edu.unimelb.floraguide.domain.sensor.MotionStabilityEstimator
 import java.time.Instant
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.round
 
 /** Framework-independent domain types shared by camera, Pl@ntNet, ALA and persistence. */
 data class Species(
@@ -74,6 +75,15 @@ data class GeoPoint(
     fun hasValidCoordinates(): Boolean =
         latitude.isFinite() && longitude.isFinite() &&
             latitude in -90.0..90.0 && longitude in -180.0..180.0
+
+    /**
+     * The 0.001° grid used for saved observations and ALA queries: about 111 m north–south and
+     * 88 m east–west at Parkville. Idempotent, so an already-coarse point never moves.
+     */
+    fun coarsened(): GeoPoint = copy(
+        latitude = round(latitude * 1000.0) / 1000.0,
+        longitude = round(longitude * 1000.0) / 1000.0,
+    )
 }
 
 enum class CaptureLocationSource(val label: String) {
@@ -81,6 +91,8 @@ enum class CaptureLocationSource(val label: String) {
     GUIDED_DEMO("Guided demo location"),
     UNAVAILABLE("No usable capture location"),
     LEGACY_UNKNOWN("Legacy location; origin not recorded"),
+    /** Blurred by Android to about 2 km: used for ALA, never saved as a map pin. */
+    APPROXIMATE("Approximate location at capture"),
 }
 
 /** Snapshot taken at the shutter press, like the heading. Retries reuse the same time/location. */
@@ -127,13 +139,16 @@ data class SensorSnapshot(
             else -> LightCondition.VERY_BRIGHT
         }
 
-    // Prototype thresholds pending field calibration; see docs/testing/HARDWARE_ADAPTERS_VERIFICATION.md.
+    // See docs/testing/HARDWARE_ADAPTERS_VERIFICATION.md; only the very-bright line has device data so far.
     companion object {
         /** Dimmer than a typical living room; handheld shots need long exposures. */
         const val LOW_LIGHT_LUX = 25f
 
-        /** Inside the 10,000–25,000 lux band of full daylight; direct sun reads higher. */
-        const val VERY_BRIGHT_LUX = 20_000f
+        /**
+         * Between Phone A's readings under cloud (over 30,000 lux on South Lawn) and in direct
+         * sun (over 100,000 lux).
+         */
+        const val VERY_BRIGHT_LUX = 50_000f
     }
 }
 
