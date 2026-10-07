@@ -145,8 +145,8 @@ data class SensorSnapshot(
         const val LOW_LIGHT_LUX = 25f
 
         /**
-         * Above Phone A's readings under cloud (over 30,000 lux on South Lawn) and below typical
-         * direct sun on a phone's light sensor (about 60,000–100,000 lux).
+         * Between Phone A's readings under cloud (over 30,000 lux on South Lawn) and in direct
+         * sun (over 100,000 lux).
          */
         const val VERY_BRIGHT_LUX = 50_000f
     }
