@@ -10,7 +10,7 @@ withheld support from three quarters of the photos. The current design counts su
 records and trains the location cap over a wider range. On the 156 test photos it raises Top-1
 accuracy from 81% to 88% (13 answers gained, 2 lost; sign test p = 0.007), and the gain holds with
 iNaturalist's own records removed from ALA. The flowering check is shown but does not change the
-order. The app uses the current design.
+order. The app uses the current design. Widening ALA's name matching in #76 left Top-1 unchanged.
 
 ## The rule
 
@@ -18,7 +18,7 @@ For each of Pl@ntNet's first five candidates `s`:
 
 ```text
 support(s) = ln(1 + min(n(s), 50)) / ln(51)    n(s): ALA records within r of the capture,
-                                               0 when ALA cannot match the name to a species
+                                               0 when ALA cannot match the name to a species or below
 L(s)       = 1 + c * support(s)                1 for every candidate if any lookup failed
 F(s)       = f if Pl@ntNet sees a flower (score >= 0.5) and every VicFlora flowering month of s
              is more than one month from the capture month, otherwise 1
@@ -29,9 +29,10 @@ score(s)   = w(s) / sum of w over the five candidates
 | | First design, hand-set | First design, trained | Current design, trained |
 |---|---|---|---|
 | `r`, ALA radius (searched: 2, 8, 25 km) | 8 km | 8 km | 8 km |
-| `c`, location cap | 0.15 | 0.50 (searched 0–0.50) | 20.5 (searched 0–60) |
+| `c`, location cap | 0.15 | 0.50 (searched 0–0.50) | 20.5 (searched 0–60; kept after #76) |
 | `f`, out-of-season factor | 0.85 | 1.00 (searched 0.50–1.00) | 1.00 (fixed) |
 | A name ALA cannot match | withholds support from every candidate | same | counts as zero records |
+| What counts as a match | a species | same | a species, or since #76 a subspecies, variety or cultivar entry for the same plant |
 
 Fixed: the 50-record saturation, the one-month tolerance, the 0.5 flower score and the five
 candidates. With `c` = 20.5, a candidate's multiplier runs from 1 (no records nearby) to 21.5
@@ -60,6 +61,8 @@ Collected on 2026-09-30 by `tools/build-evaluation-set.py` and cached in
 - **Robustness counts:** the 8 km counts again, without any iNaturalist record
   (`fq=-dataResourceUid:dr1411`), because iNaturalist supplies both the photos and many ALA
   records: about 60% of the records counted around these photos.
+- **Counts added after #76:** the candidates that the widened rule newly accepts, in 8 photos, were
+  counted on 2026-10-06 with the same queries; the earlier rule had skipped them.
 
 | Set | Photos | Wild, flowering | Wild, other | Cultivated |
 |---|---|---|---|---|
@@ -83,10 +86,16 @@ matching and `RankSpeciesCandidatesUseCase.live()`, without network calls.
 - **Radius:** five-fold cross-validation on the training pool (folds by observation ID mod 5) for
   each radius. The best cross-validated score picks the radius (8 km wins ties), then `c` is
   refitted on the whole pool.
-- **Two rounds.** The first round trained the first design and was tested once; it changed no
+- **Rounds.** The first round trained the first design and was tested once; it changed no
   Top-1 answer. Looking only at the training pool, the reason was the unmatched-name rule (see
   below), so the second round changed that rule, widened the search for `c` and was tested once.
-  The test set has therefore been used twice, once per design; no parameter value was chosen with it.
+  A third run followed #76, which widened ALA name matching. The test set has therefore been used
+  three times; no parameter value was chosen with it.
+- **Cap after #76.** The refit moved `c` from 20.5 to 38.5, but on the training pool every cap from
+  15 to 45 gives the same Top-1 (284/339), and the mean log score differs by 0.003 between 20.5
+  (−0.2070) and 38.5 (−0.2043). The objective is flat there, so the app keeps 20.5, which gives
+  location less weight against the image model: one nearby record multiplies a candidate by 4.6
+  rather than 7.8.
 - **Exploration** between the rounds used the training pool only. Besides the ablations below, an
   uncapped prior, `imageScore * (n + 1)^a`, was tried; it let a candidate with an image score of
   0.03 overturn one at 0.48 on its records alone, so the 50-record saturation stays.
@@ -109,14 +118,15 @@ matching and `RankSpeciesCandidatesUseCase.live()`, without network calls.
 | Image only | −0.371 | 264/339 (78%) | – | – |
 | First design, hand-set (8 km, 0.15, 0.85) | −0.370 | 266/339 (78%) | 2 / 0 | – |
 | First design, trained (8 km, 0.50, 1.00) | −0.367 | 266/339 (78%) | 2 / 0 | – |
-| Current design, 2 km | −0.262 | 284/339 (84%) | 22 / 2 | 13.5–17.5 |
-| **Current design, 8 km** | **−0.240** | **284/339 (84%)** | **23 / 3** | 16–28.5 |
-| Current design, 25 km | −0.244 | 283/339 (83%) | 21 / 2 | 16.5–37.5 |
+| Current design, 2 km | −0.241 | 282/339 (83%) | 23 / 5 | 18–25 |
+| **Current design, 8 km** | **−0.209** | **284/339 (84%)** | **23 / 3** | 25.5–55 |
+| Current design, 25 km | −0.210 | 284/339 (84%) | 22 / 2 | 32–60 |
 | Current design, 8 km, without iNaturalist records | −0.282 | 279/339 (82%) | 19 / 4 | 7–10 |
 | Ablation: first design, `c` up to 60 | −0.363 | 266/339 (78%) | 2 / 0 | 2–4.5 |
-| Ablation: current design, `c` up to 0.50 | −0.333 | 269/339 (79%) | 6 / 1 | 0.50 |
+| Ablation: current design, `c` up to 0.50 | −0.329 | 269/339 (79%) | 6 / 1 | 0.50 |
 
-8 km scored best. Refitted on the whole pool, `c` = 20.5, or 9.0 without iNaturalist records. The
+These rows use #76's matching. 8 km scored best. Refitted on the whole pool, `c` = 38.5 (20.5 before #76),
+or 9.0 without iNaturalist records; the app keeps 20.5 (see Method). The
 ablations show both changes are needed: a larger cap alone gains nothing, because unmatched names
 still withhold support from most photos, and counting them as zero under the old cap gains little.
 
@@ -127,7 +137,8 @@ still withhold support from most photos, and counting them as zero under the old
 | Image only | −0.390 | 127/156 (81%) | 146/156 (94%) | – | – |
 | First design, hand-set | −0.387 | 127/156 (81%) | 146/156 (94%) | 0 / 0 | 1 |
 | First design, trained | −0.384 | 127/156 (81%) | 146/156 (94%) | 0 / 0 | 1 |
-| **Current design (8 km, `c` = 20.5)** | **−0.219** | **138/156 (88%)** | 146/156 (94%) | **13 / 2** | **0.007** |
+| **Current design, as adopted (8 km, `c` = 20.5)** | **−0.198** | **138/156 (88%)** | 146/156 (94%) | **13 / 2** | **0.007** |
+| Current design, refitted (8 km, `c` = 38.5) | −0.199 | 138/156 (88%) | 146/156 (94%) | 13 / 2 | 0.007 |
 | Current design, without iNaturalist records (8 km, `c` = 9.0) | −0.250 | 137/156 (88%) | 147/156 (94%) | 11 / 1 | 0.006 |
 
 | Stratum | Image only | Current design | Without iNaturalist records |
@@ -137,8 +148,7 @@ still withhold support from most photos, and counting them as zero under the old
 | Cultivated | 39/48 (81%) | 42/48 (88%) | 41/48 (85%) |
 
 In all 13 gained answers, Pl@ntNet's first choice had no records within 8 km: ALA could not match
-10 of them to a species (for example *Romulea arnaudii*, *Medicago × varia* and *Rubus spectabilis*),
-and 3 had zero records. The 2 lost answers were correct species that ALA could not match:
+9 of them (for example *Romulea arnaudii* and *Rubus spectabilis*), and 4 had zero records. The 2 lost answers were correct species that ALA could not match:
 
 - *Chenopodium parabolicum* (image score 0.25), which ALA only fuzzy-matches to *Rhagodia
   parabolica*, lost to *Chenopodium vulvaria* (0.07, one record).
@@ -149,19 +159,19 @@ The generated report lists every test photo whose correct species moved.
 
 ### Why the first design could not help
 
-Measured on the training pool only, at 8 km:
+Measured on the training pool only, at 8 km, with #76's matching:
 
-| Candidate | Candidates | No ALA species match | At least one record nearby | Mean support |
+| Candidate | Candidates | No ALA match | At least one record nearby | Mean support |
 |---|---|---|---|---|
-| Correct species | 308 | 19 (6%) | 283 (92%) | 0.75 |
-| Other candidates | 1215 | 528 (43%) | 372 (31%) | 0.19 |
+| Correct species | 308 | 16 (5%) | 286 (93%) | 0.76 |
+| Other candidates | 1215 | 526 (43%) | 373 (31%) | 0.19 |
 
 - **The location evidence is strong.** Correct species almost always have nearby records; most wrong
   candidates have none. In 44 training photos Pl@ntNet ranked the correct species 2nd to 5th, and in
   33 of them the correct species had more nearby records than Pl@ntNet's first choice.
 - **But the first design rarely let it act.** Pl@ntNet's world-flora candidates often include names
   ALA cannot match to a species, such as the Korean fir *Abies koreana*, which it matches only to the
-  genus. One such name among five withheld support for the whole photo: in 34 of those 44 photos,
+  genus. One such name among five withheld support for the whole photo: in 33 of those 44 photos,
   and in 74% of the test photos.
 - **Its cap was also too small.** At ×1.5 it could not close most gaps: Pl@ntNet's first choice
   usually leads by more.
@@ -185,20 +195,23 @@ out-of-season candidate in 1 of the 156 test photos.
 ## What the app uses
 
 `RankSpeciesCandidatesUseCase` defaults to `c` = 20.5 and `f` = 1.00, with the 8 km radius, and
-counts a name ALA cannot match as zero records. `ReliableAlaSpeciesContextRepository` reports a
+counts a name ALA cannot match as zero records. ALA matches at species level or below, including a
+subspecies, variety or cultivar entry for the same plant (#76). `ReliableAlaSpeciesContextRepository` reports a
 context as live when every lookup returned a count or no species match; a failed lookup still makes
 it partial or unavailable, which withholds support. Observations record the rule as
-`ala-positive-support-v2-unmatched-zero-cap20.5-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5+vicflora-2026-09-25`.
+`ala-positive-support-v3-unmatched-zero-cap20.5-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5+vicflora-2026-09-25`.
 The results card shows when a name counts as zero, and still shows the VicFlora flowering statement
 for reference.
 
 ## Limitations
 
-- **The test set was used twice.** The redesign was prompted by the first test result, although its
-  parameters came from the training pool only.
+- **The test set was used three times:** once per design and once after #76. The redesign was
+  prompted by the first test result, and keeping `c` = 20.5 was decided after the third run showed
+  identical Top-1, although the parameters themselves came from the training pool only.
 - **Unmatched correct species lose.** A correct species that ALA cannot match, through a naming
   difference or as a cultivated plant absent from ALA, now loses to recorded candidates; both lost
-  test answers are of this kind. Because support is log-scaled, one nearby record already multiplies
+  test answers are of this kind. #76 fixed one common case, London plane, which ALA files as a
+  cultivar. Because support is log-scaled, one nearby record already multiplies
   a candidate by 4.6, so sparse records weigh heavily. The saturation and the log shape were not trained.
 - **Location can override the image model** wherever image scores are within ×21.5. Unusual
   cultivated plants may be hurt more often than this sample shows.
@@ -231,6 +244,10 @@ python3 tools/build-evaluation-set.py --per-stratum 65 --split train --exclude a
 
 ```bash
 python3 tools/build-evaluation-set.py --add-counts-without-inaturalist app/src/test/resources/evaluation/pilot.json --add-counts-without-inaturalist app/src/test/resources/evaluation/train.json
+```
+
+```bash
+python3 tools/build-evaluation-set.py --fill-missing-counts app/src/test/resources/evaluation/pilot.json --fill-missing-counts app/src/test/resources/evaluation/train.json
 ```
 
 Training and testing need no network and write `app/build/reports/evaluation/fusion-training.md`:

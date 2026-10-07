@@ -189,7 +189,7 @@ data class NearbyContext(
     val queriedAt: Instant? = null,
     val retryNotBefore: Instant? = null,
 ) {
-    /** ALA has no species-level match for the name: an answer that counts as zero records, not a failed lookup. */
+    /** ALA has no match for the name at species level or below: an answer that counts as zero records, not a failed lookup. */
     fun isUnmatched(speciesId: String) = failuresBySpeciesId[speciesId] == UNRESOLVED_TAXON
 
     companion object {

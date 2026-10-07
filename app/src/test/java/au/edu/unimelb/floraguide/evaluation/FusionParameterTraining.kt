@@ -92,6 +92,8 @@ class FusionParameterTraining {
         val chosen = validation.mapValues { (counts, runs) -> fit(pool, runs.maxBy { it.score.meanLogLikelihood }.radius, counts) }
         val handSet = Params(BASELINE_KM, 0.15, 0.85, Design.FIRST)
         val firstTrained = Params(BASELINE_KM, 0.50, 1.0, Design.FIRST)
+        // The app's cap, which may differ from the refit when the objective is flat (#76).
+        val adopted = Params(BASELINE_KM, RankSpeciesCandidatesUseCase.LOCATION_CAP)
         val report = buildString {
             appendLine("# Fusion parameter training (#20)\n")
             data()
@@ -101,12 +103,13 @@ class FusionParameterTraining {
             testing(listOf(
                 "First design, hand-set ($handSet)" to handSet,
                 "First design, trained ($firstTrained)" to firstTrained,
-                "Current design, trained (${chosen.getValue(Counts.ALL)})" to chosen.getValue(Counts.ALL),
+                "Current design, refitted (${chosen.getValue(Counts.ALL)})" to chosen.getValue(Counts.ALL),
+                "Current design, as adopted by the app ($adopted)" to adopted,
                 "Current design, trained without iNaturalist records (${chosen.getValue(Counts.WITHOUT_INATURALIST)})" to
                     chosen.getValue(Counts.WITHOUT_INATURALIST),
             ))
-            activation(chosen.getValue(Counts.ALL))
-            helpedAndHarmed(chosen.getValue(Counts.ALL))
+            activation(adopted)
+            helpedAndHarmed(adopted)
         }
         File("build/reports/evaluation").apply { mkdirs() }.resolve("fusion-training.md").writeText(report)
         println(report)
