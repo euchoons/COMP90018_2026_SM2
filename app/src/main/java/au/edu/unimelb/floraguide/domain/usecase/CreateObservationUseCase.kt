@@ -3,14 +3,12 @@ package au.edu.unimelb.floraguide.domain.usecase
 import au.edu.unimelb.floraguide.domain.model.CandidateEvidenceRecord
 import au.edu.unimelb.floraguide.domain.model.CaptureSnapshot
 import au.edu.unimelb.floraguide.domain.model.ContextDataSource
-import au.edu.unimelb.floraguide.domain.model.GeoPoint
 import au.edu.unimelb.floraguide.domain.model.Habitat
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.domain.model.NearbyContext
 import au.edu.unimelb.floraguide.domain.model.Observation
 import au.edu.unimelb.floraguide.domain.model.RankedCandidate
 import java.time.Instant
-import kotlin.math.round
 
 /** Builds a saved record from the capture snapshot rather than the later Save-button state. */
 class CreateObservationUseCase {
@@ -40,10 +38,7 @@ class CreateObservationUseCase {
             id = capture.observationId,
             species = selected.species,
             observedAt = capture.capturedAt,
-            coarseLocation = GeoPoint(
-                round(captureLocation.latitude * 1000.0) / 1000.0,
-                round(captureLocation.longitude * 1000.0) / 1000.0,
-            ),
+            coarseLocation = captureLocation.copy(accuracyMetres = null).coarsened(),
             habitat = habitat,
             photoPath = photoPath,
             cloudPhotoUri = cloudPhotoUri,

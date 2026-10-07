@@ -36,6 +36,9 @@ Method:
 | Lifecycle | Defect fixed: a failed start showed "Starting CameraX…" forever; devices with only a front camera could not capture. | same |
 | Permissions | Defect fixed: after a permanent denial the Enable button did nothing. | `fix(camera): route permanently denied camera permission to app settings` |
 | Permissions | Defect fixed: a permission granted in system settings was ignored until the screen was re-entered. | same |
+| Permissions | Regression fixed: both permission fixes were lost in a later `ScanScreen` rewrite and have been re-applied. | `fix(camera): restore the app-settings route for permanently denied camera access` |
+| Lifecycle | Defect fixed: the shutter stayed enabled when the camera never opened, closed after a permission change or was taken by another app. | `fix(camera): enable the shutter only while the camera is open` |
+| Permissions | Defect fixed: after camera access was revoked in system settings, the restarted app restored the old "granted" value and kept the camera card. | `fix(scan): re-read permissions whenever Observe resumes` |
 | Rotation | Defect fixed: with auto-rotate locked, landscape photos were tagged as portrait. | `fix(camera): follow physical orientation and bound capture resolution` |
 | Resize | Defect fixed: full-sensor JPEGs were uploaded to Pl@ntNet and Firebase on every capture. | same |
 | Resize | Thumbnail decoding: no change needed; `ObservationPhotoLoader` on `main` already samples by size off the main thread. | — |
@@ -62,6 +65,12 @@ Method:
 `CameraSelector.DEFAULT_BACK_CAMERA` was hard-coded. The manifest declares `android.hardware.camera.any` as not required, so the app installs on devices with only a front camera (some tablets and Chromebooks) or no camera. There, binding threw, a snackbar appeared briefly, and the overlay said "Starting CameraX…" forever.
 
 **Fix:** use the back camera if present, otherwise the front camera, otherwise fail with an explicit message. A `cameraFailed` state replaces the loading text with "Camera unavailable — the guided demo on Home still works", which matches the fallback listed in [architecture](../technical/ARCHITECTURE.md).
+
+### Defect: the shutter outlived the camera
+
+Binding only asks CameraX for the camera. Opening happens afterwards and can fail, and another app can take the camera at any time. The card marked itself ready as soon as binding returned, so device testing found the shutter still offered over a closed preview (DE-05), and the case of another app taking the camera could not be shown (DE-11).
+
+**Fix:** the card observes `CameraInfo.cameraState`. Capture is enabled only while the camera is open. While another app holds it, the hint reads "Another app is using the camera. Close it to continue.", and CameraX reopens the camera by itself once it is free. `CameraAvailabilityTest` pins the state mapping.
 
 ### Known behaviour, not changed
 
@@ -123,17 +132,17 @@ An earlier commit on this branch sized the thumbnail sample rate to the photo. `
 
 ### What was already correct
 
-- The camera card is only composed once `CAMERA` is granted; otherwise a permission card explains why camera and location are needed and offers the guided sample.
-- Camera and location are requested together from the permission card. Location alone can be requested from the location card. A location denial falls back to the labelled campus demo location.
+- The camera card is only composed once `CAMERA` is granted; otherwise an **Enable camera** button takes its place, and the guided demo stays available below it.
+- Camera is requested from that button and location from the location card's **Enable / refresh** button. A location denial skips ALA for the scan; live scans never substitute the campus demo location.
 - Granting either fine **or** coarse location counts, which respects Android 12's approximate-location choice.
 - Duplicate location starts (from the permission callback and the `LaunchedEffect`) are harmless because `LocationTracker.start` calls `stop()` first.
-- Revoking a permission in system settings kills the process, so a stale "granted" state cannot survive.
+- Revoking a permission in system settings kills the process. That alone did not reset the screen: `rememberSaveable` restored the old "granted" value on restart until the resume check below re-read it (DE-05).
 
 ### Defect: permanent denial was a dead end
 
 After a second denial (Android 11+) or "Don't ask again", `launch()` returns *denied* immediately without showing a dialog. The only button on the card then did nothing when tapped.
 
-**Fix:** after a request that included `CAMERA`, if the permission is denied and `shouldShowRequestPermissionRationale` is false, the card explains that camera access is turned off and shows **Open app settings**, which opens `ACTION_APPLICATION_DETAILS_SETTINGS` for the app. The location-only request cannot reset this state.
+**Fix:** after a request that included `CAMERA`, if the permission is denied and `shouldShowRequestPermissionRationale` is false, the camera slot explains that camera access is turned off and shows **Open app settings**, which opens `ACTION_APPLICATION_DETAILS_SETTINGS` for the app. The location-only request cannot reset this state.
 
 Known edge case: if the user *dismisses* the very first dialog (back gesture or tapping outside it) without choosing, Android also reports denied with no rationale, so the settings route is shown. That route still lets the user grant access, so the edge case was accepted rather than adding timing-based guesswork.
 
@@ -141,7 +150,11 @@ Known edge case: if the user *dismisses* the very first dialog (back gesture or 
 
 Permission state was only read when the screen was first composed, or when a request returned. A user who granted camera access from settings and came back still saw the permission card.
 
-**Fix:** `LifecycleResumeEffect` re-checks both permissions on every resume.
+**Fix:** `LifecycleResumeEffect` re-reads both permissions on every resume, so revocations are noticed as well as grants. Device case DE-05 found the revocation gap.
+
+### Regression: both fixes were lost, then restored
+
+`5b7bf9e` (2026-09-23) rewrote `ScanScreen` for the location controls without these two fixes, so **Enable camera** became a dead end again after a permanent denial. They were re-applied on 2026-10-04 on top of the new layout. The change only adds code: the location-permission, explicit-skip and photo-consent logic is unchanged. A location grant noticed on resume goes through the existing location effect, which still respects **Skip location** and a pending consent dialog.
 
 ## Firebase photo upload
 
@@ -170,30 +183,30 @@ Open points for the cloud-data owners:
 
 ## Physical-device checklist
 
-Record each result with the phone model and Android version ([contribution policy](../../CONTRIBUTING.md) requires this for camera changes). Keep small screenshots under `docs/evidence/`.
+Record each result with the phone model and Android version ([contribution policy](../../CONTRIBUTING.md) requires this for camera changes). Keep small screenshots under `docs/evidence/`. Phone A is the OnePlus PGP110 (Android 15) listed in the [device testing evidence](DEVICE_TESTING_EVIDENCE.md#phones); Phone B has not run this checklist.
 
 | # | Scenario | Expected | Phone A | Phone B |
 |---|---|---|---|---|
-| 1 | Fresh install → Observe → allow camera and location | Preview starts; shutter enables when steady | | |
-| 2 | Deny camera once | Permission card stays; request can be repeated | | |
-| 3 | Deny camera twice (or "Don't ask again") | Card says access is off and shows **Open app settings** | | |
-| 4 | From 3, grant camera in settings and return | Camera card appears without leaving Observe | | |
-| 5 | Revoke camera in settings while the app is in the background, then return | App restarts; permission card is shown | | |
-| 6 | Allow camera, deny location | Camera works; campus demo location is labelled | | |
-| 7 | Choose approximate location (Android 12+) | Treated as granted; live location shown | | |
-| 8 | Open Observe and immediately tap Home | Camera privacy indicator turns off | | |
-| 9 | Home button while previewing, then return | Preview resumes; capture still works | | |
-| 10 | Rotate the phone with auto-rotate **on**, then capture | Thumbnail is upright | | |
-| 11 | Auto-rotate **off**, hold the phone landscape, capture | Thumbnail is upright (was sideways before the fix) | | |
-| 12 | Capture, then check the JPEG size and dimensions (Device Explorer → `files/photos`) | About 1920×1440 or the nearest supported size | | |
-| 13 | Capture with network on and a Pl@ntNet key | Candidates returned; note the latency in Logcat | | |
-| 14 | Sign in, capture, then check Firebase Storage `plant_photos/<uid>/` | New JPEG under your own account; identification reports its stage on failure | | |
-| 14b | Capture with the network disabled | Identification fails at the upload stage with a clear message; the app stays usable | | |
-| 15 | Capture several photos, open Field Guide | Thumbnails upright and scrolling smooth | | |
-| 16 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed snackbar | | |
+| 1 | Fresh install → Observe → allow camera and location | Preview starts; shutter enables when steady | PASS | |
+| 2 | Deny camera once | **Enable camera** stays; request can be repeated | PASS (DE-01) | |
+| 3 | Deny camera twice (or "Don't ask again") | Camera slot says access is off and shows **Open app settings** | PASS (DE-02) | |
+| 4 | From 3, grant camera in settings and return | Camera card appears without leaving Observe | PASS (DE-02) | |
+| 5 | Revoke camera in settings while the app is in the background, then return | App restarts; **Enable camera** is shown | PASS (DE-05, after the fix) | |
+| 6 | Allow camera, deny location | Camera works; the location card says ALA will be skipped | PASS (DE-03) | |
+| 7 | Choose approximate location (Android 12+) | Treated as granted; live location shown | PASS (DE-04, after the fix) | |
+| 8 | Open Observe and immediately tap Home | Camera privacy indicator turns off | PASS | |
+| 9 | Home button while previewing, then return | Preview resumes; capture still works | PASS | |
+| 10 | Rotate the phone with auto-rotate **on**, then capture | Thumbnail is upright | PASS | |
+| 11 | Auto-rotate **off**, hold the phone landscape, capture | Thumbnail is upright (was sideways before the fix) | PASS | |
+| 12 | Capture, then check the JPEG size and dimensions (Device Explorer → `files/photos`) | About 1920×1440 or the nearest supported size | PASS | |
+| 13 | Capture with network on and a Pl@ntNet key, then agree to online identification | Candidates returned; note the latency in Logcat | PASS | |
+| 14 | Sign in, capture, agree to online identification, then check Firebase Storage `plant_photos/<uid>/` | New JPEG under your own account; identification reports its stage on failure | PASS | |
+| 14b | Capture with the network disabled, then agree to online identification | Identification fails at the upload stage with a clear message; the app stays usable | FAIL: no failure message with the network off; same as DE-13, outside this workstream | |
+| 15 | Capture several photos, open Field Guide | Thumbnails upright and scrolling smooth | PASS | |
+| 16 | Tap the shutter and immediately navigate away | No crash; at most a capture-failed snackbar | PASS (DE-12) | |
 
 ## Remaining limitations
 
-- No physical-device results are recorded yet; the checklist above is the evidence still owed.
+- Phone A's results are recorded above; Phone B has not run this checklist, and row 14b fails with DE-13.
 - The 1920×1440 cap is justified by one Pl@ntNet measurement, not by an accuracy comparison across resolutions.
 - Photo retention, offline identification and storage rules belong to the persistence and cloud workstreams and are recorded above rather than changed here.

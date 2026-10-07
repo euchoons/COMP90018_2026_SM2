@@ -22,6 +22,7 @@ import au.edu.unimelb.floraguide.domain.privacy.PhotoConsentGate
 import au.edu.unimelb.floraguide.domain.repository.AuthState
 import au.edu.unimelb.floraguide.domain.repository.NetworkStatus
 import au.edu.unimelb.floraguide.domain.repository.StoredPhoto
+import au.edu.unimelb.floraguide.domain.sensor.trueHeadingDegrees
 import au.edu.unimelb.floraguide.domain.usecase.CreateObservationUseCase
 import au.edu.unimelb.floraguide.domain.usecase.IdentificationStage
 import au.edu.unimelb.floraguide.domain.usecase.PhotoIdentificationException
@@ -59,10 +60,14 @@ data class FloraGuideUiState(
     val sensorSnapshot: SensorSnapshot = SensorSnapshot(),
     val location: GeoPoint = CAMPUS_DEMO_LOCATION,
     val usingDemoLocation: Boolean = true,
+    /** Declination at the last device fix; null means bearings are shown as magnetic. */
+    val headingDeclinationDegrees: Float? = null,
     val locationStatus: String = "Location not yet available; enable it before capture",
     /** Explicit "Skip location" for this scan; survives Activity recreation, unlike Compose effects. */
     val locationSkipped: Boolean = false,
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
+    /** A device preference, so it outlives scans and account changes; it resets only on app restart. */
+    val stabilityGateEnabled: Boolean = true,
     val photoPath: String? = null,
     val pendingPhotoConsent: PendingPhotoConsent? = null,
     val storedPhoto: StoredPhoto? = null,
@@ -109,6 +114,8 @@ data class FloraGuideUiState(
             pendingPhotoConsent == null &&
             selectedCandidate != null &&
             capture?.location != null &&
+            // A fix blurred to about 2 km can inform ALA, but would pin the plant in the wrong place.
+            capture?.locationSource != CaptureLocationSource.APPROXIMATE &&
             !isClassifying &&
             !isContextLoading &&
             !isSaving
@@ -164,7 +171,10 @@ class FloraGuideViewModel(
                 discardPendingConsent()
 
                 _uiState.update { current ->
-                    FloraGuideUiState(sensorSnapshot = current.sensorSnapshot)
+                    FloraGuideUiState(
+                        sensorSnapshot = current.sensorSnapshot,
+                        stabilityGateEnabled = current.stabilityGateEnabled,
+                    )
                 }
 
                 if (uid != null) {
@@ -367,6 +377,7 @@ class FloraGuideViewModel(
                 screen = AppScreen.SCAN,
                 sensorSnapshot = current.sensorSnapshot,
                 selectedHabitat = current.selectedHabitat,
+                stabilityGateEnabled = current.stabilityGateEnabled,
                 observations = current.observations,
             )
         }
@@ -375,6 +386,10 @@ class FloraGuideViewModel(
     fun setHabitat(habitat: Habitat) {
         _uiState.update { it.copy(selectedHabitat = habitat) }
         rerankWithCurrentContext()
+    }
+
+    fun setStabilityGateEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(stabilityGateEnabled = enabled) }
     }
 
     fun selectSpecies(speciesId: String) {
@@ -389,18 +404,28 @@ class FloraGuideViewModel(
         _uiState.update { it.copy(locationSkipped = false, locationStatus = "Waiting for a recent device location...") }
         container.locationTracker.start(
             onLocation = { point ->
+                val approximate = container.locationTracker.isApproximate()
                 _uiState.update {
                     it.copy(
                         location = point,
                         usingDemoLocation = false,
+                        headingDeclinationDegrees = container.locationTracker.magneticDeclinationDegrees(
+                            point,
+                            System.currentTimeMillis(),
+                        ),
                         locationStatus = buildString {
-                            append("Device location ready")
+                            append(if (approximate) "Approximate location ready" else "Device location ready")
                             point.accuracyMetres?.let { accuracy -> append(" · ±${accuracy.toInt()} m") }
                         },
                     )
                 }
             },
             onError = { reason -> skipLocation(reason) },
+            onStale = {
+                _uiState.update {
+                    it.copy(locationStatus = "Waiting for a new device location. A capture now would skip ALA.")
+                }
+            },
         )
     }
 
@@ -415,6 +440,7 @@ class FloraGuideViewModel(
         _uiState.update {
             it.copy(
                 usingDemoLocation = true,
+                headingDeclinationDegrees = null,
                 locationStatus = reason ?: "Location skipped for this live scan. ALA will not be queried.",
                 message = reason,
             )
@@ -482,8 +508,17 @@ class FloraGuideViewModel(
         pendingCaptureOwner = null
         container.locationTracker.stop()
 
+        // The camera card reports a magnetic bearing. A savable capture always has a location,
+        // so stored headings are true north; without one the magnetic value is kept.
         val capture = pending.copy(
-            headingDegrees = captureHeadingDegrees,
+            headingDegrees = captureHeadingDegrees?.let { magnetic ->
+                pending.location?.let { point ->
+                    trueHeadingDegrees(
+                        magnetic,
+                        container.locationTracker.magneticDeclinationDegrees(point, pending.capturedAt.toEpochMilli()),
+                    )
+                } ?: magnetic
+            },
         )
 
         val request = PendingPhotoConsent(
@@ -605,7 +640,11 @@ class FloraGuideViewModel(
             observationId = UUID.randomUUID().toString(),
             capturedAt = Instant.now(),
             location = location,
-            locationSource = if (location != null) CaptureLocationSource.DEVICE else CaptureLocationSource.UNAVAILABLE,
+            locationSource = when {
+                location == null -> CaptureLocationSource.UNAVAILABLE
+                container.locationTracker.isApproximate() -> CaptureLocationSource.APPROXIMATE
+                else -> CaptureLocationSource.DEVICE
+            },
             headingDegrees = null,
         )
     }
@@ -774,6 +813,10 @@ class FloraGuideViewModel(
         val selected = current.selectedCandidate ?: return
         if (capture.location == null) {
             showMessage("A usable capture location is required before saving this observation. Retake with location enabled.")
+            return
+        }
+        if (capture.locationSource == CaptureLocationSource.APPROXIMATE) {
+            showMessage("Saving needs precise location. Tap Use precise location on Observe, then take a new photo.")
             return
         }
         val observation = runCatching {
