@@ -53,7 +53,7 @@ The log contains timings, HTTP status codes, Pl@ntNet's first choices and ALA ou
 
 ## 4. Fill in the record sheet and send it
 
-Copy the sheet below into a comment on #53, fill it in, and attach `latency-log.txt`. The timings come from the log; the per-capture table is optional, but it helps judge whether location evidence changed the answer for the better.
+Copy the sheet below into a comment on #53, fill it in, and attach `latency-log.txt`. Collected timings go into [latency-results.csv](latency-results.csv). The timings come from the log; the per-capture table is optional, but it helps judge whether location evidence changed the answer for the better.
 
 ```markdown
 ### Latency field test

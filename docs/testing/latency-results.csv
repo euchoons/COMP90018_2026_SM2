@@ -1,0 +1,24 @@
+date_time,tester,device,android,network,build,kind,upload_ms,download_ms,plantnet_ms,ala_lookup_ms,to_image_only_ms,to_fused_ms,context,image_first_choice,final_first_choice,first_choice_changed
+2026-10-06 19:30:23,Tom,Pixel 10a,16,unknown,9bdf364 plus the latency line (before 51ba103),first,,,3949,322,14864,15190,ALA_LIVE,,,
+2026-10-06 19:36:09,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,3983,372,15947,16322,ALA_LIVE,,,
+2026-10-06 19:36:50,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,3888,1146,15149,16298,ALA_LIVE,,,
+2026-10-06 19:37:30,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,4561,119,15375,15495,ALA_LIVE,,,
+2026-10-06 19:38:04,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,4747,275,16388,16664,ALA_LIVE,,,
+2026-10-06 22:13:23,Tom,Pixel 10a,16,unknown,51ba103,first,9016,3133,4231,530,16395,16929,ALA_LIVE,Anigozanthos flavidus,Anigozanthos flavidus,false
+2026-10-06 22:14:02,Tom,Pixel 10a,16,unknown,51ba103,first,7826,3215,3708,397,14760,15160,ALA_LIVE,Chenopodium spinescens,Chenopodium spinescens,false
+2026-10-07 13:41:47,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,15577,13914,5172,481,34678,35163,ALA_LIVE,Chrysocephalum semipapposum,Chrysocephalum semipapposum,false
+2026-10-07 13:42:22,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,9645,3500,5258,723,18416,19141,ALA_LIVE,Dianella revoluta,Dianella revoluta,false
+2026-10-07 13:43:00,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,10731,3649,7180,1187,21571,22759,ALA_LIVE,Phymaspermum acerosum,Phymaspermum acerosum,false
+2026-10-07 13:43:30,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7910,5208,4512,185,17638,17825,ALA_LIVE,Xerochrysum viscosum,Xerochrysum viscosum,false
+2026-10-07 13:46:10,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,13384,3170,4354,312,20917,21232,ALA_LIVE,Elaeocarpus reticulatus,Elaeocarpus reticulatus,false
+2026-10-07 13:46:40,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7810,3515,4833,131,16163,16296,ALA_LIVE,Orthrosanthus multiflorus,Orthrosanthus multiflorus,false
+2026-10-07 13:47:10,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8233,3931,4926,604,17102,17708,ALA_LIVE,Chorizema cordatum,Chorizema cordatum,false
+2026-10-07 13:47:58,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8150,4156,4203,405,16517,16924,ALA_LIVE,Asplenium australasicum,Asplenium australasicum,false
+2026-10-07 13:48:34,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7452,3226,4550,294,15235,15531,ALA_LIVE,Platanus occidentalis,Platanus orientalis,true
+2026-10-07 13:49:03,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,6839,2984,4235,208,14069,14279,ALA_LIVE,Pinus bungeana,Platanus orientalis,true
+2026-10-07 13:49:51,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8246,3057,4159,292,15474,15768,ALA_LIVE,Berberis bealei,Berberis bealei,false
+2026-10-07 13:50:48,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8102,3606,4433,217,16152,16370,ALA_LIVE,Melaleuca armillaris,Melaleuca armillaris,false
+2026-10-07 13:52:05,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,20626,4428,4450,186,29512,29700,ALA_LIVE,Acacia baileyana,Acacia baileyana,false
+2026-10-07 13:52:37,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8513,3190,4643,162,16354,16518,ALA_LIVE,Melaleuca linariifolia,Melaleuca linariifolia,false
+2026-10-07 13:53:23,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8124,4532,4225,128,16890,17019,ALA_LIVE,Helleborus orientalis,Helleborus orientalis,false
+2026-10-07 13:53:50,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8830,3735,4298,158,16877,17036,ALA_LIVE,Acer pseudoplatanus,Acer pseudoplatanus,false

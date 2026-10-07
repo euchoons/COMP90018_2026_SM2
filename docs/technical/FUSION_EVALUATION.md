@@ -216,6 +216,28 @@ for reference.
 - **Scope:** 156 test photos from one area around Parkville. The result supports this design
   decision for the app; it does not show that the rule is better elsewhere or in general.
 
+## Latency on a phone (#53)
+
+Live captures with a Pixel 10a (Android 16) on the Parkville campus on 2026-10-06 and 2026-10-07, measured with the `FloraGuide-Latency` log ([procedure](../testing/LATENCY_FIELD_TEST.md), [timings](../testing/latency-results.csv)). Each time runs from the start of upload, after the user agrees to send the photo. The mobile-data block is still to be run.
+
+| Stage, Wi-Fi | Captures | P50 | P95 |
+|---|---|---|---|
+| Firebase upload | 16 | 8.2 s | 20.6 s |
+| Firebase download | 16 | 3.6 s | 13.9 s |
+| Pl@ntNet request | 20 | 4.5 s | 5.3 s |
+| ALA lookup | 20 | 0.3 s | 1.1 s |
+| To the image-only result | 20 | 16.4 s | 29.5 s |
+| To the fused result | 20 | 16.7 s | 29.7 s |
+
+Percentiles are nearest-rank, so with 16 or 20 captures P95 is the slowest or second-slowest capture. The four earliest Wi-Fi captures predate the Firebase stage timings.
+
+- **The Firebase round trip dominates.** Uploading the 1.3–1.9 MB photo and downloading it again takes about 12 s, roughly 70% of the wait. Pl@ntNet takes about 4.5 s and ALA under half a second.
+- **The slow captures had slow transfers.** The first capture of a session took 35 s (upload 15.6 s, download 13.9 s), and another took 29.7 s (upload 20.6 s).
+- **Context changed the first choice in 2 of the 16 captures on 2026-10-07.** Both were plane trees, and London plane (*Platanus × hispanica*) was a candidate in both. Replaying the two photos with counts around the campus centre showed why. ALA files London plane as a cultivar, which the species-only rule rejected, so its 163 nearby records counted as zero and *Platanus orientalis*, with 6 records, moved to first. Under #76's rule, *Platanus × hispanica* comes first in both photos.
+- **Garden plants are poorly covered.** In four of the five photos on 2026-10-06, only one of the five candidates matched a species in ALA.
+
+These figures come from one phone on one campus, with about 20 captures per network. The first capture of a session can include connection set-up.
+
 ## Reproduce
 
 The collector reads the Pl@ntNet key from `local.properties` and never writes it out. It queries
