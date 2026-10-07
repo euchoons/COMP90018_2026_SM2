@@ -169,6 +169,12 @@ class AlaOccurrenceClient(
 internal data class AlaTaxon(val id: String, val acceptedName: String)
 
 /** Null means unresolved; malformed success payloads are failures, never ecological evidence. */
+/**
+ * A species or one plant below it. ALA files some names as a subspecies, variety or unranked cultivar entry,
+ * e.g. London plane as "Platanus x hispanica 'Acerifolia'" (#76); a genus or higher stays unmatched.
+ */
+private val COUNTABLE_RANKS = setOf("species", "subspecies", "variety", "form", "cultivar", "unranked")
+
 internal fun parseTaxon(body: String, requestedName: String): AlaTaxon? = try {
     val root = JSONObject(body)
     val success = root.opt("success")
@@ -187,7 +193,7 @@ internal fun parseTaxon(body: String, requestedName: String): AlaTaxon? = try {
             root.opt("synonymType") == "OBJECTIVE_SYNONYM"
         // A canonical match differs from an exact one only in authorship or formatting.
         val nameMatched = match == "exactMatch" || match == "canonicalMatch"
-        if (!sameSpecies || !nameMatched || !rank.equals("species", ignoreCase = true)) null else {
+        if (!sameSpecies || !nameMatched || rank.lowercase() !in COUNTABLE_RANKS) null else {
             val id = root.opt("taxonConceptID") as? String
             if (id.isNullOrBlank() || id.length > 2_048 || id.any { it.isISOControl() }) {
                 throw AlaResponseException("ALA name matching returned an invalid taxonConceptID")

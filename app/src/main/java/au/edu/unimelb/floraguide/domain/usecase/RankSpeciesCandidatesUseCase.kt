@@ -22,7 +22,7 @@ class RankSpeciesCandidatesUseCase(
     private val seasonWeight: Double = 0.35,
     private val habitatWeight: Double = 0.45,
     private val locationSmoothing: Double = 3.0,
-    private val maximumLiveBoost: Double = 20.5,
+    private val maximumLiveBoost: Double = LOCATION_CAP,
     private val liveCountSaturation: Int = 50,
     /** Documented flowering by exact scientific name; the app passes the bundled VicFlora table. */
     private val floweringRecords: Map<String, FloweringRecord> = emptyMap(),
@@ -154,8 +154,12 @@ class RankSpeciesCandidatesUseCase(
     }
 
     companion object {
+        /** Trained in #20; kept after #76 widened ALA matching (docs/technical/FUSION_EVALUATION.md). */
+        const val LOCATION_CAP = 20.5
+
+        // v3: ALA cultivar and subspecies matches for the same plant are counted (#76).
         const val LIVE_RULE_VERSION =
-            "ala-positive-support-v2-unmatched-zero-cap20.5-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5" +
+            "ala-positive-support-v3-unmatched-zero-cap20.5-saturation50+flowering-mismatch-v1-x1.00-tolerance1-flower0.5" +
                 "+vicflora-2026-09-25"
         const val IMAGE_ONLY_RULE_VERSION = "image-only-normalised-v1"
         const val DEMO_RULE_VERSION = "synthetic-ecology-demo-v1"
