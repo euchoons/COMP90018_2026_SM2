@@ -43,7 +43,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
+import au.edu.unimelb.floraguide.ui.MISSION_SPECIES_GOAL
 import au.edu.unimelb.floraguide.ui.components.InformationCard
+import au.edu.unimelb.floraguide.ui.components.MissionCounter
+import au.edu.unimelb.floraguide.ui.components.MissionNote
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.SensorSummary
 
@@ -248,7 +251,7 @@ private fun PipelineNode(icon: ImageVector, label: String, modifier: Modifier = 
 
 @Composable
 private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
-    val progress = (uniqueSpecies / 3f).coerceIn(0f, 1f)
+    val progress = (uniqueSpecies / MISSION_SPECIES_GOAL.toFloat()).coerceIn(0f, 1f)
     Card(
         onClick = onOpenCollection,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -263,30 +266,27 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                // The title wraps so the counter keeps its width.
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(
                         text = "Starter mission",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                     Text(
-                        text = "Document 3 campus species",
+                        text = "Document $MISSION_SPECIES_GOAL different campus species",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
-                Text(
-                    text = "$uniqueSpecies / 3",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                MissionCounter(uniqueSpecies)
             }
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth(),
             )
+            MissionNote(uniqueSpecies)
         }
     }
 }
