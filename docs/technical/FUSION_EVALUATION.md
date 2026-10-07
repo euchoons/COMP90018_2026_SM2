@@ -231,25 +231,26 @@ for reference.
 
 ## Latency on a phone (#53)
 
-Live captures with a Pixel 10a (Android 16) on the Parkville campus on 2026-10-06 and 2026-10-07, measured with the `FloraGuide-Latency` log ([procedure](../testing/LATENCY_FIELD_TEST.md), [timings](../testing/latency-results.csv)). Each time runs from the start of upload, after the user agrees to send the photo. The mobile-data block is still to be run.
+Live captures measured with the `FloraGuide-Latency` log ([procedure](../testing/LATENCY_FIELD_TEST.md), [timings](../testing/latency-results.csv)): 20 on Wi-Fi with a Pixel 10a (Android 16) on the Parkville campus on 2026-10-06 and 2026-10-07, and 21 on mobile data (carrier not recorded) with a OnePlus PGP110 (Android 15) in Bentleigh East on 2026-10-07. Each time runs from the start of upload, after the user agrees to send the photo. No capture failed, timed out or needed a retry, and every Pl@ntNet and ALA request returned HTTP 200. One Wi-Fi capture was abandoned after its upload and is not counted.
 
-| Stage, Wi-Fi | Captures | P50 | P95 |
-|---|---|---|---|
-| Firebase upload | 16 | 8.2 s | 20.6 s |
-| Firebase download | 16 | 3.6 s | 13.9 s |
-| Pl@ntNet request | 20 | 4.5 s | 5.3 s |
-| ALA lookup | 20 | 0.3 s | 1.1 s |
-| To the image-only result | 20 | 16.4 s | 29.5 s |
-| To the fused result | 20 | 16.7 s | 29.7 s |
+| Stage | Wi-Fi P50 | Wi-Fi P95 | Mobile data P50 | Mobile data P95 |
+|---|---|---|---|---|
+| Firebase upload | 8.2 s | 20.6 s | 10.1 s | 12.2 s |
+| Firebase download | 3.6 s | 13.9 s | 3.2 s | 4.0 s |
+| Pl@ntNet request | 4.5 s | 5.3 s | 7.4 s | 12.1 s |
+| ALA lookup | 0.3 s | 1.1 s | 0.3 s | 0.5 s |
+| To the image-only result | 16.4 s | 29.5 s | 21.2 s | 25.4 s |
+| To the fused result | 16.7 s | 29.7 s | 21.5 s | 25.8 s |
 
-Percentiles are nearest-rank, so with 16 or 20 captures P95 is the slowest or second-slowest capture. The four earliest Wi-Fi captures predate the Firebase stage timings.
+Percentiles are nearest-rank, so P95 is the slowest or second-slowest capture. The Wi-Fi Firebase rows cover 16 captures, because the four earliest predate the Firebase stage timings; the other rows cover all 20 Wi-Fi or 21 mobile-data captures.
 
-- **The Firebase round trip dominates.** Uploading the 1.3–1.9 MB photo and downloading it again takes about 12 s, roughly 70% of the wait. Pl@ntNet takes about 4.5 s and ALA under half a second.
-- **The slow captures had slow transfers.** The first capture of a session took 35 s (upload 15.6 s, download 13.9 s), and another took 29.7 s (upload 20.6 s).
-- **Context changed the first choice in 2 of the 16 captures on 2026-10-07, both plane trees, and was right for the wrong reason.** The University's [Parkville tree inventory](https://uom.maps.arcgis.com/home/item.html?id=f034a3c2ea664ad2920ec3e623682895) lists only Oriental planes (*Platanus orientalis*) within 50 m of where the photos were taken, the nearest 11 m away. *P. orientalis* became the first choice in both photos, but only because ALA files London plane (*Platanus × hispanica*, also a candidate) as a cultivar. The species-only rule rejected that entry, so London plane's 163 nearby records counted as zero. Replaying the photos under #76's rule, which counts those records, puts London plane first in both. The location evidence then favours the plane recorded most around the city (163 records against 6) over the one actually standing there. ALA counts within 8 km cannot tell neighbouring trees apart; the inventory, which records 17 Oriental and 64 London planes on campus, could, although it covers trees only and states no licence.
-- **Garden plants are poorly covered.** In four of the five photos on 2026-10-06, only one of the five candidates matched a species in ALA.
+- **The Firebase round trip dominates.** Uploading the 1.3–2.2 MB photo and downloading it again takes a median 12.3 s on Wi-Fi and 13.8 s on mobile data, 74% and 62% of the total wait. Pl@ntNet takes a median 4.5 s on Wi-Fi and 7.4 s on mobile data, and ALA under half a second.
+- **Mobile data was slower at the median but had no very slow captures.** Its median fused result came 4.8 s later. Most of the gap is in the two stages that send the photo out: the Firebase upload (+1.9 s) and the Pl@ntNet request, which uploads the photo again (+2.9 s). The download back was slightly faster. Every mobile-data capture finished within 19.0–26.6 s, whereas two Wi-Fi captures took 35.2 s and 29.7 s because of slow transfers: the first capture of a session (upload 15.6 s, download 13.9 s) and one with a 20.6 s upload.
+- **On Wi-Fi, context changed the first choice in 2 of the 16 captures on 2026-10-07, both plane trees, and was right for the wrong reason.** The University's [Parkville tree inventory](https://uom.maps.arcgis.com/home/item.html?id=f034a3c2ea664ad2920ec3e623682895) lists only Oriental planes (*Platanus orientalis*) within 50 m of where the photos were taken, the nearest 11 m away. *P. orientalis* became the first choice in both photos, but only because ALA files London plane (*Platanus × hispanica*, also a candidate) as a cultivar. The species-only rule rejected that entry, so London plane's 163 nearby records counted as zero. The app now counts those records (#76), and replaying the photos under that rule puts London plane first in both. The location evidence then favours the plane recorded most around the city (163 records against 6) over the one actually standing there. ALA counts within 8 km cannot tell neighbouring trees apart; the inventory, which records 17 Oriental and 64 London planes on campus, could, although it covers trees only and states no licence.
+- **On mobile data, context changed the first choice in 2 of the 21 captures:** *Hydrangea* spp. became *H. macrophylla*, and *Clivia × cyrtanthiflora* became *C. miniata*. ALA could not match either of Pl@ntNet's first choices to a species: one is a genus-level label, and ALA returns the hybrid under a differently written name, which the rule does not accept as the same name. Both counted as zero records, so a species of the same genus with nearby records moved ahead. The tester did not record whether either answer was right.
+- **Garden plants are poorly covered.** In four of the five photos on 2026-10-06, only one of the five candidates matched a species in ALA. On mobile data, where Pl@ntNet's first choices were all garden or indoor plants, ALA matched 37 of the 95 candidate names, and 9 of the 21 captures had at most one match. All these captures used the species-only matching from before #76.
 
-These figures come from one phone on one campus, with about 20 captures per network. The first capture of a session can include connection set-up.
+Each network was tested once, on a different phone, in a different place and with different plants, and the mobile-data photos were about a tenth larger (median 1.65 MB against 1.48 MB). The gap between the columns is therefore indicative, not a controlled network comparison. With about 20 captures per network, P95 rests on the slowest two captures. The first capture of a session can include connection set-up.
 
 ## Reproduce
 
