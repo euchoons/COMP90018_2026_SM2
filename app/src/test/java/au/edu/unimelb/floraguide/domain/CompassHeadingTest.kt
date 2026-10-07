@@ -1,6 +1,7 @@
 package au.edu.unimelb.floraguide.domain
 
 import au.edu.unimelb.floraguide.domain.sensor.observationHeadingDegrees
+import au.edu.unimelb.floraguide.domain.sensor.trueHeadingDegrees
 import kotlin.math.cos
 import kotlin.math.sin
 import org.junit.Assert.assertEquals
@@ -52,6 +53,14 @@ class CompassHeadingTest {
         val y = floatArrayOf(0f, -c, c)
         val z = floatArrayOf(0f, c, c)
         assertEquals(180f, observationHeadingDegrees(rotation(x = west, y = y, z = z)), 0.01f)
+    }
+
+    @Test
+    fun trueHeadingAddsEastDeclinationAndWrapsAround() {
+        assertEquals(188f, trueHeadingDegrees(176f, 12f), 0.001f)
+        assertEquals(2f, trueHeadingDegrees(350f, 12f), 0.001f)
+        assertEquals(0f, trueHeadingDegrees(348f, 12f), 0.001f)
+        assertEquals(355f, trueHeadingDegrees(5f, -10f), 0.001f)
     }
 
     /** Builds the row-major matrix whose columns are the device axes in world coordinates. */

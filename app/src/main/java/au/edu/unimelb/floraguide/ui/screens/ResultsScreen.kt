@@ -192,6 +192,13 @@ fun ResultsScreen(
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
+            if (state.capture?.locationSource == CaptureLocationSource.APPROXIMATE) {
+                item {
+                    Text("Approximate location found nearby records, but saving pins the plant on the map. " +
+                        "Tap Use precise location on Observe, then take a new photo.",
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
         item {
             InformationCard("Interpretation and privacy",

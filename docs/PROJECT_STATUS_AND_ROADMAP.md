@@ -12,7 +12,7 @@ Updated 2026-10-01 against the current implementation. This page owns current fe
 | Camera | Implemented in source | CameraX capture, rotation, resize and permission handling; the [physical-device checklist](testing/CAMERA_VALIDATION.md#physical-device-checklist) remains required. |
 | Motion sensing | Implemented in source | Accelerometer/gyroscope stability gate with provisional thresholds; [measured calibration](technical/MOTION_STABILITY_CALIBRATION.md#device-calibration-procedure) is still required. |
 | Light and heading | Implemented in source | Optional guidance and capture-time heading with missing-sensor fallbacks; [device checks](testing/HARDWARE_ADAPTERS_VERIFICATION.md#device-checklist) remain open. |
-| Location | Implemented in source | Capture-time freshness/accuracy eligibility; unusable location skips ALA. Campus coordinates belong to the guided demo only. |
+| Location | Implemented in source | Capture-time freshness/accuracy eligibility; unusable location skips ALA, and the status reports when the last fix expires. Campus coordinates belong to the guided demo only. The limits are [justified](testing/LOCATION_VALIDATION.md); device measurements remain. |
 | Image recognition | Implemented in source (cloud) | Firebase upload → stored-photo download → Pl@ntNet identification. The API requests eight candidates; the UI/ranker retain five. Live use requires configuration, an authenticated Firebase session and network access. The on-device model was dropped (#50). |
 | ALA connectivity | Implemented in source | Species-level name resolution, concurrent count requests, bounded retry and explicit live/partial/unavailable states. |
 | Fusion algorithm | Implemented and trained offline | Geographic support trained in #20, with names ALA cannot match counted as zero records; the flowering check is shown but does not reorder. See the [live policy](technical/MISSING_CONTEXT_POLICY.md). Log-linear season/habitat priors are confined to the guided demo. |
@@ -32,7 +32,7 @@ Updated 2026-10-01 against the current implementation. This page owns current fe
 
 ## Next work
 
-1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), camera checklist and sensor calibration on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
+1. Complete and record the [device API cases](testing/DEVICE_API_TEST_CASES.md), the [device testing register](testing/DEVICE_TESTING_EVIDENCE.md), camera checklist, sensor calibration and [location measurements](testing/LOCATION_VALIDATION.md#device-measurement-procedure) on the required physical phones. Keep device, Android version, tested revision and evidence with each result.
 2. Review and integrate the separate per-photo consent work in [PR #48](https://github.com/euchoons/COMP90018_2026_SM2/pull/48). The app currently uploads after capture without that consent step.
 3. Verify configured Firebase/Maps behaviour, offline synchronisation/retry and the remaining [privacy limitations](PRIVACY_POLICY.md) against explicit acceptance evidence.
 4. Finish accessibility and task-based usability checks, then assemble the report, demonstration video, reproducible build evidence and itemised contributions.

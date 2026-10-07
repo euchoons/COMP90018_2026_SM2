@@ -5,6 +5,7 @@ import android.util.Size
 import android.view.OrientationEventListener
 import android.view.Surface
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.CameraState
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -47,17 +48,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import au.edu.unimelb.floraguide.domain.model.LightCondition
 import au.edu.unimelb.floraguide.domain.model.SensorSnapshot
+import au.edu.unimelb.floraguide.domain.sensor.trueHeadingDegrees
 import java.io.File
 
 @Composable
 fun CameraCaptureCard(
     snapshot: SensorSnapshot,
-    captureEnabled: Boolean,
-    captureHint: String,
+    guidance: CaptureGuidance,
+    /** Declination at the current fix; null shows the bearing as magnetic. */
+    headingDeclinationDegrees: Float?,
     onCaptureStarted: () -> String?,
     onPhotoCaptured: (String, Float?) -> Unit,
     onError: (String) -> Unit,
@@ -75,11 +79,13 @@ fun CameraCaptureCard(
     var isSaving by remember { mutableStateOf(false) }
     var cameraReady by remember { mutableStateOf(false) }
     var cameraFailed by remember { mutableStateOf(false) }
+    var availability by remember { mutableStateOf(CameraAvailability.STARTING) }
     var isRearCamera by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, previewView) {
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
+        var stopObservingCamera: (() -> Unit)? = null
         // The provider future can complete after the user has already left the Scan screen.
         // Binding at that point would reopen the camera for a preview nobody can see.
         var disposed = false
@@ -106,7 +112,7 @@ fun CameraCaptureCard(
                         .setResolutionSelector(CAPTURE_RESOLUTION)
                         .build()
                     cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    val camera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         selector,
                         preview,
@@ -114,8 +120,15 @@ fun CameraCaptureCard(
                     )
                     imageCapture = capture
                     isRearCamera = selector == CameraSelector.DEFAULT_BACK_CAMERA
-                    cameraReady = true
                     cameraFailed = false
+                    // Binding only requests the camera: enable capture once it has actually opened,
+                    // and disable it again if the camera closes or another app takes it.
+                    val observer = Observer<CameraState> { state ->
+                        availability = cameraAvailability(state.type, state.error?.code)
+                        cameraReady = availability == CameraAvailability.OPEN
+                    }
+                    camera.cameraInfo.cameraState.observe(lifecycleOwner, observer)
+                    stopObservingCamera = { camera.cameraInfo.cameraState.removeObserver(observer) }
                 }.onFailure { error ->
                     cameraReady = false
                     cameraFailed = true
@@ -127,6 +140,8 @@ fun CameraCaptureCard(
 
         onDispose {
             disposed = true
+            stopObservingCamera?.invoke()
+            availability = CameraAvailability.STARTING
             provider?.unbindAll()
             imageCapture = null
             cameraReady = false
@@ -171,12 +186,8 @@ fun CameraCaptureCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CameraOverlayPill(
-                text = when {
-                    !snapshot.canMeasureStability -> "Stability n/a"
-                    snapshot.isStable -> "Steady"
-                    else -> "Hold still"
-                },
-                positive = snapshot.canMeasureStability && snapshot.isStable,
+                text = guidance.stabilityLabel,
+                positive = guidance.stabilityPositive,
             )
             CameraOverlayPill(
                 text = lightLabel(snapshot),
@@ -186,7 +197,9 @@ fun CameraCaptureCard(
                 text = when {
                     !isRearCamera || snapshot.headingDegrees == null -> "Heading n/a"
                     snapshot.compassNeedsCalibration -> "Calibrate compass"
-                    else -> "${snapshot.headingDegrees.toInt()}°"
+                    // True north matches ordinary compass apps; without a fix, say it is magnetic.
+                    headingDeclinationDegrees == null -> "${snapshot.headingDegrees.toInt()}° magnetic"
+                    else -> "${trueHeadingDegrees(snapshot.headingDegrees, headingDeclinationDegrees).toInt()}°"
                 },
                 positive = heading != null,
             )
@@ -203,8 +216,10 @@ fun CameraCaptureCard(
         ) {
             Text(
                 text = when {
-                    cameraReady -> captureHint
-                    cameraFailed -> "Camera unavailable — the guided demo on Home still works"
+                    cameraReady -> guidance.hint
+                    cameraFailed || availability == CameraAvailability.UNAVAILABLE ->
+                        "Camera unavailable — the guided demo on Home still works"
+                    availability == CameraAvailability.IN_USE -> "Another app is using the camera. Close it to continue."
                     else -> "Starting CameraX…"
                 },
                 style = MaterialTheme.typography.labelLarge,
@@ -231,7 +246,7 @@ fun CameraCaptureCard(
                         },
                     )
                 },
-                enabled = cameraReady && captureEnabled && !isSaving,
+                enabled = cameraReady && guidance.shutterEnabled && !isSaving,
                 modifier = Modifier.size(72.dp),
                 shape = CircleShape,
                 contentPadding = ButtonDefaults.ContentPadding,

@@ -9,6 +9,11 @@ complete account erasure or a safe encrypted-storage upgrade.
 - Saved observation coordinates and live ALA request coordinates are rounded to three decimal
   places. This reduces precision; it does not make locations anonymous. Capture-time location
   remains in memory while the current scan is available for analysis or retry.
+- Debug builds log each location fix, including precise coordinates, to Logcat under
+  `FloraGuide-Location` for accuracy measurement; release builds do not. Logcat stays on the
+  phone and is read over adb, and committed measurement evidence reports distances only.
+- With approximate location only, Android's blurred position is used for the ALA query but never
+  saved: saving an observation needs precise location.
 - ALA receives approximate coordinates, a query radius and taxon information. It does not need
   the user's Firebase UID or plant photo.
 - Live identification uploads photos to Firebase Storage and sends image data to Pl@ntNet over

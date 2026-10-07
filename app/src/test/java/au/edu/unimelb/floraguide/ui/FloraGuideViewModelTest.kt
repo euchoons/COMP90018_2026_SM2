@@ -190,6 +190,48 @@ class FloraGuideViewModelTest {
         runCurrent()
     }
 
+    @Test fun `stability gate setting survives navigation and account changes`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.goToScan()
+        assertTrue(model.uiState.value.stabilityGateEnabled)
+
+        model.setStabilityGateEnabled(false)
+        model.goHome()
+        model.goToScan()
+        assertFalse(model.uiState.value.stabilityGateEnabled)
+
+        // An account change clears the scan, but the gate is a device preference.
+        state.value = AuthState.Authenticated(UserProfile("A", null, null, false))
+        runCurrent()
+        assertFalse(model.uiState.value.stabilityGateEnabled)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `a stale fix stops the location status claiming it is ready`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val onLocation = slot<(GeoPoint) -> Unit>()
+        val onStale = slot<() -> Unit>()
+        every { container.locationTracker.start(capture(onLocation), any(), capture(onStale)) } just Runs
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+        model.goToScan()
+        model.onLocationPermissionResult(true)
+
+        onLocation.captured(GeoPoint(-37.7963, 144.9614, 5f))
+        assertEquals("Device location ready · ±5 m", model.uiState.value.locationStatus)
+        onStale.captured()
+        assertEquals("Waiting for a new device location. A capture now would skip ALA.", model.uiState.value.locationStatus)
+        // Still a device fix: a live scan never falls back to the demo coordinate.
+        assertFalse(model.uiState.value.usingDemoLocation)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
     @Test fun `image-only and final rankings contain the same candidates`() = runTest(dispatcher) {
         state.value = AuthState.OfflineGuest
         val species = (1..8).map {
@@ -249,6 +291,53 @@ class FloraGuideViewModelTest {
         assertEquals(shutterFix, capture.location)
         assertEquals(CaptureLocationSource.DEVICE, capture.locationSource)
         assertEquals(45f, capture.headingDegrees)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `saved heading is converted to true north at the capture location`() = runTest(dispatcher) {
+        state.value = AuthState.OfflineGuest
+        val fix = GeoPoint(-37.7963, 144.9614, 5f)
+        every { container.locationTracker.snapshotForObservation() } returns fix
+        every { container.locationTracker.magneticDeclinationDegrees(fix, any()) } returns 12f
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+
+        model.goToScan()
+        val captureId = requireNotNull(model.beginCapture())
+        model.analyzeCapturedPhoto("/capture.jpg", 350f)
+        model.approvePhotoUpload(captureId)
+        runCurrent()
+
+        // 350° magnetic plus 12° east declination wraps to 2° true.
+        assertEquals(2f, requireNotNull(model.uiState.value.captureHeadingDegrees), 0.001f)
+
+        state.value = AuthState.Unauthenticated
+        runCurrent()
+    }
+
+    @Test fun `approximate location feeds ALA but cannot pin a saved observation`() = runTest(dispatcher) {
+        prepareLiveIdentification()
+        val approximateFix = GeoPoint(-37.80, 144.96, 2_000f)
+        every { container.locationTracker.snapshotForObservation() } returns approximateFix
+        every { container.locationTracker.isApproximate() } returns true
+        val model = FloraGuideViewModel(container)
+        runCurrent()
+
+        model.goToScan()
+        val captureId = requireNotNull(model.beginCapture())
+        model.analyzeCapturedPhoto("/capture.jpg", null)
+        model.approvePhotoUpload(captureId)
+        runCurrent()
+
+        val ui = model.uiState.value
+        assertEquals(CaptureLocationSource.APPROXIMATE, ui.capture?.locationSource)
+        coVerify { container.speciesContextRepository.nearbyOccurrenceCounts(any(), approximateFix, any(), any()) }
+        // Everything else needed to save is in place; only the approximate fix blocks it.
+        assertNotNull(ui.selectedCandidate)
+        assertFalse(ui.isClassifying || ui.isContextLoading)
+        assertFalse(ui.canSave)
 
         state.value = AuthState.Unauthenticated
         runCurrent()
