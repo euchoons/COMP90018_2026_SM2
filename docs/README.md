@@ -28,6 +28,7 @@ These documents distinguish test specifications, earlier checks and pending phys
 - [Device API test cases](testing/DEVICE_API_TEST_CASES.md) — DT-01 through DT-14 specifications and the execution register.
 - [Camera validation](testing/CAMERA_VALIDATION.md) — camera fixes, the reviewed capture/upload path and outstanding device checks.
 - [Hardware adapters verification](testing/HARDWARE_ADAPTERS_VERIFICATION.md) — light/heading behaviour and outstanding device checks.
+- [Latency field test](testing/LATENCY_FIELD_TEST.md) — #53 procedure and record sheet for measuring Pl@ntNet, Firebase and ALA timings on a phone.
 - [Location validation](testing/LOCATION_VALIDATION.md) — accuracy and freshness limits, the storage grid, map data and the location measurement procedure.
 - [Device testing evidence](testing/DEVICE_TESTING_EVIDENCE.md) — two-phone register for denied permissions, missing sensors and camera/location failures, and the evidence helper.
 

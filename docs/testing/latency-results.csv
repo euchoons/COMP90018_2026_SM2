@@ -1,0 +1,45 @@
+date_time,tester,device,android,network,build,kind,upload_ms,download_ms,plantnet_ms,ala_lookup_ms,to_image_only_ms,to_fused_ms,context,image_first_choice,final_first_choice,first_choice_changed
+2026-10-06 19:30:23,Tom,Pixel 10a,16,unknown,9bdf364 plus the latency line (before 51ba103),first,,,3949,322,14864,15190,ALA_LIVE,,,
+2026-10-06 19:36:09,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,3983,372,15947,16322,ALA_LIVE,,,
+2026-10-06 19:36:50,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,3888,1146,15149,16298,ALA_LIVE,,,
+2026-10-06 19:37:30,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,4561,119,15375,15495,ALA_LIVE,,,
+2026-10-06 19:38:04,Tom,Pixel 10a,16,Wi-Fi,9bdf364 plus the latency line (before 51ba103),first,,,4747,275,16388,16664,ALA_LIVE,,,
+2026-10-06 22:13:23,Tom,Pixel 10a,16,unknown,51ba103,first,9016,3133,4231,530,16395,16929,ALA_LIVE,Anigozanthos flavidus,Anigozanthos flavidus,false
+2026-10-06 22:14:02,Tom,Pixel 10a,16,unknown,51ba103,first,7826,3215,3708,397,14760,15160,ALA_LIVE,Chenopodium spinescens,Chenopodium spinescens,false
+2026-10-07 13:41:47,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,15577,13914,5172,481,34678,35163,ALA_LIVE,Chrysocephalum semipapposum,Chrysocephalum semipapposum,false
+2026-10-07 13:42:22,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,9645,3500,5258,723,18416,19141,ALA_LIVE,Dianella revoluta,Dianella revoluta,false
+2026-10-07 13:43:00,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,10731,3649,7180,1187,21571,22759,ALA_LIVE,Phymaspermum acerosum,Phymaspermum acerosum,false
+2026-10-07 13:43:30,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7910,5208,4512,185,17638,17825,ALA_LIVE,Xerochrysum viscosum,Xerochrysum viscosum,false
+2026-10-07 13:46:10,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,13384,3170,4354,312,20917,21232,ALA_LIVE,Elaeocarpus reticulatus,Elaeocarpus reticulatus,false
+2026-10-07 13:46:40,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7810,3515,4833,131,16163,16296,ALA_LIVE,Orthrosanthus multiflorus,Orthrosanthus multiflorus,false
+2026-10-07 13:47:10,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8233,3931,4926,604,17102,17708,ALA_LIVE,Chorizema cordatum,Chorizema cordatum,false
+2026-10-07 13:47:58,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8150,4156,4203,405,16517,16924,ALA_LIVE,Asplenium australasicum,Asplenium australasicum,false
+2026-10-07 13:48:34,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,7452,3226,4550,294,15235,15531,ALA_LIVE,Platanus occidentalis,Platanus orientalis,true
+2026-10-07 13:49:03,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,6839,2984,4235,208,14069,14279,ALA_LIVE,Pinus bungeana,Platanus orientalis,true
+2026-10-07 13:49:51,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8246,3057,4159,292,15474,15768,ALA_LIVE,Berberis bealei,Berberis bealei,false
+2026-10-07 13:50:48,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8102,3606,4433,217,16152,16370,ALA_LIVE,Melaleuca armillaris,Melaleuca armillaris,false
+2026-10-07 13:52:05,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,20626,4428,4450,186,29512,29700,ALA_LIVE,Acacia baileyana,Acacia baileyana,false
+2026-10-07 13:52:37,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8513,3190,4643,162,16354,16518,ALA_LIVE,Melaleuca linariifolia,Melaleuca linariifolia,false
+2026-10-07 13:53:23,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8124,4532,4225,128,16890,17019,ALA_LIVE,Helleborus orientalis,Helleborus orientalis,false
+2026-10-07 13:53:50,Tom,Pixel 10a,16,Wi-Fi,51ba103,first,8830,3735,4298,158,16877,17036,ALA_LIVE,Acer pseudoplatanus,Acer pseudoplatanus,false
+2026-10-07 13:21:31,Mason,OnePlus PGP110,15,mobile data,726963a,first,11020,3420,6167,255,20629,20886,ALA_LIVE,Cymbidium spp.,Cymbidium spp.,false
+2026-10-07 13:22:20,Mason,OnePlus PGP110,15,mobile data,726963a,first,11316,5468,7012,764,23812,24577,ALA_LIVE,Crassula ovata,Crassula ovata,false
+2026-10-07 13:22:53,Mason,OnePlus PGP110,15,mobile data,726963a,first,9760,3187,6433,152,19389,19542,ALA_LIVE,Dendrobium kingianum,Dendrobium kingianum,false
+2026-10-07 13:23:32,Mason,OnePlus PGP110,15,mobile data,726963a,first,7910,2831,14115,262,24872,25137,ALA_LIVE,Monstera deliciosa,Monstera deliciosa,false
+2026-10-07 13:24:10,Mason,OnePlus PGP110,15,mobile data,726963a,first,8806,3488,7605,492,19926,20420,ALA_LIVE,Dendrobium kingianum,Dendrobium kingianum,false
+2026-10-07 13:24:46,Mason,OnePlus PGP110,15,mobile data,726963a,first,8668,3400,7164,373,19242,19616,ALA_LIVE,Kalanchoe tetraphylla,Kalanchoe tetraphylla,false
+2026-10-07 13:25:20,Mason,OnePlus PGP110,15,mobile data,726963a,first,8728,3227,9579,345,21547,21895,ALA_LIVE,Sedum pachyphyllum,Sedum pachyphyllum,false
+2026-10-07 13:25:56,Mason,OnePlus PGP110,15,mobile data,726963a,first,11909,3166,6096,272,21193,21467,ALA_LIVE,Echeveria setosa,Echeveria setosa,false
+2026-10-07 13:26:28,Mason,OnePlus PGP110,15,mobile data,726963a,first,10137,3989,5929,267,20076,20344,ALA_LIVE,Chamaecereus silvestrii,Chamaecereus silvestrii,false
+2026-10-07 13:27:08,Mason,OnePlus PGP110,15,mobile data,726963a,first,10687,3094,7779,385,21571,21958,ALA_LIVE,Carex morrowii,Carex morrowii,false
+2026-10-07 13:27:45,Mason,OnePlus PGP110,15,mobile data,726963a,first,8789,2669,7246,283,18715,19000,ALA_LIVE,Bougainvillea glabra,Bougainvillea glabra,false
+2026-10-07 13:28:20,Mason,OnePlus PGP110,15,mobile data,726963a,first,9785,2837,7715,354,20344,20699,ALA_LIVE,Hydrangea spp.,Hydrangea macrophylla,true
+2026-10-07 13:28:53,Mason,OnePlus PGP110,15,mobile data,726963a,first,10732,3262,6582,238,20584,20823,ALA_LIVE,Osmanthus fragrans,Osmanthus fragrans,false
+2026-10-07 13:29:22,Mason,OnePlus PGP110,15,mobile data,726963a,first,8422,2808,8335,385,19585,19971,ALA_LIVE,Begonia coccinea,Begonia coccinea,false
+2026-10-07 13:29:55,Mason,OnePlus PGP110,15,mobile data,726963a,first,10903,3417,7443,86,21770,21856,ALA_LIVE,Gardenia jasminoides,Gardenia jasminoides,false
+2026-10-07 13:30:29,Mason,OnePlus PGP110,15,mobile data,726963a,first,12195,2840,6754,397,21798,22197,ALA_LIVE,Fatsia japonica,Fatsia japonica,false
+2026-10-07 13:30:58,Mason,OnePlus PGP110,15,mobile data,726963a,first,11253,2941,7614,289,21831,22121,ALA_LIVE,Sarcococca confusa,Sarcococca confusa,false
+2026-10-07 13:31:28,Mason,OnePlus PGP110,15,mobile data,726963a,first,11073,3512,5778,316,20373,20690,ALA_LIVE,Dendrobium kingianum,Dendrobium kingianum,false
+2026-10-07 13:32:01,Mason,OnePlus PGP110,15,mobile data,726963a,first,9742,3579,12083,397,25418,25816,ALA_LIVE,Clivia × cyrtanthiflora,Clivia miniata,true
+2026-10-07 13:32:35,Mason,OnePlus PGP110,15,mobile data,726963a,first,13132,3017,10103,312,26263,26578,ALA_LIVE,Pilea peperomioides,Pilea peperomioides,false
+2026-10-07 13:33:10,Mason,OnePlus PGP110,15,mobile data,726963a,first,9304,3779,9980,293,23078,23373,ALA_LIVE,Schlumbergera truncata,Schlumbergera truncata,false

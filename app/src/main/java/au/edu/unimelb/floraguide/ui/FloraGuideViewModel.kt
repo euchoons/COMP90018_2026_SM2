@@ -51,6 +51,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val CONTEXT_RADIUS_KM = 8
 private const val MAX_ALA_CANDIDATES = 5
+private const val LATENCY_TAG = "FloraGuide-Latency"
 private const val PENDING_CLEANUP_TIMEOUT_MS = 20_000L
 private const val PENDING_CLEANUP_POLL_MS = 1_000L
 
@@ -797,6 +798,10 @@ class FloraGuideViewModel(
 
         requestGeneration++
         val generation = requestGeneration
+        // An ALA-only retry has no end-to-end time; only its lookup is logged.
+        latencyStartedAt = 0L
+        latencyImageAt = 0L
+        latencyKind = "ala-retry"
 
         analysisJob?.cancel()
 
@@ -951,6 +956,25 @@ class FloraGuideViewModel(
         while (container.cleanupPendingPhotos(uid)) delay(PENDING_CLEANUP_POLL_MS)
     } != null
 
+    // #53: one timing line per live result, measured from the start of upload (after photo consent).
+    private var latencyStartedAt = 0L
+    private var latencyImageAt = 0L
+    private var latencyKind = "first"
+
+    private fun logLatency(context: String, alaMillis: Long?) {
+        val now = System.nanoTime()
+        fun since(start: Long, end: Long) = if (start == 0L || end == 0L) "na" else ((end - start) / 1_000_000).toString()
+        val state = _uiState.value
+        // Whether context changed the answer in the field; names only, no location.
+        val imageTop = state.imageOnlyRanking.firstOrNull()?.species?.scientificName
+        val finalTop = state.fusedRanking.firstOrNull()?.species?.scientificName
+        val line = "kind=$latencyKind toImageOnlyMs=${since(latencyStartedAt, latencyImageAt)} " +
+            "plantnetMs=${state.imageElapsedMillis ?: "na"} alaLookupMs=${alaMillis ?: "na"} " +
+            "toFusedMs=${since(latencyStartedAt, now)} context=$context " +
+            "topChanged=${imageTop != finalTop} imageTop=\"$imageTop\" finalTop=\"$finalTop\""
+        runCatching { android.util.Log.i(LATENCY_TAG, line) }
+    }
+
     private fun startAnalysis(
         photoPath: String?,
         preferLiveData: Boolean,
@@ -981,6 +1005,9 @@ class FloraGuideViewModel(
         abandonAnalysis(keepPhoto = previouslyUploaded)
 
         val generation = requestGeneration
+        latencyStartedAt = if (preferLiveData) System.nanoTime() else 0L
+        latencyImageAt = 0L
+        latencyKind = if (previouslyUploaded != null) "retry" else "first"
 
         // Set the busy state synchronously so another action cannot start
         // before the coroutine is dispatched.
@@ -1122,6 +1149,7 @@ class FloraGuideViewModel(
                         isContextLoading = true,
                     )
                 }
+                if (latencyStartedAt != 0L) latencyImageAt = System.nanoTime()
 
                 fetchAndFuse(
                     predictions = predictions,
@@ -1268,6 +1296,7 @@ class FloraGuideViewModel(
                     message = nearby.warning,
                 )
             }
+            if (preferLiveData) logLatency(nearby.source.name, nearby.lookupElapsedMillis)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -1310,6 +1339,7 @@ class FloraGuideViewModel(
                     message = error.message ?: "Context lookup failed.",
                 )
             }
+            if (preferLiveData) logLatency("ALA_ERROR", null)
         }
     }
 

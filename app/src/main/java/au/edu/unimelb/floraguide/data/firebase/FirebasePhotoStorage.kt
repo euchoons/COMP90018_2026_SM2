@@ -79,6 +79,7 @@ class FirebasePhotoStorage(
         var uploadTask: UploadTask? = null
         try {
             return withContext(Dispatchers.IO) {
+                val started = System.nanoTime() // #53: stage timing, including any wait for a usable network
                 cleanStaleCache()
                 val file = File(localPath)
                 require(file.isFile && file.canRead()) { "The captured photo cannot be read." }
@@ -129,7 +130,7 @@ class FirebasePhotoStorage(
                 upload.await()
                 currentCoroutineContext().ensureActive()
                 check(ensureUser() == uid) { "Account changed during upload." }
-                Log.i(TAG, "stage=upload outcome=success bytes=${file.length()}")
+                Log.i(TAG, "stage=upload outcome=success bytes=${file.length()} elapsedMs=${(System.nanoTime() - started) / 1_000_000}")
                 StoredPhoto(
                     storagePath = reference.path,
                     gsUri = reference.toString(),
@@ -155,6 +156,7 @@ class FirebasePhotoStorage(
         var temporary: File? = null
         try {
             return withContext(Dispatchers.IO) {
+                val started = System.nanoTime()
                 cleanStaleCache()
                 val uid = ensureUser()
                 require(photo.gsUri.startsWith("gs://")) { "Expected a private Storage reference." }
@@ -204,7 +206,7 @@ class FirebasePhotoStorage(
                     "The downloaded photo failed its integrity check. Retry identification."
                 }
                 require(imageContentType(target) == photo.contentType) { "The downloaded photo content type does not match its metadata." }
-                Log.i(TAG, "stage=download outcome=success sha256Verified=true bytes=${target.length()}")
+                Log.i(TAG, "stage=download outcome=success sha256Verified=true bytes=${target.length()} elapsedMs=${(System.nanoTime() - started) / 1_000_000}")
                 target
             }
         } catch (error: Exception) {
