@@ -83,6 +83,7 @@ class AppContainer(context: Context) {
 
     val rankCandidates = RankSpeciesCandidatesUseCase(
         floweringRecords = appContext.assets.open(FLOWERING_TABLE_ASSET).bufferedReader().use { parseFloweringTable(it.readText()) },
+        outOfSeasonMultiplier = 0.50
     )
     val sensorMonitor = SensorMonitor(appContext)
     val locationTracker = LocationTracker(appContext)

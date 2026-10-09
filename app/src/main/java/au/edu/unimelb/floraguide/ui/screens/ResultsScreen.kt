@@ -55,6 +55,12 @@ import au.edu.unimelb.floraguide.ui.components.StatusPill
 import java.time.format.TextStyle
 import java.util.Locale
 import androidx.compose.ui.tooling.preview.Preview
+// Add these to the existing import block at the top of the file
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 
 
 @Composable
@@ -130,42 +136,95 @@ fun ResultsScreen(
             item {
                 ResultCard {
                     Text("Why this suggestion?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(selected.species.commonName, fontStyle = FontStyle.Italic,
-                        style = MaterialTheme.typography.bodySmall)
-                    EvidenceBar(label = "Original image score", value = selected.evidence.imagePrior,
-                        detail = String.format(Locale.US, "%.2f%% (unmodified)", selected.evidence.imagePrior * 100))
-                    Text(recordLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
-                    state.nearbyContext?.takeUnless { it.isUnmatched(selected.species.id) }
-                        ?.failuresBySpeciesId?.get(selected.species.id)?.let { reason ->
-                            Text("ALA lookup: $reason. Unknown is not zero.", color = MaterialTheme.colorScheme.error)
-                        }
-                    if (state.imageSource == ImageSource.DEMO_ADAPTER) {
-                        EvidenceBar("Synthetic location prior", selected.evidence.locationPrior, "Guided demo only")
-                        EvidenceBar("Synthetic seasonal prior", selected.evidence.seasonalPrior, state.analysisDate.month.name)
-                        EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
-                    } else {
-                        Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
-                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx", selected.evidence.seasonMultiplier))
-                        Text(floweringLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
-                        selected.evidence.flowering?.let { record ->
-                            val uriHandler = LocalUriHandler.current
-                            // CC BY 4.0 needs the attribution wherever VicFlora's wording is shown.
-                            TextButton(onClick = { runCatching { uriHandler.openUri(record.sourceUrl) } }) {
-                                Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
+                    // Location: app/src/main/java/au/edu/unimelb/floraguide/ui/screens/ResultsScreen.kt
+
+// Replace the flat text block inside the "Why this suggestion?" ResultCard with this structured layout:
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Ecological Filter Metrics",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Image Score Baseline
+                            EvidenceBar(
+                                label = "Computer Vision Baseline",
+                                value = selected.evidence.imagePrior,
+                                detail = String.format(Locale.US, "%.2f%%", selected.evidence.imagePrior * 100)
+                            )
+
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Geographic Support Gauge
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Geographic Context Boost", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = String.format(Locale.US, "%.3fx", selected.evidence.locationMultiplier),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected.evidence.locationMultiplier > 1.0) Color(0xFF166534) else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { (selected.evidence.locationPrior).toFloat() },
+                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                    color = Color(0xFF166534)
+                                )
+                                Text(
+                                    text = "Based on ${selected.nearbyRecordCount ?: 0} regional records within an 8km radius.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Seasonal Affinity Gauge
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Phenological Season Multiplier", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = String.format(Locale.US, "%.2fx", selected.evidence.seasonMultiplier),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected.evidence.seasonMultiplier < 1.0) MaterialTheme.colorScheme.error else Color(0xFF166534)
+                                    )
+                                }
+
+                                // Interactive status pill signaling seasonality compatibility
+                                val (pillBg, pillFg, pillLabel) = when(selected.evidence.floweringCheck) {
+                                    FloweringCheck.IN_SEASON -> Triple(Color(0xFFDCFCE7), Color(0xFF14532D), "In Optimal Bloom")
+                                    FloweringCheck.OUT_OF_SEASON -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Out of Season Mismatch")
+                                    else -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, "No Sourced Phenology Data")
+                                }
+
+                                Surface(color = pillBg, contentColor = pillFg, shape = CircleShape) {
+                                    Text(
+                                        text = pillLabel,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
-                        Text("When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
-                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.\n\nIn other words, plants commonly found growing nearby on campus receive an extra boost up the list. " +
-                            "This boost scales from 1x up to a maximum of 21.5x based on local record frequencies." , style = MaterialTheme.typography.bodySmall)
-//                        Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
-//                            "geographic adjustment. " +
-//                            "The flowering check is shown for reference and does not change the order: in offline " +
-//                            "testing it lowered the correct species more often than wrong ones. " +
-//                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
-                    HorizontalDivider()
-                    Text("Observation habitat", fontWeight = FontWeight.Bold)
-                    HabitatSelector(selected = state.selectedHabitat, onSelected = onHabitatSelected)
+
                 }
             }
             item {
