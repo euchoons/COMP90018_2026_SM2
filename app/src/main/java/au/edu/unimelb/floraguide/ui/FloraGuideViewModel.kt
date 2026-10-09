@@ -412,7 +412,7 @@ class FloraGuideViewModel(
             skipLocation("Location permission denied. Identification can continue, but ALA will be skipped.")
             return
         }
-        _uiState.update { it.copy(locationSkipped = false, locationStatus = "Waiting for a recent device location...") }
+        _uiState.update { it.copy(locationSkipped = false, locationStatus = "Waiting for a secure, stable GPS signal...") }
         container.locationTracker.start(
             onLocation = { point ->
                 val approximate = container.locationTracker.isApproximate()

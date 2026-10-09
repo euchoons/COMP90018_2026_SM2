@@ -73,7 +73,7 @@ fun ResultsScreen(
                 IconButton(onClick = onBackToScan) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to camera")
                 }
-                SectionHeading(title = "Context-aware result", subtitle = "Image evidence with a separate ALA history check.", modifier = Modifier.weight(1f))
+                SectionHeading(title = "Context-aware smart matching result", subtitle = "We cross-reference the camera's visual match with local history and seasonal records", modifier = Modifier.weight(1f))
             }
         }
         item {
@@ -95,8 +95,8 @@ fun ResultsScreen(
         if (state.displayedRanking.isNotEmpty()) {
             item(key = "final-candidate-set") {
                 CandidateSetCard(
-                    title = "Final candidate set",
-                    subtitle = "Select a suggestion. Scores are relative, not accuracy estimates.",
+                    title = "Final Suggested Match List",
+                    subtitle = "Select the plant that best matches what you see. These percentages show how likely each choice is compared to the others on the list, rather than a definitive guarantee of absolute accuracy.",
                     highlighted = true,
                 ) {
                     state.displayedRanking.forEach { candidate ->
@@ -127,10 +127,10 @@ fun ResultsScreen(
         if (state.imageOnlyRanking.isNotEmpty()) {
             item(key = "before-after") {
                 ResultCard {
-                    Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Before / after (How environmental clues adjusted the results)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         RankingColumn("Image only", state.imageOnlyRanking.take(3), Modifier.weight(1f))
-                        RankingColumn(if (state.isContextLoading) "Checking ALA" else "Final suggestions",
+                        RankingColumn(if (state.isContextLoading) "Searching ALA local records..." else "Final smart suggestions",
                             state.fusedRanking.take(3), Modifier.weight(1f))
                     }
                     Text(rankingExplanation(state), style = MaterialTheme.typography.bodySmall)
@@ -144,19 +144,19 @@ fun ResultsScreen(
                 ResultCard {
                     Text("Why this suggestion?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     EvidenceBar(label = "Original image score", value = selected.evidence.imagePrior,
-                        detail = String.format(Locale.US, "%.2f%% (unmodified)", selected.evidence.imagePrior * 100))
+                        detail = String.format(Locale.US, "%.2f%% (based purely on photo)", selected.evidence.imagePrior * 100))
                     Text(recordLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
                     state.nearbyContext?.takeUnless { it.isUnmatched(selected.species.id) }
                         ?.failuresBySpeciesId?.get(selected.species.id)?.let { reason ->
-                            Text("ALA lookup: $reason. Unknown is not zero.", color = MaterialTheme.colorScheme.error)
+                            Text("ALA local history lookup: $reason. Unknown or failed check does not mean the plant doesn't grow here.", color = MaterialTheme.colorScheme.error)
                         }
                     if (state.imageSource == ImageSource.DEMO_ADAPTER) {
                         EvidenceBar("Synthetic location prior", selected.evidence.locationPrior, "Guided demo only")
                         EvidenceBar("Synthetic seasonal prior", selected.evidence.seasonalPrior, state.analysisDate.month.name)
                         EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
                     } else {
-                        Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
-                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx", selected.evidence.seasonMultiplier))
+                        Text(String.format(Locale.US, "Local abundance boost: %.3fx", selected.evidence.locationMultiplier))
+                        Text(String.format(Locale.US, "Flowering season adjustment: %.2fx", selected.evidence.seasonMultiplier))
                         Text(floweringLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
                         selected.evidence.flowering?.let { record ->
                             val uriHandler = LocalUriHandler.current
@@ -165,8 +165,10 @@ fun ResultsScreen(
                                 Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
                             }
                         }
-                        Text("When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
-                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.",
+                        Text("How this works: When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
+                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x." +
+                            "In other words, plants commonly found growing nearby on campus receive an extra boost up the list. " +
+                            "This boost scales from 1x up to a maximum of 21.5x based on local record frequencies.",
                             style = MaterialTheme.typography.bodySmall)
                         Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
                             "geographic adjustment. " +
@@ -182,7 +184,7 @@ fun ResultsScreen(
             item {
                 Button(onClick = onConfirm, enabled = state.canSave, modifier = Modifier.fillMaxWidth().height(54.dp)) {
                     Icon(Icons.Default.Check, null)
-                    Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion locally")
+                    Text(if (state.isSaving) "  Securing records to phone..." else "  Save selected suggestion locally to My Field Guide")
                 }
             }
             // canSave keeps the button disabled, so its click handler can never explain this.
@@ -202,9 +204,11 @@ fun ResultsScreen(
         }
         item {
             InformationCard("Interpretation and privacy",
-                "ALA counts are historical records, not a count of individual plants and not proof of identity. " +
-                    "Zero records do not prove absence. Only exact names and objective synonyms are matched, so other synonyms can be missed. " +
-                    "Saving marks your selection as unverified, stores rounded coordinates locally, and does not submit it to ALA.")
+                "ALA Local counts are based on historical sightings, not an exact count of live plants or absolute proof of identity. " +
+                    "A zero count does not prove the plant is completely absent - " +
+                    "since it could just mean no one has officially ever registered that plant here before " +
+                    "To protect your privacy, saving a plant marks it as unverified and stores rounded coordinates locally on this phone; " +
+                    "Nothing is ever published or submitted as a public record")
         }
     }
 }
@@ -213,12 +217,12 @@ fun ResultsScreen(
 private fun ContextProgress(state: FloraGuideUiState, onRetry: () -> Unit) {
     val context = state.nearbyContext
     ResultCard {
-        Text("ALA lookup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text("ALA local history check", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         when {
             state.isContextLoading -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(Modifier.size(22.dp))
-                    Text("Checking candidate names near the saved capture location...")
+                    Text("Checking what plant records exist near your saved capture location...")
                 }
             }
             context != null -> {
@@ -226,7 +230,7 @@ private fun ContextProgress(state: FloraGuideUiState, onRetry: () -> Unit) {
                 Text("Radius: ${context.radiusKm} km | Successful candidates: " +
                     "${context.successfulRequestCount}/${context.requestCount}", style = MaterialTheme.typography.bodySmall)
                 if (context.attemptsBySpeciesId.isNotEmpty()) Text(
-                    "HTTP attempts: ${context.attemptsBySpeciesId.values.sum()} | " +
+                    "HTTP connection attempts: ${context.attemptsBySpeciesId.values.sum()} | " +
                         "Elapsed: ${context.lookupElapsedMillis ?: 0} ms | " +
                         "Status: ${context.httpStatusCodes.sorted().joinToString("/").ifBlank { "unavailable" }}",
                     style = MaterialTheme.typography.bodySmall,
@@ -234,7 +238,7 @@ private fun ContextProgress(state: FloraGuideUiState, onRetry: () -> Unit) {
                 context.warning?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 context.retryNotBefore?.let { Text("Server retry time: ${LOCAL_TIME_FORMAT.format(it)}", style = MaterialTheme.typography.bodySmall) }
             }
-            else -> Text("Waiting for Pl@ntNet candidate names.", style = MaterialTheme.typography.bodySmall)
+            else -> Text("Waiting for Pl@ntNet visual match list to finish loading...", style = MaterialTheme.typography.bodySmall)
         }
         if (state.analysisPrefersLiveData && state.imagePredictions.isNotEmpty() &&
             state.capture?.location != null && !state.isContextLoading && context?.source != ContextDataSource.ALA_LIVE) {
@@ -267,12 +271,12 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
     if (state.imageSource == ImageSource.DEMO_ADAPTER) return "Synthetic demo count: ${count ?: "pending"}"
     val synonym = state.nearbyContext?.acceptedNamesBySpeciesId?.get(candidate.species.id)?.let { " (as $it)" }.orEmpty()
     return when {
-        state.isContextLoading -> "ALA count: pending"
+        state.isContextLoading -> "Local history check (ALA count): loading regional records..."
         count == null && state.nearbyContext?.isUnmatched(candidate.species.id) == true ->
-            "ALA: no species match for this name, so it counts as 0 records"
-        count == null -> "ALA count: unknown / not available"
-        count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
-        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
+            "Local history: no matching plant name currently listed in this specific regional index (counts as 0 past records)"
+        count == null -> "Local history: check unavailable or unknown"
+        count == 0 -> "Local history: 0 past sightings found nearby$synonym (this does not completely rule out its presence)"
+        else -> "Local history: $count past sightings found within ${state.nearbyContext?.radiusKm ?: 8} km of this spot$synonym"
     }
 }
 /** The documented statement behind the flowering factor, or why none was applied. */
@@ -285,27 +289,27 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
         "VicFlora$synonym: \"${record.statement}\" "
     }.orEmpty()
     return when (evidence.floweringCheck) {
-        FloweringCheck.OUT_OF_SEASON -> "$statement$month is more than a month outside this period."
+        FloweringCheck.OUT_OF_SEASON -> "$statement$month falls completely outside this plant's documented blooming period.."
         FloweringCheck.IN_SEASON -> statement +
-            if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month is within this period."
-            else "$month is within a month of this period."
-        FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table."
-        FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
+            if (state.analysisDate.monthValue in evidence.flowering?.months.orEmpty()) "$month matches this plant's documented blooming period."
+            else "$month is within a month of this plant's documented blooming period."
+        FloweringCheck.NO_DATA -> "This specific plant is not currently listed in our local seasonal VicFlora flowering table."
+        FloweringCheck.NOT_APPLIED -> statement + "Detected plant part: " +
             (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
-            ". Flowering months apply only to a confidently recognised flower."
+            ". Seasonal blooming checks run only when the scanner confidently recognizes a flower."
     }
 }
 
 private fun rankingExplanation(state: FloraGuideUiState): String {
     val season = if (state.fusedRanking.any { it.evidence.seasonMultiplier < 1.0 }) {
-        " This flower photo lowered candidates documented to flower at other times of year."
+        " Plants that aren't supposed to bloom at this time of year have been moved further down the list."
     } else ""
     return when {
-        state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
-        state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
+        state.isContextLoading -> "Image match suggestions are ready! We are currently still checking local history records near your location to double-check the results..."
+        state.imageSource == ImageSource.DEMO_ADAPTER -> "This is a pre-set practice tour results designed to show you how the app handles clues. It is not a real live scan."
         state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
-            "Every ALA lookup completed, so species recorded nearby move up; unmatched names count as zero.$season"
-        season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
-        else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+            "Local history check successful! Plant species officially recorded as growing near your location have been highlighted and moved up the list.$season"
+        season.isNotEmpty() -> "We couldn't reach the local history database right now, but missing records aren't treated as a negative result.$season"
+        else -> "Showing results based entirely on the photo's look. We couldn't look up local history records, but missing records aren't treated as a negative result."
     }
 }

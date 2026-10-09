@@ -73,7 +73,12 @@ fun HomeScreen(
         item {
             SectionHeading(
                 title = "More than image recognition",
-                subtitle = "FloraGuide combines heterogeneous context cues and explains why the ranking changed.",
+                subtitle = buildString {
+                    append("• Image only Model Classifier: Generates a baseline taxonomic likelihood distribution based purely on the physical attributes of the plant leaves or flowers.\n\n")
+                    append("\"FloraGuide goes beyond basic photo matching by cross-referencing your pictures with local history and seasonal timing, clearly explaining how it arrived at the results.")
+                    append("• Geographic Frequency Reranking: Automatically queries the Atlas of Living Australia (ALA) registry. Plant species historically documented within the user's localized coordinate radius or anywhere your GPS is telling the platform are prioritized and moved up the list.\n\n")
+                    append("• Season Check: Verifies the observation date against established local blooming tables, ensuring the final suggestion matches the expected growth cycle of the current month.")
+                }
             )
         }
 
@@ -95,13 +100,13 @@ fun HomeScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Live sensing readiness",
+                                text = "Real-Time Sensor Diagnostics",
                                 style = MaterialTheme.typography.titleMedium,
 
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
-                                text = "Updates continuously from this phone",
+                                text = "Aggregating active sensor metrics continuously",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -126,8 +131,8 @@ fun HomeScreen(
 
         item {
             InformationCard(
-                title = "Cloud identification boundary",
-                body = "Live scans store photos in Firebase and send the stored image to Pl@ntNet. Raw image scores and ALA rerankings are displayed separately. Only the explicit guided demo uses deterministic predictions.",
+                title = "Photo Privacy, Security and Processing Boundaries",
+                body = "Live scans store photos securely in our central server Firebase and send the stored image to Pl@ntNet online for processing. The original raw image scores and ALA rerankings are displayed separately so you can see how the app thinks.",
             )
         }
     }
@@ -174,7 +179,7 @@ private fun HeroCard(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Photograph a campus plant, then let place and flowering season challenge the camera model.",
+                text = "Snap a photo of any campus plant, then watch how regional historical records and seasonal growing cycles instantly refine and improve the camera's original guess.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.90f),
                 modifier = Modifier.padding(bottom = 42.dp),

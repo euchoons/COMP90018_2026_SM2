@@ -100,20 +100,20 @@ fun ScanScreen(
     val canGate = state.sensorSnapshot.canMeasureStability
     val guidance = captureGuidance(state.sensorSnapshot, state.stabilityGateEnabled, state.pendingPhotoConsent != null)
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { SectionHeading(title = "Observe a plant", subtitle = "Photo and location are separate inputs; either can have its own status.") }
+        item { SectionHeading(title = "Observe a plant", subtitle = "Your photo capture and GPS location check run independently. You can still scan a plant even if your location signal is still loading.") }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Location for ALA", fontWeight = FontWeight.Bold)
+                    Text("Location status for ALA local history check", fontWeight = FontWeight.Bold)
                     Text(state.locationStatus, style = MaterialTheme.typography.bodySmall)
-                    Text("Wait for a device fix before capture. Without a usable location, identification still runs but ALA is skipped.",
+                    Text("For the most accurate results, wait for a confirmed GPS signal before taking a picture. Without location access, the photo scanner will still work perfectly, but the app skips looking up local history records.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         FilledTonalButton(onClick = {
                             if (granted(Manifest.permission.ACCESS_FINE_LOCATION) || granted(Manifest.permission.ACCESS_COARSE_LOCATION)) {
                                 onPermissionResult(true)
                             } else permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                        }) { Text("Enable / refresh") }
+                        }) { Text("Enable / refresh GPS") }
                         FilledTonalButton(onClick = onUseDemoLocation) { Text("Skip location") }
                     }
                     if (locationGranted && !preciseLocation) {
@@ -129,7 +129,7 @@ fun ScanScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Observation habitat", fontWeight = FontWeight.Bold)
-                Text("Recorded as metadata. Only the guided demo uses synthetic habitat priors.", style = MaterialTheme.typography.bodySmall)
+                Text("Recorded as a reference note. ", style = MaterialTheme.typography.bodySmall)
                 HabitatSelector(state.selectedHabitat, onHabitatSelected)
             }
         }

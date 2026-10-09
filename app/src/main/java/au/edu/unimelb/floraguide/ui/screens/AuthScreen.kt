@@ -123,7 +123,7 @@ fun AuthScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
                 border = null) {
-                Text("Import local guest observations")
+                Text("Import local guest observations into my registered account")
             }
             OutlinedButton(onClick = onRetrySync, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.filledTonalButtonColors(
@@ -139,7 +139,7 @@ fun AuthScreen(
                 shape = RoundedCornerShape(10.dp),
                 border = null
             ) {
-                Text("Delete account and all data")
+                Text("Permanently close account and delete all data")
             }
 
             if (upgrading) {
@@ -237,7 +237,7 @@ fun AuthScreen(
                 disabledContentColor =MaterialTheme.colorScheme.onPrimary
             ),
         ) {
-            Text(if (upgrading) "Upgrade guest account" else if (registering) "Create account" else "Sign in")
+            Text(if (upgrading) "Save my past guest findings to a permanent account" else if (registering) "Create account (Logs you into a permanent profile. Your saved plants are backed up safely online, so you never lose your collection if you change or lose your phone.)" else "Sign in")
         }
         if (!upgrading) {
             TextButton(onClick = { isRegistering = !isRegistering }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
@@ -250,7 +250,7 @@ fun AuthScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
                 border = null) {
-                Text("Continue as Guest (Internet Required)")
+                Text("Start live scanner as cloud guest (internet required) - Lets you immediately use the live camera scanner and search local maps without an email. However, your findings are saved only on this physical phone and will be lost if the app is deleted.")
             }
             if (authState != AuthState.OfflineGuest) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -260,7 +260,7 @@ fun AuthScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     ),
                     border = null) {
-                    Text("Continue Offline (Demo)")
+                    Text("Launch offline practice tour (No internet required)")
                 }
             }
         } else {
@@ -282,7 +282,7 @@ fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+            Text("Your saved plant entries remain securely stored on this phone while working offline. Signed-in accounts automatically backup and sync your entire catalog to our secure online folder when internet access is restored.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             if (authState == AuthState.OfflineGuest) {
                 Text("After signing in, use Import local guest observations in Account to move these records into your account.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 Text("Currently sign in as local guest.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)

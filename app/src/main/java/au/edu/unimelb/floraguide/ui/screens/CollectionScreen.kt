@@ -99,8 +99,8 @@ fun CollectionScreen(
     ) {
         item {
             SectionHeading(
-                title = "My field guide",
-                subtitle = "Saved on this device; signed-in observations also sync when online.",
+                title = "My Discovered Plants Field Guide",
+                subtitle = "Stored safely on this device. Logged-in accounts automatically backup your entire catalog online for safekeeping",
             )
         }
 
@@ -181,7 +181,7 @@ fun CollectionScreen(
 
         item {
             InformationCard(
-                title = "Storage and privacy",
+                title = "Photo storage and privacy",
                 body = "Photos are stored in Firebase Storage. Observation metadata is cached locally and may sync for signed-in users. " +
                     "The saved coordinate is rounded to three decimal places. ALA is queried for historical occurrence context only; " +
                     "saving here does not submit a new public ALA record.",
@@ -294,9 +294,9 @@ private fun ObservationCard(
                 )
                 Text(
                     text = if (observation.imageSource == ImageSource.DEMO_ADAPTER) {
-                        "Demo entry: not a real sighting"
+                        "Practice tour entry (Sample photo)"
                     } else {
-                        "User-selected; not independently verified"
+                        "Saved Personal Sighting (Pending Expert Verification)"
                     },
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -308,7 +308,7 @@ private fun ObservationCard(
                     Text(
                         String.format(
                             Locale.US,
-                            "Image score %.2f%% · final relative score %.2f%%",
+                            "Image only confidence score %.2f%% · Combined smart score %.2f%%",
                             score * 100,
                             observation.relativeScore * 100,
                         ),
@@ -316,7 +316,7 @@ private fun ObservationCard(
                     )
                 }
                 Text(
-                    "ALA count: ${observation.nearbyRecordCount?.toString() ?: "unknown / not recorded"}",
+                    "Local History Sightings (ALA count): ${observation.nearbyRecordCount?.toString() ?: "unknown / not recorded"}",
                     style = MaterialTheme.typography.labelSmall,
                 )
                 TextButton(onClick = onDelete) {

@@ -33,8 +33,8 @@ fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
             state.analysisError != null -> "Identification failed"
             state.identificationStage != null -> state.identificationStage.label
             state.isClassifying -> "Preparing image candidates"
-            state.imageSource == ImageSource.PLANTNET_LIVE -> "Identified from the Firebase-stored photo"
-            state.imageSource == ImageSource.DEMO_ADAPTER -> "Offline guided demo - not a live identification"
+            state.imageSource == ImageSource.PLANTNET_LIVE -> "Identified from the server Firebase-stored photo"
+            state.imageSource == ImageSource.DEMO_ADAPTER -> "Offline guided demo - not a live scan identification"
             else -> "Waiting for a photo"
         }
         if (state.isClassifying) {
@@ -62,7 +62,7 @@ fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
             }
         }
         if (state.imageSource == ImageSource.PLANTNET_LIVE) {
-            Text("Pl@ntNet original Top 3", style = MaterialTheme.typography.titleSmall)
+            Text("Pl@ntNet original Top 3 matches", style = MaterialTheme.typography.titleSmall)
             state.imagePredictions.sortedByDescending { it.score }.take(3).forEach { prediction ->
                 key(prediction.species.id) {
                     CandidateResultCard {
@@ -89,8 +89,8 @@ fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
                 }
             }
             Text(
-                "These are the unmodified API scores, not normalised scores. " +
-                    "The final candidate set below uses a different, relative score.",
+                "These percentages show how much the plant looks like your photo. " +
+                    "The final suggestions set below combine this look with context cues.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }

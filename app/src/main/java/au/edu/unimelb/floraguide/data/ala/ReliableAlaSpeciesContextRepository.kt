@@ -85,7 +85,7 @@ class ReliableAlaSpeciesContextRepository(
                             "geographic support is withheld to avoid rewarding selective availability."
                     else -> null
                 },
-                "$unresolved taxon name(s) have no species match in ALA and count as zero records.".takeIf { unresolved > 0 },
+                "$unresolved Plant taxon name(s) couldn't be found in the ALA local history registries, so they count as having 0 past records.".takeIf { unresolved > 0 },
             ).joinToString(" ").ifEmpty { null },
             failuresBySpeciesId = outcomes.mapNotNull { it.failure?.let { reason -> it.id to reason } }.toMap(),
             acceptedNamesBySpeciesId = unique.zip(outcomes).mapNotNull { (species, outcome) ->

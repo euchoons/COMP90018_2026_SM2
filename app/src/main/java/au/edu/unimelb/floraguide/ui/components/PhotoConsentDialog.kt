@@ -27,37 +27,41 @@ fun PhotoConsentDialog(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
         ),
-        title = { Text("Use online identification?") },
+        title = { Text("Approve online identification?") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    "This photo has not been sent yet. Agreeing uploads it to your private " +
-                        "Firebase Storage area, reads it back, and sends the image to Pl@ntNet " +
-                        "for plant identification.",
+                    "Your photo is currently private and has not been shared online. " +
+                        "Proceeding will upload the image securely to your private online folder and " +
+                        "verify it using Pl@ntNet (our automated global verification database).",
                 )
                 Text(
                     if (hasCaptureLocation) {
-                        "The capture coordinates, rounded to three decimal places, and candidate " +
-                            "plant names will also be sent to ALA for read-only historical lookups."
+                        "If location access is active, a privacy-safe rounded version of your coordinates " +
+                            "will be sent to the Atlas of Living Australia (ALA) registry to check what plant history exists " +
+                            "within this specific section of location. " +
+                            "This permission applies only to this specific photo. " +
+                            "It is used strictly for a read-only historical search and " +
+                            "will never be published as public records"
                     } else {
-                        "This capture has no usable location. ALA will not be queried."
+                        "Location access is inactive. ALA will not be queried."
                     },
                 )
-                Text(
-                    "This choice applies only to this photo, including retries. It does not save " +
-                        "an observation. Saving is a separate action; saved observations may sync " +
-                        "through your Firebase account.",
-                )
-                Text(
-                    "Leaving later cannot recall data already sent. Uploaded photos may remain " +
-                        "in Firebase even when you do not save; automatic cloud cleanup is not " +
-                        "implemented yet.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text("Cancel sends nothing from this capture. The offline guided demo remains available.")
+//                Text(
+//                    "This choice applies only to this photo, including retries. It does not save " +
+//                        "an observation. Saving is a separate action; saved observations may sync " +
+//                        "through your Firebase account.",
+//                )
+//                Text(
+//                    "Leaving later cannot recall data already sent. Uploaded photos may remain " +
+//                        "in Firebase even when you do not save; automatic cloud cleanup is not " +
+//                        "implemented yet.",
+//                    style = MaterialTheme.typography.bodySmall,
+//                )
+                Text("Tapping Cancel sends nothing from your phone")
             }
         },
         confirmButton = {
