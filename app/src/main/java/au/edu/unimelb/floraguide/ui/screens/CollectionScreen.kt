@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
@@ -90,6 +92,9 @@ fun CollectionScreen(
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Delete observation?") },
+            shape = RoundedCornerShape(10.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            textContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             text = {
                 Text(
                     "Remove this ${observation.species.commonName} observation from your field guide? " +
@@ -97,17 +102,22 @@ fun CollectionScreen(
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete(observation.id)
-                        deleting = null
-                    },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("Delete")
+                    FilledTonalButton(modifier = Modifier.weight(1f), onClick = { deleting = null }) { Text("Cancel") }
+                    FilledTonalButton(
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFFB2C36).copy(alpha = 0.2f), contentColor = Color(0xFFe7000b)),
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            onDelete(observation.id)
+                            deleting = null
+                        },
+                    ) {
+                        Text("Delete")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text("Cancel") }
             },
         )
     }
