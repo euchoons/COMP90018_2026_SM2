@@ -2,14 +2,20 @@ package au.edu.unimelb.floraguide.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -22,6 +28,9 @@ fun PhotoConsentDialog(
 ) {
     AlertDialog(
         modifier = Modifier.testTag("photo-consent-dialog"),
+        shape = RoundedCornerShape(10.dp),
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        textContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         onDismissRequest = onCancel,
         properties = DialogProperties(
             dismissOnBackPress = true,
@@ -55,20 +64,25 @@ fun PhotoConsentDialog(
                     "Leaving later cannot recall data already sent. Uploaded photos may remain " +
                         "in Firebase even when you do not save; automatic cloud cleanup is not " +
                         "implemented yet.",
-                    style = MaterialTheme.typography.bodySmall,
                 )
                 Text("Cancel sends nothing from this capture. The offline guided demo remains available.")
             }
         },
         confirmButton = {
-            TextButton(onClick = onAgree, modifier = Modifier.testTag("photo-consent-agree")) {
-                Text("Agree and identify")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+
+                FilledTonalButton(onClick = onCancel, modifier = Modifier.testTag("photo-consent-cancel").weight(1f), colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFFB2C36).copy(alpha = 0.2f), contentColor = Color(0xFFe7000b))) {
+                    Text("Cancel")
+                }
+                FilledTonalButton(onClick = onAgree, modifier = Modifier.testTag("photo-consent-agree").weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    Text("Agree")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel, modifier = Modifier.testTag("photo-consent-cancel")) {
-                Text("Cancel")
-            }
+
         },
     )
 }
