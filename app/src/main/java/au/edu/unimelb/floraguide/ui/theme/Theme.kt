@@ -27,7 +27,7 @@ internal val LightColours = lightColorScheme(
     surface = Color(0xFFF5F5F5),
     surfaceVariant = Color(0x4026B887),
     onSurfaceVariant = Color(0xFF0D513C),
-    outline = Color(0xFF767676).copy(alpha = 0.5f),
+    outline = Color(0xFF767676),
     error = Color(0xFFB0003A),
 )
 
