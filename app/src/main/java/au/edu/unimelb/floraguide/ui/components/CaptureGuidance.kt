@@ -52,7 +52,7 @@ fun captureGuidance(
         switchSummary = when {
             !canGate -> "Sensor unavailable: manual capture"
             gateEnabled -> "Accelerometer + gyroscope: shutter waits until the phone is steady"
-            else -> "Off: shutter always enabled, photos may blur"
+            else -> "Off: shutter is enabled, but photos may blur"
         },
     )
 }

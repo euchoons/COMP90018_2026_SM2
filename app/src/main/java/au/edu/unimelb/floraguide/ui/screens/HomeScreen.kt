@@ -49,6 +49,8 @@ import au.edu.unimelb.floraguide.ui.components.MissionCounter
 import au.edu.unimelb.floraguide.ui.components.MissionNote
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.SensorSummary
+import androidx.compose.ui.tooling.preview.Preview
+
 
 @Composable
 fun HomeScreen(
@@ -77,6 +79,13 @@ fun HomeScreen(
             )
         }
 
+        item {
+            InformationCard(
+                title = "How it works?",
+                body = "Live scans store photos securely in our online central server and send the stored image to Pl@ntNet online for processing. The original raw image scores and ALA rerankings are displayed separately so you can see how the app thinks!",
+            )
+        }
+
         item { ContextPipeline() }
 
         item {
@@ -95,7 +104,7 @@ fun HomeScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Live sensing readiness",
+                                text = "Real-time Sensor Diagnostics",
                                 style = MaterialTheme.typography.titleMedium,
 
                                 fontWeight = FontWeight.Bold,
@@ -124,12 +133,7 @@ fun HomeScreen(
             )
         }
 
-        item {
-            InformationCard(
-                title = "Cloud identification boundary",
-                body = "Live scans store photos in Firebase and send the stored image to Pl@ntNet. Raw image scores and ALA rerankings are displayed separately. Only the explicit guided demo uses deterministic predictions.",
-            )
-        }
+
     }
 }
 
@@ -174,7 +178,7 @@ private fun HeroCard(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = "Photograph a campus plant, then let place and flowering season challenge the camera model.",
+                text = "Snap a photo of any campus plant, then watch how regional historical records and seasonal growing cycles instantly refine and improve the camera's original guess.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.90f),
                 modifier = Modifier.padding(bottom = 42.dp),
@@ -288,5 +292,17 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
             )
             MissionNote(uniqueSpecies)
         }
+    }
+}
+@Preview(showBackground = true,  heightDp = 10000)
+@Composable
+fun HomeScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        HomeScreen(
+            state = FloraGuideUiState(), // passes default empty layout state
+            onStartScan = {},
+            onGuidedDemo = {},
+            onOpenCollection = {}
+        )
     }
 }

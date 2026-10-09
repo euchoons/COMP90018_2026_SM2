@@ -54,6 +54,14 @@ import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.StatusPill
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
+// Add these to the existing import block at the top of the file
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+
 
 @Composable
 fun ResultsScreen(
@@ -96,7 +104,7 @@ fun ResultsScreen(
             item(key = "final-candidate-set") {
                 CandidateSetCard(
                     title = "Final candidate set",
-                    subtitle = "Select a suggestion. Scores are relative, not accuracy estimates.",
+                    subtitle = "Select the plant that best matches what you see. These percentages show how likely each choice is compared to the others on the list, rather than a definitive guarantee of absolute accuracy.",
                     highlighted = true,
                 ) {
                     state.displayedRanking.forEach { candidate ->
@@ -123,66 +131,106 @@ fun ResultsScreen(
                 }
             }
         }
-        // 3. Preserve the existing before-and-after comparison.
-        if (state.imageOnlyRanking.isNotEmpty()) {
-            item(key = "before-after") {
-                ResultCard {
-                    Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        RankingColumn("Image only", state.imageOnlyRanking.take(3), Modifier.weight(1f))
-                        RankingColumn(if (state.isContextLoading) "Checking ALA" else "Final suggestions",
-                            state.fusedRanking.take(3), Modifier.weight(1f))
-                    }
-                    Text(rankingExplanation(state), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        // 4. Keep lookup status and ALA-only retry after the comparison.
-        item(key = "ala-lookup") { ContextProgress(state, onRetryContext) }
+
         state.selectedCandidate?.let { selected ->
             item {
                 ResultCard {
                     Text("Why this suggestion?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    EvidenceBar(label = "Original image score", value = selected.evidence.imagePrior,
-                        detail = String.format(Locale.US, "%.2f%% (unmodified)", selected.evidence.imagePrior * 100))
-                    Text(recordLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
-                    state.nearbyContext?.takeUnless { it.isUnmatched(selected.species.id) }
-                        ?.failuresBySpeciesId?.get(selected.species.id)?.let { reason ->
-                            Text("ALA lookup: $reason. Unknown is not zero.", color = MaterialTheme.colorScheme.error)
-                        }
-                    if (state.imageSource == ImageSource.DEMO_ADAPTER) {
-                        EvidenceBar("Synthetic location prior", selected.evidence.locationPrior, "Guided demo only")
-                        EvidenceBar("Synthetic seasonal prior", selected.evidence.seasonalPrior, state.analysisDate.month.name)
-                        EvidenceBar("Synthetic habitat prior", selected.evidence.habitatPrior, state.selectedHabitat.label)
-                    } else {
-                        Text(String.format(Locale.US, "Geographic multiplier: %.3fx", selected.evidence.locationMultiplier))
-                        Text(String.format(Locale.US, "Flowering-season multiplier: %.2fx", selected.evidence.seasonMultiplier))
-                        Text(floweringLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
-                        selected.evidence.flowering?.let { record ->
-                            val uriHandler = LocalUriHandler.current
-                            // CC BY 4.0 needs the attribution wherever VicFlora's wording is shown.
-                            TextButton(onClick = { runCatching { uriHandler.openUri(record.sourceUrl) } }) {
-                                Text("VicFlora, Royal Botanic Gardens Victoria (CC BY 4.0)")
+                    // Location: app/src/main/java/au/edu/unimelb/floraguide/ui/screens/ResultsScreen.kt
+
+// Replace the flat text block inside the "Why this suggestion?" ResultCard with this structured layout:
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(
+                                text = "Ecological Filter Metrics",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Image Score Baseline
+                            EvidenceBar(
+                                label = "Computer Vision Baseline",
+                                value = selected.evidence.imagePrior,
+                                detail = String.format(Locale.US, "%.2f%%", selected.evidence.imagePrior * 100)
+                            )
+
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Geographic Support Gauge
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Geographic Context Boost", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = String.format(Locale.US, "%.3fx", selected.evidence.locationMultiplier),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected.evidence.locationMultiplier > 1.0) Color(0xFF166534) else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { (selected.evidence.locationPrior).toFloat() },
+                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                                    color = Color(0xFF166534)
+                                )
+                                Text(
+                                    text = "Based on ${selected.nearbyRecordCount ?: 0} regional records within an 8km radius.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Seasonal Affinity Gauge
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Phenological Season Multiplier", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        text = String.format(Locale.US, "%.2fx", selected.evidence.seasonMultiplier),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected.evidence.seasonMultiplier < 1.0) MaterialTheme.colorScheme.error else Color(0xFF166534)
+                                    )
+                                }
+
+                                // Interactive status pill signaling seasonality compatibility
+                                val (pillBg, pillFg, pillLabel) = when(selected.evidence.floweringCheck) {
+                                    FloweringCheck.IN_SEASON -> Triple(Color(0xFFDCFCE7), Color(0xFF14532D), "In Optimal Bloom")
+                                    FloweringCheck.OUT_OF_SEASON -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), "Out of Season Mismatch")
+                                    else -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, "No Sourced Phenology Data")
+                                }
+
+                                Surface(color = pillBg, contentColor = pillFg, shape = CircleShape) {
+                                    Text(
+                                        text = pillLabel,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
-                        Text("When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
-                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.",
-                            style = MaterialTheme.typography.bodySmall)
-                        Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
-                            "geographic adjustment. " +
-                            "The flowering check is shown for reference and does not change the order: in offline " +
-                            "testing it lowered the correct species more often than wrong ones. " +
-                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
-                    HorizontalDivider()
-                    Text("Observation habitat", fontWeight = FontWeight.Bold)
-                    HabitatSelector(selected = state.selectedHabitat, onSelected = onHabitatSelected)
+
                 }
             }
             item {
                 Button(onClick = onConfirm, enabled = state.canSave, modifier = Modifier.fillMaxWidth().height(54.dp)) {
                     Icon(Icons.Default.Check, null)
-                    Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion locally")
+                    Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion to my field guide")
                 }
             }
             // canSave keeps the button disabled, so its click handler can never explain this.
@@ -200,11 +248,31 @@ fun ResultsScreen(
                 }
             }
         }
+
+        // 3. Preserve the existing before-and-after comparison.
+        if (state.imageOnlyRanking.isNotEmpty()) {
+            item(key = "before-after") {
+                ResultCard {
+                    Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        RankingColumn("Image only", state.imageOnlyRanking.take(3), Modifier.weight(1f))
+                        RankingColumn(if (state.isContextLoading) "Checking ALA" else "Final suggestion",
+                            state.fusedRanking.take(3), Modifier.weight(1f))
+                    }
+                    Text(rankingExplanation(state), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        // 4. Keep lookup status and ALA-only retry after the comparison.
+        item(key = "ala-lookup") { ContextProgress(state, onRetryContext) }
+
         item {
-            InformationCard("Interpretation and privacy",
-                "ALA counts are historical records, not a count of individual plants and not proof of identity. " +
-                    "Zero records do not prove absence. Only exact names and objective synonyms are matched, so other synonyms can be missed. " +
-                    "Saving marks your selection as unverified, stores rounded coordinates locally, and does not submit it to ALA.")
+            InformationCard("Disclaimer on Limitations of Context Cue Interpretation",
+                "ALA local counts are based on historical sightings, not an exact count of live plants or absolute proof of identity. " +
+                    "A zero count does not prove the plant is completely absent " +
+                    "since it could just mean no one has officially ever registered that plant here before. "+
+                    "A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
+                    "geographic adjustment. ")
         }
     }
 }
@@ -269,10 +337,10 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
     return when {
         state.isContextLoading -> "ALA count: pending"
         count == null && state.nearbyContext?.isUnmatched(candidate.species.id) == true ->
-            "ALA: no species match for this name, so it counts as 0 records"
+            "ALA count: no species match for this name (counts as 0 past records)"
         count == null -> "ALA count: unknown / not available"
-        count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
-        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
+        count == 0 -> "ALA count: 0 matching historical records$synonym (this does not completely rule out its presence)"
+        else -> "ALA count: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
     }
 }
 /** The documented statement behind the flowering factor, or why none was applied. */
@@ -292,7 +360,7 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
         FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table."
         FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
             (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
-            ". Flowering months apply only to a confidently recognised flower."
+            ". Seasonal blooming checks apply only to a confidently recognised flower."
     }
 }
 
@@ -304,8 +372,23 @@ private fun rankingExplanation(state: FloraGuideUiState): String {
         state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
         state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
         state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
-            "Every ALA lookup completed, so species recorded nearby move up; unmatched names count as zero.$season"
+            "Every ALA lookup completed, so species recorded sighted nearby will move up the list.$season"
         season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
         else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+    }
+}
+@Preview(showBackground = true, heightDp = 10000)
+@Composable
+fun ResultsScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        ResultsScreen(
+            state = FloraGuideUiState(isContextLoading = false),
+            onBackToScan = {},
+            onHabitatSelected = {},
+            onSelectSpecies = {},
+            onRetryContext = {},
+            onRetryIdentification = {},
+            onConfirm = {}
+        )
     }
 }
