@@ -21,13 +21,13 @@ import androidx.compose.ui.unit.dp
 import au.edu.unimelb.floraguide.domain.model.ImageSource
 import au.edu.unimelb.floraguide.ui.FloraGuideUiState
 import java.util.Locale
-
+import androidx.compose.ui.tooling.preview.Preview
 /** Displays raw Pl@ntNet scores, before any context cue or normalisation. */
 @Composable
 fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
     CandidateSetCard(
         title = "Score before context cue",
-        subtitle = "Photo identification before ALA context is applied.",
+        subtitle = "(Photo identification before ALA context is applied.)",
     ) {
         val status = when {
             state.analysisError != null -> "Identification failed"
@@ -89,8 +89,8 @@ fun CloudIdentificationCard(state: FloraGuideUiState, onRetry: () -> Unit) {
                 }
             }
             Text(
-                "These are the unmodified API scores, not normalised scores. " +
-                    "The final candidate set below uses a different, relative score.",
+                "These percentages show how much the plant looks like your photo. " +
+                    "The final suggestions set below combine this score with context cues.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -110,6 +110,16 @@ private fun RawModelScoreLabel(score: Double) {
             modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
+        )
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun CloudIdentificationCardPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        CloudIdentificationCard(
+            state = FloraGuideUiState(imageSource = ImageSource.PLANTNET_LIVE),
+            onRetry = {}
         )
     }
 }

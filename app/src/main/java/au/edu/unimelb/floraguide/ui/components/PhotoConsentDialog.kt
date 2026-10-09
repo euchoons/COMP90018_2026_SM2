@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-
+import androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun PhotoConsentDialog(
     hasCaptureLocation: Boolean,
@@ -27,14 +27,14 @@ fun PhotoConsentDialog(
             dismissOnBackPress = true,
             dismissOnClickOutside = false,
         ),
-        title = { Text("Use online identification?") },
+        title = { Text("Approve online identification?") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    "This photo has not been sent yet. Agreeing uploads it to your private " +
+                    "This photo has not been sent yet.\n\nProceeding to send will upload it to your private " +
                         "Firebase Storage area, reads it back, and sends the image to Pl@ntNet " +
                         "for plant identification.",
                 )
@@ -47,17 +47,15 @@ fun PhotoConsentDialog(
                     },
                 )
                 Text(
-                    "This choice applies only to this photo, including retries. It does not save " +
-                        "an observation. Saving is a separate action; saved observations may sync " +
-                        "through your Firebase account.",
+                    "This permission applies only to this specific photo.",
                 )
-                Text(
-                    "Leaving later cannot recall data already sent. Uploaded photos may remain " +
-                        "in Firebase even when you do not save; automatic cloud cleanup is not " +
-                        "implemented yet.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text("Cancel sends nothing from this capture. The offline guided demo remains available.")
+//                Text(
+//                    "Leaving later cannot recall data already sent. Uploaded photos may remain " +
+//                        "in Firebase even when you do not save; automatic cloud cleanup is not " +
+//                        "implemented yet.",
+//                    style = MaterialTheme.typography.bodySmall,
+//                )
+                Text("Tapping Cancel sends nothing from your phone")
             }
         },
         confirmButton = {
@@ -71,4 +69,15 @@ fun PhotoConsentDialog(
             }
         },
     )
+}
+@Preview(showBackground = true)
+@Composable
+fun PhotoConsentDialogPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        PhotoConsentDialog(
+            hasCaptureLocation = true,
+            onAgree = {},
+            onCancel = {}
+        )
+    }
 }

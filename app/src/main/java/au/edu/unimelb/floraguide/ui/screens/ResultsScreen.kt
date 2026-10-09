@@ -54,6 +54,8 @@ import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.StatusPill
 import java.time.format.TextStyle
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
+
 
 @Composable
 fun ResultsScreen(
@@ -96,7 +98,7 @@ fun ResultsScreen(
             item(key = "final-candidate-set") {
                 CandidateSetCard(
                     title = "Final candidate set",
-                    subtitle = "Select a suggestion. Scores are relative, not accuracy estimates.",
+                    subtitle = "Select the plant that best matches what you see. These percentages show how likely each choice is compared to the others on the list, rather than a definitive guarantee of absolute accuracy.",
                     highlighted = true,
                 ) {
                     state.displayedRanking.forEach { candidate ->
@@ -123,26 +125,13 @@ fun ResultsScreen(
                 }
             }
         }
-        // 3. Preserve the existing before-and-after comparison.
-        if (state.imageOnlyRanking.isNotEmpty()) {
-            item(key = "before-after") {
-                ResultCard {
-                    Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                        RankingColumn("Image only", state.imageOnlyRanking.take(3), Modifier.weight(1f))
-                        RankingColumn(if (state.isContextLoading) "Checking ALA" else "Final suggestions",
-                            state.fusedRanking.take(3), Modifier.weight(1f))
-                    }
-                    Text(rankingExplanation(state), style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-        // 4. Keep lookup status and ALA-only retry after the comparison.
-        item(key = "ala-lookup") { ContextProgress(state, onRetryContext) }
+
         state.selectedCandidate?.let { selected ->
             item {
                 ResultCard {
                     Text("Why this suggestion?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(selected.species.commonName, fontStyle = FontStyle.Italic,
+                        style = MaterialTheme.typography.bodySmall)
                     EvidenceBar(label = "Original image score", value = selected.evidence.imagePrior,
                         detail = String.format(Locale.US, "%.2f%% (unmodified)", selected.evidence.imagePrior * 100))
                     Text(recordLabel(selected, state), style = MaterialTheme.typography.bodyMedium)
@@ -166,13 +155,13 @@ fun ResultsScreen(
                             }
                         }
                         Text("When every ALA lookup completes: image score x (1 + 20.5 x support), then normalise. " +
-                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.",
-                            style = MaterialTheme.typography.bodySmall)
-                        Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
-                            "geographic adjustment. " +
-                            "The flowering check is shown for reference and does not change the order: in offline " +
-                            "testing it lowered the correct species more often than wrong ones. " +
-                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
+                            "Support uses log-counts capped at 50 records, so the multiplier runs from 1x to 21.5x.\n\nIn other words, plants commonly found growing nearby on campus receive an extra boost up the list. " +
+                            "This boost scales from 1x up to a maximum of 21.5x based on local record frequencies." , style = MaterialTheme.typography.bodySmall)
+//                        Text("A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
+//                            "geographic adjustment. " +
+//                            "The flowering check is shown for reference and does not change the order: in offline " +
+//                            "testing it lowered the correct species more often than wrong ones. " +
+//                            "Habitat does not change live rankings.", style = MaterialTheme.typography.bodySmall)
                     }
                     HorizontalDivider()
                     Text("Observation habitat", fontWeight = FontWeight.Bold)
@@ -182,7 +171,7 @@ fun ResultsScreen(
             item {
                 Button(onClick = onConfirm, enabled = state.canSave, modifier = Modifier.fillMaxWidth().height(54.dp)) {
                     Icon(Icons.Default.Check, null)
-                    Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion locally")
+                    Text(if (state.isSaving) "  Saving locally..." else "  Save selected suggestion to my field guide")
                 }
             }
             // canSave keeps the button disabled, so its click handler can never explain this.
@@ -200,11 +189,31 @@ fun ResultsScreen(
                 }
             }
         }
+
+        // 3. Preserve the existing before-and-after comparison.
+        if (state.imageOnlyRanking.isNotEmpty()) {
+            item(key = "before-after") {
+                ResultCard {
+                    Text("Before / after", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        RankingColumn("Image only", state.imageOnlyRanking.take(3), Modifier.weight(1f))
+                        RankingColumn(if (state.isContextLoading) "Checking ALA" else "Final suggestion",
+                            state.fusedRanking.take(3), Modifier.weight(1f))
+                    }
+                    Text(rankingExplanation(state), style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        // 4. Keep lookup status and ALA-only retry after the comparison.
+        item(key = "ala-lookup") { ContextProgress(state, onRetryContext) }
+
         item {
-            InformationCard("Interpretation and privacy",
-                "ALA counts are historical records, not a count of individual plants and not proof of identity. " +
-                    "Zero records do not prove absence. Only exact names and objective synonyms are matched, so other synonyms can be missed. " +
-                    "Saving marks your selection as unverified, stores rounded coordinates locally, and does not submit it to ALA.")
+            InformationCard("Disclaimer on Limitations of Context Cue Interpretation",
+                "ALA local counts are based on historical sightings, not an exact count of live plants or absolute proof of identity. " +
+                    "A zero count does not prove the plant is completely absent " +
+                    "since it could just mean no one has officially ever registered that plant here before. "+
+                    "A name ALA cannot match counts as zero records; a failed or skipped lookup adds no " +
+                    "geographic adjustment. ")
         }
     }
 }
@@ -269,10 +278,10 @@ private fun recordLabel(candidate: RankedCandidate, state: FloraGuideUiState): S
     return when {
         state.isContextLoading -> "ALA count: pending"
         count == null && state.nearbyContext?.isUnmatched(candidate.species.id) == true ->
-            "ALA: no species match for this name, so it counts as 0 records"
+            "ALA count: no species match for this name (counts as 0 past records)"
         count == null -> "ALA count: unknown / not available"
-        count == 0 -> "ALA: 0 matching historical records$synonym (not proof of absence)"
-        else -> "ALA: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
+        count == 0 -> "ALA count: 0 matching historical records$synonym (this does not completely rule out its presence)"
+        else -> "ALA count: $count historical records within ${state.nearbyContext?.radiusKm ?: 8} km$synonym"
     }
 }
 /** The documented statement behind the flowering factor, or why none was applied. */
@@ -292,7 +301,7 @@ private fun floweringLabel(candidate: RankedCandidate, state: FloraGuideUiState)
         FloweringCheck.NO_DATA -> "Not in the bundled VicFlora flowering table."
         FloweringCheck.NOT_APPLIED -> statement + "Photo part: " +
             (state.predictedOrgan?.let { String.format(Locale.US, "%s (%.0f%%)", it.organ, it.score * 100) } ?: "unknown") +
-            ". Flowering months apply only to a confidently recognised flower."
+            ". Seasonal blooming checks apply only to a confidently recognised flower."
     }
 }
 
@@ -304,8 +313,23 @@ private fun rankingExplanation(state: FloraGuideUiState): String {
         state.isContextLoading -> "Image suggestions are ready; location evidence is still being checked."
         state.imageSource == ImageSource.DEMO_ADAPTER -> "Explicit synthetic demonstration, not a real identification."
         state.nearbyContext?.source == ContextDataSource.ALA_LIVE ->
-            "Every ALA lookup completed, so species recorded nearby move up; unmatched names count as zero.$season"
+            "Every ALA lookup completed, so species recorded sighted nearby will move up the list.$season"
         season.isNotEmpty() -> "Missing geographic evidence is not treated as a negative result.$season"
         else -> "Image-only ranking retained. Missing geographic evidence is not treated as a negative result."
+    }
+}
+@Preview(showBackground = true, heightDp = 10000)
+@Composable
+fun ResultsScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        ResultsScreen(
+            state = FloraGuideUiState(isContextLoading = false),
+            onBackToScan = {},
+            onHabitatSelected = {},
+            onSelectSpecies = {},
+            onRetryContext = {},
+            onRetryIdentification = {},
+            onConfirm = {}
+        )
     }
 }

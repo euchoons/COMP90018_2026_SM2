@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
@@ -67,22 +68,26 @@ fun CameraCaptureCard(
     onError: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isInspection = LocalInspectionMode.current
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val previewView = remember {
-        PreviewView(context).apply {
+    val previewView = remember(isInspection) {
+        if (isInspection) null
+        else PreviewView(context).apply {
             scaleType = PreviewView.ScaleType.FILL_CENTER
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isSaving by remember { mutableStateOf(false) }
-    var cameraReady by remember { mutableStateOf(false) }
+    var cameraReady by remember { mutableStateOf(isInspection) }
     var cameraFailed by remember { mutableStateOf(false) }
-    var availability by remember { mutableStateOf(CameraAvailability.STARTING) }
+    var availability by remember { mutableStateOf(if (isInspection) CameraAvailability.OPEN else CameraAvailability.STARTING) }
     var isRearCamera by remember { mutableStateOf(false) }
 
     DisposableEffect(lifecycleOwner, previewView) {
+        if (isInspection || previewView == null) return@DisposableEffect onDispose { }
+        val view = previewView
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
         var stopObservingCamera: (() -> Unit)? = null
@@ -105,7 +110,7 @@ fun CameraCaptureCard(
                         else -> error("No camera is available on this device.")
                     }
                     val preview = Preview.Builder().build().also {
-                        it.surfaceProvider = previewView.surfaceProvider
+                        it.surfaceProvider = view.surfaceProvider
                     }
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
@@ -171,10 +176,12 @@ fun CameraCaptureCard(
             .clip(RoundedCornerShape(24.dp))
             .background(Color.Black),
     ) {
-        AndroidView(
-            factory = { previewView },
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (previewView != null) {
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         // Warning labels are longer than readings, so the pills wrap on narrow phones.
         FlowRow(
