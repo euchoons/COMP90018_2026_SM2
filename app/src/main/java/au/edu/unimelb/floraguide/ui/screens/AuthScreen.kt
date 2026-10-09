@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import au.edu.unimelb.floraguide.R
+import androidx.compose.ui.tooling.preview.Preview
+
 
 @Composable
 fun AuthScreen(
@@ -106,16 +108,34 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         if (authState == AuthState.Authenticating) {
-            CircularProgressIndicator()
-            Text("Signing in…")
+            // This Box fills the remaining screen height and centers its contents
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text("Signing in…")
+                }
+            }
             return@Column
         }
 
         if (user != null) {
+            // Updated Welcome Text
             Text(
-                if (upgrading) "Anonymous cloud guest" else user.displayName ?: user.email ?: "Signed in",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
+                text = "Welcome, ${if (upgrading) "Anonymous cloud guest" else user.displayName ?: user.email ?: "Signed in"} !",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 24.dp, bottom = 24.dp),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.headlineLarge
             )
             OutlinedButton(onClick = { confirmImport = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.filledTonalButtonColors(
@@ -282,12 +302,29 @@ fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Observations stay on this device while offline. Signed-in accounts also sync to the cloud.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+            Text("Note: Your saved plant entries remain securely stored on this phone when signed in as a Guest. However, your findings will be lost if the app is deleted.  \n\n Changed your mind and signed up? \n\n You can import your saved local observations into it at a later time", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             if (authState == AuthState.OfflineGuest) {
                 Text("After signing in, use Import local guest observations in Account to move these records into your account.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
                 Text("Currently sign in as local guest.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             }
         }
 
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun AuthScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        AuthScreen(
+            authState = AuthState.Unauthenticated,
+            onSignIn = { _, _ -> },
+            onRegister = { _, _, _ -> },
+            onAnonymousSignIn = {},
+            onContinueOffline = {},
+            onImportLocal = {},
+            onRetrySync = {},
+            onSignOut = {},
+            onDeleteAccount = {}
+        )
     }
 }

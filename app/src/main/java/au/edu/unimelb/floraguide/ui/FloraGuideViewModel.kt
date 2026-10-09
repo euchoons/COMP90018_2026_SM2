@@ -66,7 +66,7 @@ data class FloraGuideUiState(
     val usingDemoLocation: Boolean = true,
     /** Declination at the last device fix; null means bearings are shown as magnetic. */
     val headingDeclinationDegrees: Float? = null,
-    val locationStatus: String = "Location not yet available; enable it before capture",
+    val locationStatus: String = "GPS signal unavailable; enable it before capture",
     /** Explicit "Skip location" for this scan; survives Activity recreation, unlike Compose effects. */
     val locationSkipped: Boolean = false,
     val selectedHabitat: Habitat = Habitat.TREE_CANOPY,
@@ -599,7 +599,7 @@ class FloraGuideViewModel(
 
         _uiState.update {
             it.copy(
-                message = "Photo not sent. Take another photo or use the offline guided demo.",
+                message = "Photo not sent. Take another photo.",
             )
         }
     }

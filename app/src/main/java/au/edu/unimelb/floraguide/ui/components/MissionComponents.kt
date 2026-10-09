@@ -35,7 +35,7 @@ fun MissionCounter(uniqueSpecies: Int, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.End,
         modifier = modifier.clearAndSetSemantics {
-            contentDescription = if (complete) "Mission complete" else "$shown of $MISSION_SPECIES_GOAL species"
+            contentDescription = if (complete) "Mission complete!" else "$shown of $MISSION_SPECIES_GOAL species"
         },
     ) {
         Text(
@@ -61,7 +61,7 @@ fun MissionNote(uniqueSpecies: Int) {
         text = if (uniqueSpecies >= MISSION_SPECIES_GOAL) {
             "Mission complete: $uniqueSpecies different species recorded."
         } else {
-            "Each different species from a live photo counts once; guided-demo saves don't count."
+            "Each different species from a live photo counts once."
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onPrimaryContainer,

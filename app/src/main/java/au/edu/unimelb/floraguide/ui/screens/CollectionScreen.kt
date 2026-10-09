@@ -54,6 +54,8 @@ import au.edu.unimelb.floraguide.ui.components.StatusPill
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.tooling.preview.Preview
+
 
 @Composable
 fun CollectionScreen(
@@ -99,8 +101,8 @@ fun CollectionScreen(
     ) {
         item {
             SectionHeading(
-                title = "My field guide",
-                subtitle = "Saved on this device; signed-in observations also sync when online.",
+                title = "My Discovered Plants",
+                //subtitle = "Saved only on this device; signed-in observations will be sync when online.",
             )
         }
 
@@ -153,7 +155,7 @@ fun CollectionScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         Text(
-                            text = "Complete a live scan or guided demo, select a candidate, then save it here.",
+                            text = "Complete a live scan, select a candidate, then start saving it here.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -181,10 +183,11 @@ fun CollectionScreen(
 
         item {
             InformationCard(
-                title = "Storage and privacy",
-                body = "Photos are stored in Firebase Storage. Observation metadata is cached locally and may sync for signed-in users. " +
-                    "The saved coordinate is rounded to three decimal places. ALA is queried for historical occurrence context only; " +
-                    "saving here does not submit a new public ALA record.",
+                title = "Photo Storage Policy",
+                body = "Guest observations are saved only on this device; signed-in observations will be sync when online. " +
+                    "Observation metadata is cached locally and may sync for signed-in users. ",
+//                    "The saved coordinate is rounded to three decimal places. ALA is queried for historical occurrence context only; " +
+//                    "saving here does not submit a new public ALA record.",
             )
         }
     }
@@ -327,3 +330,16 @@ private fun ObservationCard(
         }
     }
 }
+
+@Preview(showBackground = true, heightDp = 10000)
+@Composable
+fun CollectionScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        CollectionScreen(
+            state = FloraGuideUiState(),
+            onStartScan = {},
+            onDelete = {}
+        )
+    }
+}
+

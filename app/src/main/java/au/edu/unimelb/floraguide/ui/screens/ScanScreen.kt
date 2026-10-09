@@ -45,6 +45,8 @@ import au.edu.unimelb.floraguide.ui.components.HabitatSelector
 import au.edu.unimelb.floraguide.ui.components.InformationCard
 import au.edu.unimelb.floraguide.ui.components.SectionHeading
 import au.edu.unimelb.floraguide.ui.components.captureGuidance
+import androidx.compose.ui.tooling.preview.Preview
+
 
 @Composable
 fun ScanScreen(
@@ -100,13 +102,13 @@ fun ScanScreen(
     val canGate = state.sensorSnapshot.canMeasureStability
     val guidance = captureGuidance(state.sensorSnapshot, state.stabilityGateEnabled, state.pendingPhotoConsent != null)
     LazyColumn(modifier = modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { SectionHeading(title = "Observe a plant", subtitle = "Photo and location are separate inputs; either can have its own status.") }
+        item { SectionHeading(title = "Observe a plant" ) }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Location for ALA", fontWeight = FontWeight.Bold)
+                    Text("Location status for ALA local history check", fontWeight = FontWeight.Bold)
                     Text(state.locationStatus, style = MaterialTheme.typography.bodySmall)
-                    Text("Wait for a device fix before capture. Without a usable location, identification still runs but ALA is skipped.",
+                    Text("For best results, wait for a confirmed device location fix before capture. Without a usable location, identification still runs but ALA local history check is skipped.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         FilledTonalButton(onClick = {
@@ -129,7 +131,7 @@ fun ScanScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Observation habitat", fontWeight = FontWeight.Bold)
-                Text("Recorded as metadata. Only the guided demo uses synthetic habitat priors.", style = MaterialTheme.typography.bodySmall)
+                Text("Recorded as a reference note in field guide", style = MaterialTheme.typography.bodySmall)
                 HabitatSelector(state.selectedHabitat, onHabitatSelected)
             }
         }
@@ -161,13 +163,26 @@ fun ScanScreen(
                 Text("Enable camera")
             }
         }
-        item { FilledTonalButton(onClick = onGuidedDemo, modifier = Modifier.fillMaxWidth()) { Text("Run explicit offline guided demo") } }
+        //item { FilledTonalButton(onClick = onGuidedDemo, modifier = Modifier.fillMaxWidth()) { Text("Run explicit offline guided demo") } }
         item {
-            InformationCard("What is shared", "After capture, you choose whether to use online identification. " +
-                "Only after you agree is the photo uploaded to Firebase and the stored image sent to Pl@ntNet. " +
-                "With a usable capture location, rounded coordinates and candidate names are sent to ALA. " +
-                "Saving is separate, and saved observations may sync through your Firebase account. " +
-                "Nothing is submitted as a new ALA record. Cancel before agreeing to avoid sending this capture.")
+            InformationCard("Privacy Policy: How We Handle Your Photo", "Taking a photo is private—nothing is shared online until you agree. Once you proceed, your photo is sent to Pl@ntNet for recognition, and a rounded, privacy-safe version of your location is sent to ALA to look up local history. ")
         }
+    }
+}
+@Preview(showBackground = true, heightDp = 10000)
+@Composable
+fun ScanScreenPreview() {
+    au.edu.unimelb.floraguide.ui.theme.FloraGuideTheme {
+        ScanScreen(
+            state = FloraGuideUiState(),
+            onHabitatSelected = {},
+            onStabilityGateChanged = {},
+            onPermissionResult = {},
+            onUseDemoLocation = {},
+            onCaptureStarted = { null },
+            onPhotoCaptured = { _, _ -> },
+            onGuidedDemo = {},
+            onError = {}
+        )
     }
 }
