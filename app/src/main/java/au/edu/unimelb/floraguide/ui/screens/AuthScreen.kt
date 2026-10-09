@@ -55,10 +55,29 @@ fun AuthScreen(
     if (confirmImport) {
         AlertDialog(
             onDismissRequest = { confirmImport = false },
+            shape = RoundedCornerShape(10.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            textContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             title = { Text("Import into this account?") },
             text = { Text("Local guest observations have no stored account owner. Import only if these are yours. They will move out of the device's guest field guide and sync to this account.") },
-            confirmButton = { TextButton(onClick = { confirmImport = false; onImportLocal() }) { Text("Import") } },
-            dismissButton = { TextButton(onClick = { confirmImport = false }) { Text("Cancel") } },
+            confirmButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { confirmImport = false },
+                    ) { Text("Cancel") }
+                    FilledTonalButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            confirmImport = false
+                            onImportLocal()
+                        },
+                    ) { Text("Import") }
+                }
+            },
         )
     }
 
@@ -88,7 +107,11 @@ fun AuthScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -171,7 +194,9 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = displayName, onValueChange = { displayName = it },
                     shape = MaterialTheme.shapes.medium,
-                    placeholder = { Text("Display Name", fontSize = 14.sp) }, singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+                    placeholder = { Text("Display Name", fontSize = 14.sp) }, singleLine = true, modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -187,7 +212,9 @@ fun AuthScreen(
         OutlinedTextField(
             value = email, onValueChange = { email = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+            singleLine = true, modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             shape = MaterialTheme.shapes.medium,
             placeholder = { Text("Email", fontSize = 14.sp) },
             colors = OutlinedTextFieldDefaults.colors(
@@ -206,7 +233,9 @@ fun AuthScreen(
             value = password, onValueChange = { password = it }, placeholder = { Text("Password", fontSize = 14.sp) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true, modifier = Modifier.fillMaxWidth().height(56.dp),
+            singleLine = true, modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             shape = MaterialTheme.shapes.medium,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -228,7 +257,10 @@ fun AuthScreen(
                 password = ""
             },
             enabled = email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank()),
-            modifier = Modifier.fillMaxWidth().alpha(if (email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank())) 1f else 0.8f).height(48.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (email.isNotBlank() && password.isNotBlank() && (!registering || displayName.isNotBlank())) 1f else 0.8f)
+                .height(48.dp),
             shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -244,7 +276,9 @@ fun AuthScreen(
                 Text(if (isRegistering) "Already have an account? Sign in" else "Need an account? Register")
             }
             Spacer(modifier = Modifier.height(20.dp))
-            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier.fillMaxWidth().height(48.dp), shape = MaterialTheme.shapes.medium,
+            OutlinedButton(onClick = onAnonymousSignIn, modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp), shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -254,7 +288,9 @@ fun AuthScreen(
             }
             if (authState != AuthState.OfflineGuest) {
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth().height(48.dp), shape = MaterialTheme.shapes.medium,
+                OutlinedButton(onClick = onContinueOffline, modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp), shape = MaterialTheme.shapes.medium,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -266,7 +302,9 @@ fun AuthScreen(
         } else {
             Spacer(modifier = Modifier.height(12.dp))
             TextButton(onClick = { confirmGuestSignOut = true },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
