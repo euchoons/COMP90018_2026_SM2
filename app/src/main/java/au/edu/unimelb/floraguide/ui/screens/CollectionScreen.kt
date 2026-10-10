@@ -135,7 +135,7 @@ fun CollectionScreen(
             )
         }
 
-        item { CollectionMissionCard(uniqueSpecies = state.uniqueSpeciesCount) }
+        if (state.showMissionCard) item { CollectionMissionCard(uniqueSpecies = state.uniqueSpeciesCount) }
 
         item {
             ObservationMap(
@@ -260,7 +260,7 @@ private fun CollectionMissionCard(uniqueSpecies: Int) {
                 MissionCounter(uniqueSpecies)
             }
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-            MissionNote(uniqueSpecies)
+            MissionNote()
         }
     }
 }
