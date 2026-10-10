@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -55,6 +53,7 @@ fun ObservationMap(
     observations: List<Observation>,
     location: GeoPoint,
     usingDemo: Boolean,
+    onViewDetails: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val mapModifier = modifier.fillMaxWidth().aspectRatio(1f)
@@ -111,9 +110,14 @@ fun ObservationMap(
                         plants.size,
                         state = rememberUpdatedMarkerState(LatLng(point.latitude, point.longitude)),
                         title = title,
-                        contentDescription = "Plant: $title. Tap to view photos.",
+                        contentDescription = "Plant: $title. Tap to view observation details.",
                         onClick = {
-                            selectedPoint = point
+                            if (plants.size == 1) {
+                                selectedPoint = null
+                                onViewDetails(plants.single().id)
+                            } else {
+                                selectedPoint = point
+                            }
                             true
                         },
                     ) {
@@ -143,29 +147,29 @@ fun ObservationMap(
             onDismissRequest = { selectedPoint = null },
             shape = RoundedCornerShape(10.dp),
             containerColor = MaterialTheme.colorScheme.primaryContainer,
-            title = { Text(if (selectedObservations.size == 1) "Plant observation" else "Plants at this location") },
+            title = { Text("Choose an observation") },
             text = {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    item { Text("Several observations share this location. Select one to view its details.") }
                     items(selectedObservations, key = { it.id }) { observation ->
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PhotoThumbnail(
-                                path = observation.photoPath,
-                                cloudPhotoUri = observation.cloudPhotoUri,
-                                contentDescription = "Photo of ${observation.species.commonName}",
-                                modifier = Modifier.fillMaxWidth().height(180.dp),
-                            )
-                            Text(observation.species.commonName, style = MaterialTheme.typography.titleMedium)
-                            Text(observation.species.scientificName, style = MaterialTheme.typography.bodySmall)
-                            Text(
-                                DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a")
-                                    .withZone(ZoneId.systemDefault()).format(observation.observedAt),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                            if (observation.photoPath == null && observation.cloudPhotoUri == null) {
-                                Text("No photo saved for this observation", style = MaterialTheme.typography.bodySmall)
+                        TextButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                selectedPoint = null
+                                onViewDetails(observation.id)
+                            },
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(observation.species.commonName, style = MaterialTheme.typography.titleMedium)
+                                Text(observation.species.scientificName, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    DateTimeFormatter.ofPattern("d MMM yyyy · h:mm a")
+                                        .withZone(ZoneId.systemDefault()).format(observation.observedAt),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
                             }
                         }
                     }
