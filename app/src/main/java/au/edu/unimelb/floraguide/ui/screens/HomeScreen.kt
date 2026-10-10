@@ -126,11 +126,13 @@ fun HomeScreen(
             }
         }
 
-        item {
-            MissionCard(
-                uniqueSpecies = state.uniqueSpeciesCount,
-                onOpenCollection = onOpenCollection,
-            )
+        if (state.showMissionCard) {
+            item {
+                MissionCard(
+                    uniqueSpecies = state.uniqueSpeciesCount,
+                    onOpenCollection = onOpenCollection,
+                )
+            }
         }
 
 
@@ -290,7 +292,7 @@ private fun MissionCard(uniqueSpecies: Int, onOpenCollection: () -> Unit) {
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth(),
             )
-            MissionNote(uniqueSpecies)
+            MissionNote()
         }
     }
 }
