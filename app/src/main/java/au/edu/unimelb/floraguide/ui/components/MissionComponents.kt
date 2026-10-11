@@ -27,19 +27,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** "2 / 3" over "species", or "3 / 3" over "complete": the count is of species, never of saves. */
+/** "2 / 3" over "species": the count is of species, never of saves. */
 @Composable
 fun MissionCounter(uniqueSpecies: Int, modifier: Modifier = Modifier) {
-    val shown = minOf(uniqueSpecies, MISSION_SPECIES_GOAL)
-    val complete = uniqueSpecies >= MISSION_SPECIES_GOAL
     Column(
         horizontalAlignment = Alignment.End,
         modifier = modifier.clearAndSetSemantics {
-            contentDescription = if (complete) "Mission complete!" else "$shown of $MISSION_SPECIES_GOAL species"
+            contentDescription = "$uniqueSpecies of $MISSION_SPECIES_GOAL species"
         },
     ) {
         Text(
-            text = "$shown / $MISSION_SPECIES_GOAL",
+            text = "$uniqueSpecies / $MISSION_SPECIES_GOAL",
             maxLines = 1,
             softWrap = false,
             style = MaterialTheme.typography.titleLarge,
@@ -47,7 +45,7 @@ fun MissionCounter(uniqueSpecies: Int, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
         Text(
-            text = if (complete) "complete" else "species",
+            text = "species",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
@@ -56,13 +54,9 @@ fun MissionCounter(uniqueSpecies: Int, modifier: Modifier = Modifier) {
 
 /** Says what counts, so a repeat or guided-demo save that leaves the counter unchanged is expected. */
 @Composable
-fun MissionNote(uniqueSpecies: Int) {
+fun MissionNote() {
     Text(
-        text = if (uniqueSpecies >= MISSION_SPECIES_GOAL) {
-            "Mission complete: $uniqueSpecies different species recorded."
-        } else {
-            "Each different species from a live photo counts once."
-        },
+        text = "Each different species from a live photo counts once.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onPrimaryContainer,
     )

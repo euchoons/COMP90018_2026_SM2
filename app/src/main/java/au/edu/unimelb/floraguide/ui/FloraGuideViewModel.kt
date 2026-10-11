@@ -119,6 +119,13 @@ data class FloraGuideUiState(
         uniqueSpeciesCount < MISSION_SPECIES_GOAL &&
             copy(observations = observations + observation).uniqueSpeciesCount >= MISSION_SPECIES_GOAL
 
+    /**
+     * The mission cards are a starter guide, so they go once the goal is reached. They also hide during
+     * the celebration: the completing save opens the collection before the new observation arrives.
+     */
+    val showMissionCard: Boolean
+        get() = uniqueSpeciesCount < MISSION_SPECIES_GOAL && !celebrateMission
+
     val canSave: Boolean
 
         get() = screen == AppScreen.RESULTS &&

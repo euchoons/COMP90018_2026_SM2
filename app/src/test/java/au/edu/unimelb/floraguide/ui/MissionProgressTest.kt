@@ -28,6 +28,13 @@ class MissionProgressTest {
         assertFalse(twoSpecies.copy(observations = twoSpecies.observations + saved("c")).completesMission(saved("d")))
     }
 
+    @Test fun theMissionCardsGoFromTheCompletingSaveOnwards() {
+        assertTrue(twoSpecies.showMissionCard)
+        // The collection opens before the third species arrives from the repository.
+        assertFalse(twoSpecies.copy(celebrateMission = true).showMissionCard)
+        assertFalse(twoSpecies.copy(observations = twoSpecies.observations + saved("c")).showMissionCard)
+    }
+
     companion object {
         fun saved(species: String, source: ImageSource = ImageSource.PLANTNET_LIVE) = Observation(
             id = "$species-$source", species = Species(species, species, species, emptySet(), emptyMap(), 0),
