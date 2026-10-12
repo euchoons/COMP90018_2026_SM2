@@ -193,18 +193,7 @@ fun ResultsScreen(
 
                             // Seasonal Affinity Gauge
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Phenological Season Multiplier", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                    Text(
-                                        text = String.format(Locale.US, "%.2fx", selected.evidence.seasonMultiplier),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (selected.evidence.seasonMultiplier < 1.0) MaterialTheme.colorScheme.error else Color(0xFF166534)
-                                    )
-                                }
+                                Text("Phenological Season", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
 
                                 // Interactive status pill signaling seasonality compatibility
                                 val (pillBg, pillFg, pillLabel) = when(selected.evidence.floweringCheck) {
@@ -221,6 +210,12 @@ fun ResultsScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
+                                // #20 trained the out-of-season factor to 1.00: the check mostly flagged the right species.
+                                Text(
+                                    text = "Shown for reference only; it does not change the ranking.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
