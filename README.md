@@ -9,7 +9,7 @@ FloraGuide is an Android app for identifying campus plants. It identifies a plan
 - **Android Studio** (current stable) with **Android SDK Platform 36**. The app runs on Android 8.0 (API 26) or newer.
 - **A Gradle JDK of version 17 or 21.** The build uses Gradle 8.13, which does not run on Java 24 or newer.
 - **A physical Android phone** is recommended. The camera, motion, light and compass sensors and GPS are central to the app, and an emulator only imitates them.
-- **Optional API keys for the live features:** a Pl@ntNet key (free, 500 identifications a day, from [my.plantnet.org](https://my.plantnet.org)) and a Google Maps key. The guided demo works without either.
+- **API keys for the live features:** A Pl@ntNet key (free, 500 identifications a day, from [my.plantnet.org](https://my.plantnet.org)) and a Google Maps key. 
 
 ### 1. Get the code and open it
 
@@ -21,7 +21,7 @@ In Android Studio, choose **File → Open**, select the cloned folder and let Gr
 
 If sync fails with an error that names a newer Java version (for example "What went wrong: 25.0.4"), go to **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK** and choose a JDK 17 or 21. The drop-down can download one.
 
-### 2. Add your API keys (optional)
+### 2. Add API keys
 
 Android Studio creates `local.properties` in the project root. Git ignores it, so keys added there stay on your computer. Add:
 
@@ -48,7 +48,7 @@ The Firebase configuration (`app/google-services.json`) is already in the reposi
 
 ### 4. Try it
 
-- **Guided demo** (no keys or network needed): on the sign-in screen, choose **Continue Offline (Demo)** if you aren't signing in. Then tap **Demo** on Home. It uses a fixed date, a campus location and sample species, so it shows the whole flow without live requests.
+- **Guided demo** (no keys or network needed): on the sign-in screen, choose **Continue Offline (Demo)** if you aren't signing in. Then tap **Demo** on Home, or **Run explicit offline guided demo** on Observe. It uses a fixed date, a campus location and sample species, so it shows the whole flow without live requests.
 - **Live observation:**
   1. Sign in, or choose **Continue as Guest (Internet Required)**.
   2. Open **Observe** and allow camera and location access. Wait for "Device location ready"; outdoors this takes a few seconds.
@@ -73,7 +73,7 @@ In a terminal, Gradle uses the JDK in `JAVA_HOME`. Point that, or `org.gradle.ja
 | Gradle sync or build fails naming Java 24 or 25 | Set the Gradle JDK to 17 or 21 (see step 1) |
 | Live identification says the Pl@ntNet key is missing | Add `plantnet.api.key` to `local.properties` and rebuild |
 | The Field Guide map says "Map unavailable" | Add `MAPS_API_KEY` to `local.properties` and rebuild |
-| Location stays on "Waiting…" | Go outdoors or near a window. With approximate location only, the first fix can take up to about 10 minutes |
+| Location stays on "Waiting…" | Go outdoors or near a window. With approximate location only, the first fix can take up to about 10 minutes but should be quick (30s-1min) |
 
 More detail is in the [quick start](docs/FLORAGUIDE.md).
 
