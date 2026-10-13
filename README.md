@@ -48,7 +48,7 @@ The Firebase configuration (`app/google-services.json`) is already in the reposi
 
 ### 4. Try it
 
-- **Guided demo** (no keys or network needed): on the sign-in screen, choose **Continue Offline (Demo)** if you aren't signing in. Then tap **Demo** on Home, or **Run explicit offline guided demo** on Observe. It uses a fixed date, a campus location and sample species, so it shows the whole flow without live requests.
+- **Guided demo** (no keys or network needed): on the sign-in screen, choose **Continue Offline (Demo)** if you aren't signing in. Then tap **Demo** on Home. It uses a fixed date, a campus location and sample species, so it shows the whole flow without live requests.
 - **Live observation:**
   1. Sign in, or choose **Continue as Guest (Internet Required)**.
   2. Open **Observe** and allow camera and location access. Wait for "Device location ready"; outdoors this takes a few seconds.
