@@ -33,7 +33,6 @@ fun AuthScreen(
     onSignIn: (String, String) -> Unit,
     onRegister: (String, String, String) -> Unit,
     onAnonymousSignIn: () -> Unit,
-    onContinueOffline: () -> Unit,
     onImportLocal: () -> Unit,
     onRetrySync: () -> Unit,
     onSignOut: () -> Unit,
@@ -306,19 +305,6 @@ fun AuthScreen(
                 border = null) {
                 Text("Continue as Guest (Internet Required)")
             }
-            if (authState != AuthState.OfflineGuest) {
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(onClick = onContinueOffline, modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp), shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
-                    border = null) {
-                    Text("Continue Offline (Demo)")
-                }
-            }
         } else {
             Spacer(modifier = Modifier.height(12.dp))
             TextButton(onClick = { confirmGuestSignOut = true },
@@ -358,7 +344,6 @@ fun AuthScreenPreview() {
             onSignIn = { _, _ -> },
             onRegister = { _, _, _ -> },
             onAnonymousSignIn = {},
-            onContinueOffline = {},
             onImportLocal = {},
             onRetrySync = {},
             onSignOut = {},
